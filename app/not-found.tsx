@@ -11,7 +11,7 @@ export default function NotFound() {
       <p className="mt-3 max-w-sm text-on-surface/60">
         This page spun out of the arena. Let&apos;s get you back on track.
       </p>
-      <Button asChild size="lg" className="mt-8">
+      <Button asChild size="lg" className="mt-8" tooltip="Return to the homepage">
         <Link href="/">Back to Home</Link>
       </Button>
     </div>

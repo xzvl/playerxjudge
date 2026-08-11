@@ -12,10 +12,12 @@ const badgeVariants = cva(
         secondary: "border-transparent bg-surface-container-high text-on-surface",
         outline: "border-outline-variant/50 text-on-surface/70",
         success: "border-transparent bg-emerald-600/90 text-white",
+        destructive: "border-transparent bg-error text-on-error",
         casual: "border-transparent bg-secondary-container text-on-secondary-container",
         minor: "border-transparent bg-tertiary/90 text-on-tertiary",
         major: "border-transparent bg-primary text-on-primary",
         emergency: "border-transparent bg-error text-on-error",
+        league: "border-transparent bg-indigo-600/90 text-white",
       },
     },
     defaultVariants: {

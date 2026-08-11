@@ -1,21 +1,28 @@
-import Link from "next/link";
-import { CalendarDays, MapPin, MessageSquare, Trophy, Users } from "lucide-react";
+"use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { CalendarClock, Clock, MapPin, Trophy, User } from "lucide-react";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { BattleTypeBadge, TournamentTypeBadge } from "@/components/tournaments/badges";
 import { TournamentThumbnail } from "@/components/tournaments/TournamentThumbnail";
 import { CountdownTimer } from "@/components/tournaments/CountdownTimer";
-import { formatCurrency, formatDate, formatTime } from "@/lib/format";
+import { PreRegisterDialog } from "@/components/tournaments/PreRegisterDialog";
+import { formatDate, formatTime } from "@/lib/format";
 import type { MockTournament } from "@/lib/mock/tournaments";
 
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "TBA";
+  return `${formatDate(iso)} · ${formatTime(iso)}`;
+}
+
+// "Quick Look" — a deliberately short preview, not the whole tournament:
+// type/tier, banner, title, description, prizes, an action button,
+// countdown, the three key dates, organizer, and location. Everything else
+// (rules, participants, judges, sponsors, brackets, comments) is
+// full-page-only — see /tournaments/[slug], which "Full Details" links to.
 export function TournamentDetailsModal({
   tournament,
   open,
@@ -25,162 +32,176 @@ export function TournamentDetailsModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  if (!tournament) return null;
+  const [preRegisterOpen, setPreRegisterOpen] = useState(false);
+  // "Register Now" closes this outer dialog and opens PreRegisterDialog in
+  // the same click — both state updates land in the same render, so the
+  // parent's `tournament` prop goes null (it clears its selection on
+  // close) at the same instant `preRegisterOpen` becomes true. Without this,
+  // `if (!tournament) return null` below would unmount the whole component
+  // — PreRegisterDialog included — before it ever got to open. Keeping the
+  // last non-null tournament around lets the outer Dialog close normally
+  // while the nested PreRegisterDialog keeps rendering.
+  const [displayTournament, setDisplayTournament] = useState(tournament);
 
-  const liveStatusLabel: Record<MockTournament["liveStatus"], string> = {
-    not_started: "Not Started",
-    ongoing: "Live Now",
-    completed: "Completed",
-  };
+  useEffect(() => {
+    if (tournament) setDisplayTournament(tournament);
+  }, [tournament]);
+
+  if (!displayTournament) return null;
+
+  const prizes = displayTournament.prizes ?? [];
+  const rangeSections = displayTournament.prizeRangeSections ?? [];
+  const hasPrizesToShow = displayTournament.prizeUsesRanges ? rangeSections.length > 0 : prizes.length > 0;
+  const participantCount = displayTournament.participants.length;
+  const completed = displayTournament.liveStatus === "completed";
+  const hasStarted = new Date(displayTournament.startsAt).getTime() <= Date.now();
+  const actionLabel = completed ? "View Result" : hasStarted ? "Go Shoot!" : "Register Now";
+  const actionTooltip = completed ? "See the final results" : hasStarted ? "Watch this tournament live" : "Register for this tournament";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0">
-        <TournamentThumbnail color={tournament.thumbnailColor} title={tournament.title} className="h-52" />
+        <TournamentThumbnail
+          color={displayTournament.thumbnailColor}
+          title={displayTournament.title}
+          imageUrl={displayTournament.bannerUrl}
+          className="h-52"
+        />
 
         <div className="space-y-8 p-6">
           <DialogHeader className="space-y-3 p-0 text-left">
             <div className="flex flex-wrap items-center gap-2">
-              <BattleTypeBadge type={tournament.battleType} />
-              <TournamentTypeBadge type={tournament.tournamentType} />
-              <span
-                className={`label-mono px-2 py-1 ${
-                  tournament.liveStatus === "ongoing" ? "animate-blink text-primary" : "text-on-surface/50"
-                }`}
-              >
-                {liveStatusLabel[tournament.liveStatus]}
-              </span>
+              <BattleTypeBadge type={displayTournament.battleType} />
+              <TournamentTypeBadge type={displayTournament.tournamentType} />
             </div>
-            <DialogTitle>{tournament.title}</DialogTitle>
-            <DialogDescription>{tournament.description}</DialogDescription>
+            <DialogTitle>{displayTournament.title}</DialogTitle>
+            {displayTournament.description ? (
+              <div
+                className="prose-editor text-sm text-on-surface/60 [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5"
+                dangerouslySetInnerHTML={{ __html: displayTournament.description }}
+              />
+            ) : null}
           </DialogHeader>
 
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="space-y-8 lg:col-span-2">
-              <section aria-labelledby="rules-heading">
-                <h3 id="rules-heading" className="label-mono mb-3 text-primary">
-                  Rules
-                </h3>
-                <ul className="list-inside list-disc space-y-1.5 text-sm text-on-surface/70">
-                  {tournament.rules.map((rule) => (
-                    <li key={rule}>{rule}</li>
-                  ))}
-                </ul>
-              </section>
-
-              <Separator />
-
-              <section aria-labelledby="participants-heading">
-                <h3 id="participants-heading" className="label-mono mb-3 flex items-center gap-2 text-primary">
-                  <Users className="h-3.5 w-3.5" aria-hidden="true" /> Participants
-                </h3>
-                {tournament.participants.length > 0 ? (
-                  <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {tournament.participants.map((p) => (
-                      <li
-                        key={p.name}
-                        className="border border-outline-variant/25 px-3 py-2 text-sm text-on-surface/70"
-                      >
-                        #{p.seed} {p.name}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-on-surface/50">Registration is still open — no participants yet.</p>
-                )}
-              </section>
-
-              <Separator />
-
-              <section aria-labelledby="brackets-heading">
-                <h3 id="brackets-heading" className="label-mono mb-3 text-primary">
-                  Brackets
-                </h3>
-                <p className="border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/40">
-                  Bracket visualization becomes available once the tournament starts.
-                </p>
-              </section>
-
-              <Separator />
-
-              <section aria-labelledby="comments-heading">
-                <h3
-                  id="comments-heading"
-                  className="label-mono mb-3 flex items-center gap-2 text-primary"
-                >
-                  <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" /> Comments
-                </h3>
-                <p className="text-sm text-on-surface/50">
-                  Sign in to join the discussion for this tournament.
-                </p>
-              </section>
+              {hasPrizesToShow ? (
+                <section aria-labelledby="quick-look-prizes-heading">
+                  <h3 id="quick-look-prizes-heading" className="label-mono mb-3 flex items-center gap-2 text-primary">
+                    <Trophy className="h-3.5 w-3.5" aria-hidden="true" /> Prizes
+                  </h3>
+                  {displayTournament.prizeUsesRanges ? (
+                    <div className="space-y-5">
+                      <p className="text-xs text-on-surface/50">Prizes vary by number of participants:</p>
+                      {rangeSections.map((section, i) => {
+                        const isCurrent = participantCount >= section.rangeStart && participantCount <= section.rangeEnd;
+                        return (
+                          <div key={i}>
+                            <p className="label-mono mb-2 text-on-surface/60">
+                              {section.rangeStart}–{section.rangeEnd} Participants
+                              {isCurrent ? <span className="text-primary"> (current)</span> : null}
+                            </p>
+                            {section.prizes.length > 0 ? (
+                              <ul className="space-y-2">
+                                {section.prizes.map((p, j) => (
+                                  <li
+                                    key={j}
+                                    className="flex items-center gap-3 border border-outline-variant/25 px-3 py-2 text-sm"
+                                  >
+                                    <span className="text-on-surface/70">{p.placement}</span>
+                                    <span className="font-medium text-on-surface">{p.prizeName}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-xs text-on-surface/40">No prizes set for this range.</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {prizes.map((p) => (
+                        <li
+                          key={p.placement}
+                          className="flex items-center gap-3 border border-outline-variant/25 px-3 py-2 text-sm"
+                        >
+                          <span className="text-on-surface/70">{p.placement}</span>
+                          <span className="font-medium text-on-surface">{p.prizeName}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              ) : (
+                <p className="text-sm text-on-surface/50">No prizes have been posted yet.</p>
+              )}
             </div>
 
             <div className="space-y-6">
-              <div className="border border-outline-variant/25 p-4">
-                <p className="label-mono mb-3 text-on-surface/40">Countdown</p>
-                <CountdownTimer target={tournament.startsAt} />
-              </div>
-
-              <dl className="space-y-3 border border-outline-variant/25 p-4 text-sm">
-                <div className="flex items-center gap-2 text-on-surface/70">
-                  <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <dd>
-                    {formatDate(tournament.startsAt)} · {formatTime(tournament.startsAt)}
-                  </dd>
-                </div>
-                <div className="flex items-center gap-2 text-on-surface/70">
-                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <dd>{tournament.locationName}</dd>
-                </div>
-                <div className="flex items-center gap-2 text-on-surface/70">
-                  <Trophy className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <dd>{formatCurrency(tournament.prizePool)} prize pool</dd>
-                </div>
-              </dl>
-
-              <div className="border border-outline-variant/25 p-4">
-                <p className="label-mono mb-2 text-on-surface/40">Organizer</p>
-                <p className="text-sm text-on-surface">{tournament.organizerName}</p>
-              </div>
-
-              <div className="border border-outline-variant/25 p-4">
-                <p className="label-mono mb-2 text-on-surface/40">Judges</p>
-                <ul className="space-y-1 text-sm text-on-surface/70">
-                  {tournament.judges.map((j) => (
-                    <li key={j}>{j}</li>
-                  ))}
-                </ul>
-              </div>
-
-              {tournament.sponsors.length > 0 ? (
-                <div className="border border-outline-variant/25 p-4">
-                  <p className="label-mono mb-2 text-on-surface/40">Sponsors</p>
-                  <div className="flex flex-wrap gap-2">
-                    {tournament.sponsors.map((s) => (
-                      <span key={s} className="label-mono border border-outline-variant/30 px-2 py-1">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="border border-outline-variant/25 p-4">
-                <p className="label-mono mb-2 text-on-surface/40">Location</p>
-                <p className="mb-3 text-sm text-on-surface/70">{tournament.province}</p>
-                <Button asChild variant="outline" size="sm" className="w-full">
-                  <Link href={`/map?tournament=${tournament.slug}`}>View on Map</Link>
+              {hasStarted ? (
+                <Button asChild size="lg" className="w-full" tooltip={actionTooltip}>
+                  <Link href={`/tournaments/${displayTournament.slug}/player`}>{actionLabel}</Link>
                 </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className="w-full"
+                  tooltip={actionTooltip}
+                  onClick={() => {
+                    onOpenChange(false);
+                    setPreRegisterOpen(true);
+                  }}
+                >
+                  {actionLabel}
+                </Button>
+              )}
+
+              <div className="border border-outline-variant/25 p-4">
+                <p className="label-mono mb-3 flex items-center gap-2 text-on-surface/40">
+                  <Clock className="h-4 w-4 shrink-0" aria-hidden="true" /> Countdown
+                </p>
+                <CountdownTimer target={displayTournament.startsAt} completed={completed} />
               </div>
 
-              <Button asChild size="lg" className="w-full">
-                <Link href={`/tournaments/${tournament.slug}/register`}>Register Now</Link>
-              </Button>
+              <div className="space-y-3 border border-outline-variant/25 p-4 text-sm">
+                <p className="label-mono flex items-center gap-2 text-on-surface/40">
+                  <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" /> Schedule
+                </p>
+                <div>
+                  <p className="text-xs text-on-surface/40">Pre-Registration Starts</p>
+                  <p className="text-on-surface/80">{formatDateTime(displayTournament.registrationStartsAt)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-on-surface/40">Pre-Registration Ends</p>
+                  <p className="text-on-surface/80">{formatDateTime(displayTournament.registrationDeadline)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-on-surface/40">Tournament Start</p>
+                  <p className="text-on-surface/80">{formatDateTime(displayTournament.startsAt)}</p>
+                </div>
+              </div>
+
+              <div className="border border-outline-variant/25 p-4">
+                <p className="label-mono mb-2 flex items-center gap-2 text-on-surface/40">
+                  <User className="h-4 w-4 shrink-0" aria-hidden="true" /> Organizer
+                </p>
+                <p className="text-sm text-on-surface">{displayTournament.organizerName}</p>
+              </div>
+
+              <div className="border border-outline-variant/25 p-4">
+                <p className="label-mono mb-2 flex items-center gap-2 text-on-surface/40">
+                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" /> Location
+                </p>
+                <p className="text-sm text-on-surface">{displayTournament.locationName || "TBA"}</p>
+              </div>
             </div>
           </div>
         </div>
       </DialogContent>
+
+      <PreRegisterDialog tournament={displayTournament} open={preRegisterOpen} onOpenChange={setPreRegisterOpen} />
     </Dialog>
   );
 }

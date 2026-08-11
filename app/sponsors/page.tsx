@@ -18,8 +18,8 @@ export default function SponsorsPage() {
       description="A full sponsor directory and profile pages are coming in the next build phase."
       Icon={Handshake}
     >
-      <Button asChild size="lg">
-        <Link href="/sponsors/become">Become a Sponsor</Link>
+      <Button asChild size="lg" tooltip="Apply to sponsor the community">
+        <Link href="/become/sponsor">Become a Sponsor</Link>
       </Button>
     </PagePlaceholder>
   );

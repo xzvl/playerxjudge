@@ -40,6 +40,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  webpack: (config, { dev }) => {
+    // `next build` was warning on every run:
+    //   [webpack.cache.PackFileCacheStrategy] Serializing big strings (...)
+    //   impacts deserialization performance (consider using Buffer instead
+    //   and decode when needed)
+    // That's webpack's persistent filesystem cache choking on our bundled
+    // Tailwind CSS/JS chunks (comfortably over the 100kB threshold it warns
+    // at) — harmless, but noisy on every single-shot CI/deploy build, which
+    // never gets to reuse that cache anyway. `next dev` keeps the default
+    // filesystem cache, where it actually speeds up incremental reloads.
+    if (!dev) {
+      config.cache = { type: "memory" };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

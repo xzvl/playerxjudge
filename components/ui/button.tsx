@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap font-mono uppercase tracking-[0.15em] text-[11px] font-medium transition-all disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -38,17 +39,39 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  // Short description of what the button does, shown on hover/focus. Falls
+  // back to `aria-label` when present (the common case for icon-only
+  // buttons) so most call sites don't need to say the same thing twice.
+  tooltip?: React.ReactNode;
+  tooltipSide?: "top" | "bottom" | "left" | "right";
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, tooltip, tooltipSide = "top", ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    return (
+    const content = tooltip ?? props["aria-label"];
+    const button = (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       />
+    );
+
+    if (!content) return button;
+
+    // A native `disabled` button ignores pointer events (see
+    // `disabled:pointer-events-none` above), which would also swallow the
+    // hover/focus that triggers the tooltip — exactly the case where a
+    // tooltip explaining *why* it's disabled matters most. Wrapping it in a
+    // span keeps the trigger hoverable without changing the button itself.
+    const trigger = props.disabled ? <span className="inline-flex">{button}</span> : button;
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+        <TooltipContent side={tooltipSide}>{content}</TooltipContent>
+      </Tooltip>
     );
   }
 );

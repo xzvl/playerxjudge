@@ -1,39 +1,32 @@
 import { redirect } from "next/navigation";
-import {
-  BarChart3,
-  CheckSquare,
-  DollarSign,
-  Download,
-  FileText,
-  Handshake,
-  LayoutDashboard,
-  Trophy,
-  Users,
-  Users2,
-} from "lucide-react";
 
-import { DashboardShell, type DashboardNavItem } from "@/components/dashboard/DashboardShell";
-import { getCurrentUser } from "@/lib/supabase/get-user";
-
-const NAV_ITEMS: DashboardNavItem[] = [
-  { label: "Overview", href: "/dashboard/organizer", icon: LayoutDashboard },
-  { label: "Analytics", icon: BarChart3 },
-  { label: "Revenue", icon: DollarSign },
-  { label: "Tournament Management", icon: Trophy },
-  { label: "Community Management", icon: Users2 },
-  { label: "Sponsors", icon: Handshake },
-  { label: "Reports", icon: FileText },
-  { label: "Participants", icon: Users },
-  { label: "Check-in", icon: CheckSquare },
-  { label: "Export CSV", icon: Download },
-];
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { ACCOUNT_SETTINGS_NAV_ITEM, getAccountNavItems } from "@/components/dashboard/accountNavItems";
+import { RoleApplicationGate } from "@/components/dashboard/RoleApplicationGate";
+import { getCurrentUser, getCurrentUserRoles } from "@/lib/supabase/get-user";
 
 export default async function OrganizerDashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login?redirectTo=/dashboard/organizer");
+  if (!user) redirect("/login?redirectTo=/account/organizer/dashboard");
+
+  const roles = await getCurrentUserRoles();
+  const organizerRole = roles.find((r) => r.role === "organizer");
+
+  if (organizerRole?.status !== "approved") {
+    return (
+      <RoleApplicationGate
+        roleLabel="Organizer"
+        status={organizerRole?.status === "rejected" ? "rejected" : organizerRole ? "pending" : null}
+        applyHref="/become/organizer"
+        applyLabel="Apply to Organize"
+      />
+    );
+  }
+
+  const navItems = getAccountNavItems(roles);
 
   return (
-    <DashboardShell roleLabel="Organizer" navItems={NAV_ITEMS}>
+    <DashboardShell roleLabel="Account" navItems={navItems} settingsItem={ACCOUNT_SETTINGS_NAV_ITEM}>
       {children}
     </DashboardShell>
   );

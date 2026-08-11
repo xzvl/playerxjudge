@@ -111,7 +111,7 @@ export function LoginForm() {
             </p>
           ) : null}
 
-          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          <Button type="submit" size="lg" className="w-full" tooltip="Sign in with your email and password" disabled={submitting}>
             {submitting ? "Signing in..." : "Sign In"}
           </Button>
           <Button
@@ -119,6 +119,7 @@ export function LoginForm() {
             variant="ghost"
             size="lg"
             className="w-full"
+            tooltip="Get a one-time sign-in link by email"
             onClick={onMagicLink}
             disabled={submitting}
           >

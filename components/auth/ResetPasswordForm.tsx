@@ -105,7 +105,7 @@ export function ResetPasswordForm() {
               {message.text}
             </p>
           ) : null}
-          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          <Button type="submit" size="lg" className="w-full" tooltip="Update your password" disabled={submitting}>
             {submitting ? "Updating..." : "Update Password"}
           </Button>
         </form>
@@ -131,7 +131,7 @@ export function ResetPasswordForm() {
           {message.text}
         </p>
       ) : null}
-      <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+      <Button type="submit" size="lg" className="w-full" tooltip="Email yourself a password reset link" disabled={submitting}>
         {submitting ? "Sending..." : "Send Reset Link"}
       </Button>
     </form>

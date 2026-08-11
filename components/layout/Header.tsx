@@ -13,9 +13,6 @@ import { ProfileMenu, type NavUser } from "@/components/layout/ProfileMenu";
 const NAV_LINKS = [
   { label: "Tournament", href: "/tournaments" },
   { label: "Community", href: "/communities" },
-  { label: "Organizer", href: "/organizer" },
-  { label: "Player", href: "/player" },
-  { label: "Judge", href: "/judge" },
 ];
 
 export function Header({ user }: { user: NavUser | null }) {
@@ -28,26 +25,16 @@ export function Header({ user }: { user: NavUser | null }) {
           Player<span className="text-primary">X</span>Judge
         </Link>
 
-        <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="label-mono text-on-surface/60 transition-colors hover:text-primary"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
         <SearchBar className="mx-auto hidden max-w-md flex-1 md:block" />
 
         <div className="ml-auto flex items-center gap-2">
-          <Button asChild size="sm" className="hidden gap-1.5 sm:inline-flex">
-            <Link href="/tournaments/new">
-              <Plus className="h-3.5 w-3.5" /> Add Tournament
-            </Link>
-          </Button>
+          {user?.isOrganizer ? (
+            <Button asChild size="sm" className="hidden gap-1.5 sm:inline-flex" tooltip="Set up a new tournament">
+              <Link href="/account/organizer/tournament/new">
+                <Plus className="h-3.5 w-3.5" /> Add Tournament
+              </Link>
+            </Button>
+          ) : null}
           <NotificationsBell count={user ? 2 : 0} />
           <ProfileMenu user={user} />
 
@@ -75,12 +62,12 @@ export function Header({ user }: { user: NavUser | null }) {
                 ))}
                 {!user ? (
                   <div className="mt-6 flex flex-col gap-2">
-                    <Button asChild variant="outline">
+                    <Button asChild variant="outline" tooltip="Sign in to your account">
                       <Link href="/login" onClick={() => setMobileOpen(false)}>
                         Sign In
                       </Link>
                     </Button>
-                    <Button asChild>
+                    <Button asChild tooltip="Create a new account">
                       <Link href="/register" onClick={() => setMobileOpen(false)}>
                         Join
                       </Link>

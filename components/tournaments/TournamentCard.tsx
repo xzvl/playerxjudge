@@ -1,9 +1,13 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Clock, MapPin, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { BattleTypeBadge, TournamentTypeBadge } from "@/components/tournaments/badges";
 import { TournamentThumbnail } from "@/components/tournaments/TournamentThumbnail";
+import { PreRegisterDialog } from "@/components/tournaments/PreRegisterDialog";
 import { formatDate, formatTime } from "@/lib/format";
 import type { MockTournament } from "@/lib/mock/tournaments";
 
@@ -14,11 +18,17 @@ export function TournamentCard({
   tournament: MockTournament;
   onOpenDetails: (id: string) => void;
 }) {
+  const [preRegisterOpen, setPreRegisterOpen] = useState(false);
   const hasStarted = new Date(tournament.startsAt).getTime() <= Date.now();
 
   return (
     <article className="group flex flex-col border border-outline-variant/25 bg-surface-container-low transition-all hover:border-primary/40">
-      <TournamentThumbnail color={tournament.thumbnailColor} title={tournament.title} className="h-40" />
+      <TournamentThumbnail
+        color={tournament.thumbnailColor}
+        title={tournament.title}
+        imageUrl={tournament.thumbnailUrl}
+        className="aspect-square"
+      />
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex flex-wrap gap-2">
           <BattleTypeBadge type={tournament.battleType} />
@@ -50,26 +60,37 @@ export function TournamentCard({
           </div>
         </dl>
 
-        <div className="mt-auto flex gap-2 pt-3">
+        <div className="mt-auto flex flex-wrap gap-2 pt-3">
           <Button
             variant="outline"
             size="sm"
             className="flex-1"
+            tooltip="Preview this tournament without leaving the list"
             onClick={() => onOpenDetails(tournament.id)}
           >
-            Full Details
+            Quick Look
+          </Button>
+          <Button asChild variant="outline" size="sm" className="flex-1" tooltip="View the full tournament page">
+            <Link href={`/tournaments/${tournament.slug}`}>Full Details</Link>
           </Button>
           {hasStarted ? (
-            <Button asChild size="sm" className="flex-1">
-              <Link href={`/tournaments/${tournament.slug}/live`}>Go Shoot!</Link>
+            <Button asChild size="sm" className="flex-1" tooltip="Watch this tournament live">
+              <Link href={`/tournaments/${tournament.slug}/player`}>Go Shoot!</Link>
             </Button>
           ) : (
-            <Button asChild size="sm" className="flex-1">
-              <Link href={`/tournaments/${tournament.slug}/register`}>Pre-register</Link>
+            <Button
+              size="sm"
+              className="flex-1"
+              tooltip="Pre-register for this tournament"
+              onClick={() => setPreRegisterOpen(true)}
+            >
+              Pre-register
             </Button>
           )}
         </div>
       </div>
+
+      <PreRegisterDialog tournament={tournament} open={preRegisterOpen} onOpenChange={setPreRegisterOpen} />
     </article>
   );
 }

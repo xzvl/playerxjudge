@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { CalendarDays } from "lucide-react";
 
-import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
+import { CalendarView } from "@/components/calendar/CalendarView";
 
 export const metadata: Metadata = {
   title: "Calendar",
@@ -9,12 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function CalendarPage() {
-  return (
-    <PagePlaceholder
-      eyebrow="Plan Ahead"
-      title="Tournament Calendar"
-      description="A FullCalendar-powered event calendar is coming in the next build phase."
-      Icon={CalendarDays}
-    />
-  );
+  return <CalendarView />;
 }

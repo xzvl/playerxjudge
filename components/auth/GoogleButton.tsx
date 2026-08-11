@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 export function GoogleButton() {
   return (
     <form action={signInWithGoogle}>
-      <Button type="submit" variant="outline" size="lg" className="w-full gap-2">
+      <Button type="submit" variant="outline" size="lg" className="w-full gap-2" tooltip="Continue with your Google account">
         <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
           <path
             fill="currentColor"

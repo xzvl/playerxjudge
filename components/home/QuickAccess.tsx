@@ -5,7 +5,7 @@ const ITEMS = [
   { label: "Calendar", href: "/calendar", Icon: CalendarDays },
   { label: "Communities", href: "/communities", Icon: Users2 },
   { label: "Leaderboard", href: "/leaderboard", Icon: Trophy },
-  { label: "Beyblade Rules", href: "/rules", Icon: BookOpenCheck },
+  { label: "Beyblade X Regulations", href: "/rules", Icon: BookOpenCheck },
 ];
 
 export function QuickAccess() {

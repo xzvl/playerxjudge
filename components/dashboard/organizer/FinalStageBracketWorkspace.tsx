@@ -1,0 +1,156 @@
+"use client";
+
+import { useState, useTransition } from "react";
+
+import { WorkspaceBracket } from "@/components/dashboard/organizer/WorkspaceBracket";
+import { MatchDetailsDialog, ReportMatchDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
+import { startMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import { advanceWinners, applyRealMatches, populateSectionFromFeeder, type PlacementSection } from "@/lib/final-stage-placeholder";
+import type { WorkspaceBracketRound, WorkspaceMatch } from "@/lib/mock/tournament-workspace";
+import type { Bracket, Match } from "@/lib/types/database";
+
+// Wraps the read-only WorkspaceBracket with the same Start/Report/Edit/Details
+// icon actions the group stage's MatchesTab has. Rounds (main bracket and
+// every placement section) advance on their own — reportMatchResult runs
+// autoAdvanceFinalStage server-side the moment a round's last result comes
+// in, so the next round's matches (and icons) just appear; there's nothing
+// to click to generate them.
+export function FinalStageBracketWorkspace({
+  slug,
+  baseRounds,
+  initialMatches,
+  initialBrackets,
+  placementSections,
+  participantsById,
+  locked = false,
+}: {
+  slug: string;
+  baseRounds: WorkspaceBracketRound[];
+  initialMatches: Match[];
+  initialBrackets: Bracket[];
+  placementSections: PlacementSection[];
+  participantsById: Map<string, RosterLite>;
+  // The tournament has already ended — Start/Report/Edit go away everywhere,
+  // Match Details stays.
+  locked?: boolean;
+}) {
+  const [matches, setMatches] = useState<Match[]>(initialMatches);
+  const [sectionBracketIds, setSectionBracketIds] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      initialBrackets
+        .filter((b) => placementSections.some((s) => s.key === b.structure?.key))
+        .map((b) => [b.structure.key, b.id])
+    )
+  );
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const matchesById = new Map(matches.map((m) => [m.id, m]));
+  const mainBracketMatches = matches.filter((m) => m.bracket_id === null);
+  const mainRounds = advanceWinners(applyRealMatches(baseRounds, mainBracketMatches));
+
+  // Every section's display rounds, computed in dependency order — a
+  // section's feeder is always either the main bracket or an earlier
+  // section in this list (see buildPlacementSections), so a single forward
+  // pass is enough.
+  const sectionRoundsByKey = new Map<string, WorkspaceBracketRound[]>();
+  for (const section of placementSections) {
+    const feederRounds = section.feederKey === null ? mainRounds : sectionRoundsByKey.get(section.feederKey) ?? section.rounds;
+    const bracketId = sectionBracketIds[section.key] ?? null;
+    const ownMatches = bracketId ? matches.filter((m) => m.bracket_id === bracketId) : [];
+    const populated = populateSectionFromFeeder(section, feederRounds);
+    sectionRoundsByKey.set(section.key, advanceWinners(applyRealMatches(populated.rounds, ownMatches)));
+  }
+
+  function mergeAdvanced(advancedMatches: Match[] | undefined, advancedBrackets: { key: string; id: string }[] | undefined) {
+    if (advancedMatches?.length) {
+      setMatches((prev) => [...prev, ...advancedMatches.filter((m) => !prev.some((p) => p.id === m.id))]);
+    }
+    if (advancedBrackets?.length) {
+      setSectionBracketIds((prev) => {
+        const next = { ...prev };
+        for (const b of advancedBrackets) next[b.key] = b.id;
+        return next;
+      });
+    }
+  }
+
+  function handleStart(match: WorkspaceMatch) {
+    setError(null);
+    startTransition(async () => {
+      const result = await startMatch(match.id, slug);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      setMatches((prev) => prev.map((m) => (m.id === match.id ? { ...m, status: "ongoing" } : m)));
+    });
+  }
+
+  function handleReportSubmit(scoreA: number, scoreB: number) {
+    if (!reportingId) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await reportMatchResult(reportingId, slug, scoreA, scoreB);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      if (result.match) {
+        const updated = result.match;
+        setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      }
+      mergeAdvanced(result.advancedMatches, result.advancedBrackets);
+      setReportingId(null);
+    });
+  }
+
+  const sharedActions = {
+    isInteractive: (m: WorkspaceMatch) => matchesById.has(m.id),
+    pending,
+    onStart: handleStart,
+    onReport: (m: WorkspaceMatch) => setReportingId(m.id),
+    onDetails: (m: WorkspaceMatch) => setDetailsId(m.id),
+    locked,
+  };
+
+  return (
+    <div className="space-y-10">
+      {error ? (
+        <p role="alert" className="border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      <WorkspaceBracket rounds={mainRounds} actions={sharedActions} />
+
+      {placementSections.map((section) => (
+        <section key={section.key}>
+          <h3 className="label-mono mb-3 text-on-surface/60">{section.label}</h3>
+          <WorkspaceBracket
+            rounds={sectionRoundsByKey.get(section.key) ?? section.rounds}
+            actions={sharedActions}
+            hideRoundLabels
+          />
+        </section>
+      ))}
+
+      <ReportMatchDialog
+        open={reportingId !== null}
+        onOpenChange={(open) => !open && setReportingId(null)}
+        match={reportingId ? matchesById.get(reportingId) ?? null : null}
+        participantsById={participantsById}
+        pending={pending}
+        onSubmit={handleReportSubmit}
+      />
+      <MatchDetailsDialog
+        open={detailsId !== null}
+        onOpenChange={(open) => !open && setDetailsId(null)}
+        match={detailsId ? matchesById.get(detailsId) ?? null : null}
+        participantsById={participantsById}
+      />
+    </div>
+  );
+}

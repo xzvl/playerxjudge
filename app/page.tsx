@@ -1,7 +1,8 @@
 import { Hero } from "@/components/home/Hero";
 import { QuickAccess } from "@/components/home/QuickAccess";
 import { TournamentListings } from "@/components/tournaments/TournamentListings";
-import { SponsorMarquee } from "@/components/marquee/SponsorMarquee";
+import { PaymentMethodsMarquee } from "@/components/marquee/PaymentMethodsMarquee";
+import { FindTournamentSection } from "@/components/tournaments/FindTournamentSection";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://playerxjudge.com";
 
@@ -29,7 +30,8 @@ export default function HomePage() {
       <Hero />
       <QuickAccess />
       <TournamentListings />
-      <SponsorMarquee />
+      <PaymentMethodsMarquee />
+      <FindTournamentSection />
     </>
   );
 }

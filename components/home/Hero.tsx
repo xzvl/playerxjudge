@@ -4,8 +4,11 @@ import { Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatCounter } from "@/components/home/StatCounter";
 import { PLATFORM_STATS } from "@/lib/mock/tournaments";
+import { getPublicTournamentCount } from "@/lib/tournaments/public-listings";
 
-export function Hero() {
+export async function Hero() {
+  const tournamentCount = await getPublicTournamentCount();
+
   return (
     <section className="cyber-grid relative overflow-hidden border-b border-outline-variant/25">
       <div className="mx-auto grid max-w-[1440px] gap-12 px-4 py-20 md:px-16 lg:grid-cols-2 lg:items-center lg:py-28">
@@ -22,18 +25,18 @@ export function Hero() {
             organizers.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg">
+            <Button asChild size="lg" tooltip="See all tournaments">
               <Link href="/tournaments">Browse Tournaments</Link>
             </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/join-community">Register Community</Link>
+            <Button asChild variant="outline" size="lg" tooltip="Apply to run tournaments as an organizer">
+              <Link href="/become/organizer">Register Community</Link>
             </Button>
           </div>
 
           <dl className="mt-14 grid grid-cols-2 gap-8 sm:grid-cols-4">
             <StatCounter label="Players" value={PLATFORM_STATS.players} />
             <StatCounter label="Judges" value={PLATFORM_STATS.judges} />
-            <StatCounter label="Tournaments" value={PLATFORM_STATS.tournaments} />
+            <StatCounter label="Tournaments" value={tournamentCount} />
             <StatCounter label="Communities" value={PLATFORM_STATS.communities} />
           </dl>
         </div>

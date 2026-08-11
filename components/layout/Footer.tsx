@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Facebook, Instagram, Youtube } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { PaymentMethodsMarquee } from "@/components/marquee/PaymentMethodsMarquee";
+import { SponsorMarquee } from "@/components/marquee/SponsorMarquee";
 
 const HOW_TO_STEPS = [
   {
@@ -54,8 +54,8 @@ export function Footer() {
                   organizer tools built for competitive play.
                 </p>
               </div>
-              <Button asChild className="mt-6 w-fit">
-                <Link href="/join-community">Register Community</Link>
+              <Button asChild className="mt-6 w-fit" tooltip="Apply to run tournaments as an organizer">
+                <Link href="/become/organizer">Register Community</Link>
               </Button>
             </div>
             <div className="glass-panel flex flex-col justify-between p-6">
@@ -66,8 +66,8 @@ export function Footer() {
                   event banners, and tournament badges.
                 </p>
               </div>
-              <Button asChild variant="outline" className="mt-6 w-fit">
-                <Link href="/sponsors/become">Become Sponsor</Link>
+              <Button asChild variant="outline" className="mt-6 w-fit" tooltip="Apply to sponsor the community">
+                <Link href="/become/sponsor">Become Sponsor</Link>
               </Button>
             </div>
           </div>
@@ -89,7 +89,7 @@ export function Footer() {
         </div>
       </div>
 
-      <PaymentMethodsMarquee />
+      <SponsorMarquee />
 
       <div className="border-t border-outline-variant/25">
         <div className="mx-auto max-w-[1440px] px-4 py-12 md:px-16">

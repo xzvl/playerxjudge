@@ -137,7 +137,7 @@ export function RegisterForm() {
             </p>
           ) : null}
 
-          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          <Button type="submit" size="lg" className="w-full" tooltip="Create your account" disabled={submitting}>
             {submitting ? "Creating account..." : "Create Account"}
           </Button>
         </form>

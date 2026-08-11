@@ -6,7 +6,7 @@ import "./globals.css";
 import { Providers } from "@/app/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { getCurrentUser } from "@/lib/supabase/get-user";
+import { getCurrentUser, getCurrentUserRoles } from "@/lib/supabase/get-user";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
 const inter = Inter({
@@ -59,6 +59,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const authUser = await getCurrentUser();
+  const roles = authUser ? await getCurrentUserRoles() : [];
   const user: NavUser | null = authUser
     ? {
         email: authUser.email ?? null,
@@ -67,6 +68,7 @@ export default async function RootLayout({
           authUser.email?.split("@")[0] ??
           "Player",
         avatarUrl: (authUser.user_metadata?.avatar_url as string | undefined) ?? null,
+        isOrganizer: roles.some((r) => r.role === "organizer" && r.status === "approved"),
       }
     : null;
 

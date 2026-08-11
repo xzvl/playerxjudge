@@ -7,13 +7,15 @@ const BATTLE_TYPE_LABELS: Record<BattleType, string> = {
   "3v3": "3v3",
   "4v4": "4v4",
   "5v5": "5v5",
+  team_battle: "Team Battle",
 };
 
-const TOURNAMENT_TYPE_VARIANTS: Record<TournamentType, "casual" | "minor" | "major" | "emergency"> = {
+const TOURNAMENT_TYPE_VARIANTS: Record<TournamentType, "casual" | "minor" | "major" | "emergency" | "league"> = {
   casual: "casual",
   minor: "minor",
   major: "major",
   emergency: "emergency",
+  league: "league",
 };
 
 export function BattleTypeBadge({ type }: { type: BattleType }) {
