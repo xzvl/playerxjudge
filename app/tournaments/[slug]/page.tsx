@@ -61,8 +61,12 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
         color={tournament.thumbnailColor}
         title={tournament.title}
         imageUrl={tournament.bannerUrl}
-        className="h-52 md:h-64"
+        className="aspect-[16/9] w-full lg:aspect-auto lg:h-64"
       />
+
+      <div className="mt-4 lg:hidden">
+        <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} />
+      </div>
 
       <div className="mt-8 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -187,7 +191,9 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
         </div>
 
         <div className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-          <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} />
+          <div className="hidden lg:block">
+            <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} />
+          </div>
 
           <div className="border border-outline-variant/25 p-4">
             <p className="label-mono mb-3 flex items-center gap-2 text-on-surface/40">

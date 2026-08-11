@@ -1,5 +1,7 @@
 import { Swords } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 export function TournamentThumbnail({
   color,
   title,
@@ -19,14 +21,17 @@ export function TournamentThumbnail({
       <img
         src={imageUrl}
         alt={`${title} banner`}
-        className={`w-full overflow-hidden object-cover ${className ?? ""}`}
+        className={cn("w-full overflow-hidden object-cover", className)}
       />
     );
   }
 
   return (
     <div
-      className={`cyber-grid relative flex items-center justify-center overflow-hidden bg-surface-container-lowest ${className ?? ""}`}
+      className={cn(
+        "cyber-grid relative flex items-center justify-center overflow-hidden bg-surface-container-lowest",
+        className,
+      )}
       style={{ boxShadow: `inset 0 0 60px ${color}22` }}
       role="img"
       aria-label={`${title} cover artwork`}
