@@ -159,7 +159,7 @@ export default async function TournamentPlayerPage({
   return (
     <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user}>
       <div className="grid items-start gap-8 lg:grid-cols-3">
-        <div className="space-y-12 lg:col-span-2">
+        <div className="space-y-12 lg:col-span-2 overflow-hidden">
           <PlayerCurrentStats
             statusLabel={statusLabel}
             isOngoing={isOngoing}

@@ -61,7 +61,7 @@ export function PlayerViewShell({
       <div className="min-w-0 flex-1">
         <header className="flex items-start justify-between gap-4 border-b border-outline-variant/25 px-4 py-5 md:px-8">
           <div className="min-w-0">
-            <h1 className="heading truncate text-xl md:text-2xl">{tournamentTitle}</h1>
+            <h1 className="heading truncate text-base sm:text-xl md:text-2xl">{tournamentTitle}</h1>
             <p className="mt-1 text-sm text-on-surface/50">Organized by {organizedBy}</p>
           </div>
           <PlayerViewHeaderActions user={user} />
@@ -74,14 +74,37 @@ export function PlayerViewShell({
         aria-label="Player view sections"
         className="fixed inset-x-0 bottom-0 z-40 flex border-t border-outline-variant/25 bg-surface-container-lowest lg:hidden"
       >
-        {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+        {NAV_ITEMS.slice(0, 2).map(({ id, label, icon: Icon }) => (
           <a
             key={id}
             href={`#${id}`}
             className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
           >
             <Icon className="h-5 w-5" aria-hidden="true" />
-            <span className="label-mono text-[9px]">{label}</span>
+            <span className="label-mono !text-[8px]">{label}</span>
+          </a>
+        ))}
+
+        {/* Brand mark, dead center of the bar between Tournament and
+            Matches — doubles as a link back home. */}
+        <Link
+          href="/"
+          aria-label="PlayerXJudge home"
+          className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-on-surface transition-colors hover:text-primary"
+        >
+          <span className="heading text-[11px] text-center leading-tight">
+            Player<span className="text-primary block">X</span>Judge
+          </span>
+        </Link>
+
+        {NAV_ITEMS.slice(2).map(({ id, label, icon: Icon }) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
+          >
+            <Icon className="h-5 w-5" aria-hidden="true" />
+            <span className="label-mono !text-[8px]">{label}</span>
           </a>
         ))}
       </nav>
