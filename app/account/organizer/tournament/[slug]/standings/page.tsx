@@ -119,6 +119,8 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
                         matches={groupMatches}
                         swissPoints={settings.groupStage.swissPoints}
                         tieBreakMetrics={[settings.groupTieBreaks.tieBreak1, settings.groupTieBreaks.tieBreak2, settings.groupTieBreaks.tieBreak3]}
+                        advanceCount={advancePerGroup}
+                        swissRoundsCap={settings.groupStage.swissRounds ?? 5}
                       />
                     </section>
                   );

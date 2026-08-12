@@ -48,17 +48,30 @@ function ScoreChip({ value, isWinner, isLoser }: { value: number; isWinner: bool
   );
 }
 
-function BracketMatchCard({ match, index, actions }: { match: WorkspaceMatch; index: number; actions?: BracketActions }) {
+function BracketMatchCard({
+  match,
+  index,
+  actions,
+  highlightParticipantId,
+}: {
+  match: WorkspaceMatch;
+  index: number;
+  actions?: BracketActions;
+  highlightParticipantId?: string | null;
+}) {
   const hasScore = match.scoreA !== null && match.scoreB !== null;
   const aWins = hasScore && match.winnerId !== null && match.a?.id === match.winnerId;
   const bWins = hasScore && match.winnerId !== null && match.b?.id === match.winnerId;
   const interactive = !!actions && match.a !== null && match.b !== null && actions.isInteractive(match);
+  const isSelectedMatch =
+    !!highlightParticipantId && (match.a?.id === highlightParticipantId || match.b?.id === highlightParticipantId);
 
   return (
     <div
       className={cn(
         "group relative border p-1",
-        match.status === "in_progress" ? "border-primary/60 bg-primary/5" : "border-outline-variant/25 bg-surface-container-low"
+        match.status === "in_progress" ? "border-primary/60 bg-primary/5" : "border-outline-variant/25 bg-surface-container-low",
+        isSelectedMatch && "ring-2 ring-primary/70"
       )}
     >
       <div className="flex min-h-[50px] items-center gap-3">
@@ -181,6 +194,7 @@ export function WorkspaceBracket({
   rounds,
   actions,
   hideRoundLabels,
+  highlightParticipantId,
 }: {
   rounds: WorkspaceBracketRound[];
   actions?: BracketActions;
@@ -188,6 +202,10 @@ export function WorkspaceBracket({
   // Match") above the whole bracket — a per-column "Round N" on top of that
   // is redundant, so FinalStageBracketWorkspace turns it off there.
   hideRoundLabels?: boolean;
+  // Rings whichever match this participant is seated in — used by the
+  // player view to call out the selected participant's own matches amid
+  // the full bracket (see PlayerFinalStageView).
+  highlightParticipantId?: string | null;
 }) {
   const scrollRef = useDragScroll<HTMLDivElement>();
 
@@ -208,7 +226,13 @@ export function WorkspaceBracket({
             <ColumnHeader>{hideRoundLabels ? undefined : round.label}</ColumnHeader>
             <div className="flex flex-1 flex-col justify-around gap-3">
               {round.matches.map((match, i) => (
-                <BracketMatchCard key={match.id} match={match} index={i} actions={actions} />
+                <BracketMatchCard
+                  key={match.id}
+                  match={match}
+                  index={i}
+                  actions={actions}
+                  highlightParticipantId={highlightParticipantId}
+                />
               ))}
             </div>
           </div>

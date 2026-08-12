@@ -17,6 +17,21 @@ export function ordinal(n: number): string {
   return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`;
 }
 
+// A participant-facing label for their current spot in `computeFinalStandings`'
+// rank order — the top 4 ranks get their own title (there's only ever one
+// Champion, one 1st Runner Up, ...), everyone else is grouped by the power-
+// of-two bracket size they were still alive in when eliminated: 5th-8th all
+// read "Top 8 Finalist", 9th-16th "Top 16 Finalist", and so on.
+export function finalRankLabel(rank: number): string {
+  if (rank === 1) return "Champion";
+  if (rank === 2) return "1st Runner Up";
+  if (rank === 3) return "2nd Runner Up";
+  if (rank === 4) return "3rd Runner Up";
+  let threshold = 8;
+  while (rank > threshold) threshold *= 2;
+  return `Top ${threshold} Finalist`;
+}
+
 export function nextPowerOfTwo(n: number) {
   let p = 1;
   while (p < n) p *= 2;

@@ -440,8 +440,30 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
   );
 }
 
-export function GroupStandingsTable({ participants, matches, swissPoints, tieBreakMetrics }: { participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric] }) {
+export function GroupStandingsTable({
+  participants,
+  matches,
+  swissPoints,
+  tieBreakMetrics,
+  advanceCount,
+  swissRoundsCap,
+}: {
+  participants: TournamentParticipant[];
+  matches: Match[];
+  swissPoints: SwissPoints;
+  tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric];
+  // Both optional and only used together — when given, the top `advanceCount`
+  // rows get a red "ADV" tag once the group's final Swiss round (round
+  // `swissRoundsCap`) has been fully reported, matching the same top-N-per-
+  // group rule the Final Stage bracket actually seeds from (qualifiedSlots in
+  // lib/final-stage-placeholder.ts).
+  advanceCount?: number;
+  swissRoundsCap?: number;
+}) {
   const rows = computeGroupStandings(participants, matches, swissPoints, tieBreakMetrics);
+  const finalRoundMatches = swissRoundsCap != null ? matches.filter((m) => m.round === swissRoundsCap) : [];
+  const finalRoundComplete = finalRoundMatches.length > 0 && finalRoundMatches.every((m) => m.status === "completed");
+  const showAdvanceTags = finalRoundComplete && !!advanceCount && advanceCount > 0;
 
   if (rows.length === 0) {
     return (
@@ -471,7 +493,12 @@ export function GroupStandingsTable({ participants, matches, swissPoints, tieBre
           {rows.map((r, i) => (
             <tr key={r.participantId} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
               <td className="p-3 font-mono text-on-surface/60">{i + 1}</td>
-              <td className="p-3 font-medium text-on-surface">{r.teamName ?? r.name}</td>
+              <td className="p-3 font-medium text-on-surface">
+                {showAdvanceTags && i < advanceCount! ? (
+                  <span className="label-mono mr-2 inline-block bg-error px-1.5 py-0.5 text-[10px] text-on-error">ADV</span>
+                ) : null}
+                {r.teamName ?? r.name}
+              </td>
               <td className="p-3 text-on-surface/60">
                 {r.wins}-{r.losses}-{r.ties}
               </td>
@@ -507,7 +534,7 @@ export function GroupStandingsTable({ participants, matches, swissPoints, tieBre
   );
 }
 
-export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, locked = false }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; locked?: boolean }) {
+export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, advancePerGroup, locked = false }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; advancePerGroup: number; locked?: boolean }) {
   const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<"standings" | "matches">("matches");
   const [matches, setMatches] = useState<Match[]>(initialMatches);
@@ -625,7 +652,14 @@ export function GroupStageWorkspace({ tournamentId, slug, groups, participants, 
       </div>
 
       {activeTab === "standings" ? (
-        <GroupStandingsTable participants={groupParticipants} matches={groupMatches} swissPoints={swissPoints} tieBreakMetrics={tieBreakMetrics} />
+        <GroupStandingsTable
+          participants={groupParticipants}
+          matches={groupMatches}
+          swissPoints={swissPoints}
+          tieBreakMetrics={tieBreakMetrics}
+          advanceCount={advancePerGroup}
+          swissRoundsCap={swissRoundsCap}
+        />
       ) : (
         <MatchesTab
           groupId={activeGroup.id}

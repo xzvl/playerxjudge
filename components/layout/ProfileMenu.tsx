@@ -65,23 +65,19 @@ export function ProfileMenu({ user }: { user: NavUser | null }) {
           {user.displayName}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="cursor-pointer">
           <Link href="/account" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" /> Dashboard
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="cursor-pointer">
           <Link href="/account/settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" /> Account Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <form action={signOut} className="w-full">
-            <button type="submit" className="flex w-full items-center gap-2">
-              <LogOut className="h-4 w-4" /> Sign Out
-            </button>
-          </form>
+        <DropdownMenuItem className="cursor-pointer gap-2" onSelect={() => void signOut()}>
+          <LogOut className="h-4 w-4" /> Sign Out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

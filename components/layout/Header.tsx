@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SearchBar } from "@/components/layout/SearchBar";
 import { NotificationsBell } from "@/components/layout/NotificationsBell";
 import { ProfileMenu, type NavUser } from "@/components/layout/ProfileMenu";
+import { isTournamentPlayerRoute } from "@/lib/routes";
 
 const NAV_LINKS = [
   { label: "Tournament", href: "/tournaments" },
@@ -17,6 +19,12 @@ const NAV_LINKS = [
 
 export function Header({ user }: { user: NavUser | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  // The player view builds its own header actions into its content area —
+  // see PlayerViewShell / PlayerViewHeaderActions — so the site-wide header
+  // stays out of the way there instead of doubling up.
+  if (isTournamentPlayerRoute(pathname)) return null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-outline-variant/40 bg-background/95 backdrop-blur-md">

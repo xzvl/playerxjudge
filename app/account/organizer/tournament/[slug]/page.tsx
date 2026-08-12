@@ -152,6 +152,7 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
             swissPoints={settings.groupStage.swissPoints}
             tieBreakMetrics={[settings.groupTieBreaks.tieBreak1, settings.groupTieBreaks.tieBreak2, settings.groupTieBreaks.tieBreak3]}
             swissRoundsCap={settings.groupStage.swissRounds ?? 5}
+            advancePerGroup={settings.groupStage.participantsAdvancePerGroup}
             locked={settings.finalStageStarted === true}
           />
         )}

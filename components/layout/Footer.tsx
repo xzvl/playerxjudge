@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Facebook, Instagram, Youtube } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SponsorMarquee } from "@/components/marquee/SponsorMarquee";
+import { isTournamentPlayerRoute } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 const HOW_TO_STEPS = [
   {
@@ -41,8 +46,14 @@ const SOCIALS = [
 ];
 
 export function Footer() {
+  const pathname = usePathname();
+  // The player view's own bottom nav already fills that space on mobile —
+  // hide the full marketing footer there instead of stacking under it (see
+  // PlayerViewShell). Desktop keeps the footer as-is.
+  const hideOnMobile = isTournamentPlayerRoute(pathname);
+
   return (
-    <footer className="border-t border-outline-variant/25 bg-surface-container-lowest">
+    <footer className={cn("border-t border-outline-variant/25 bg-surface-container-lowest", hideOnMobile && "hidden md:block")}>
       <div className="mx-auto max-w-[1440px] px-4 py-16 md:px-16">
         <div className="grid gap-10 lg:grid-cols-2">
           <div className="grid gap-6 sm:grid-cols-2">
