@@ -54,6 +54,7 @@ export function PlayerFinalStageView({
     onStart: () => {},
     onReport: () => {},
     onDetails: (m: WorkspaceMatch) => setDetailsId(m.id),
+    onClear: () => {},
     locked: true,
   };
 

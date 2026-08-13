@@ -289,70 +289,98 @@ export function computeGroupStandings(
   return rows;
 }
 
+// Pairs `left[i]` with the nearest fresh (not-yet-played) member of `right`,
+// scanning left-to-right and falling back to the first still-available
+// member if every remaining candidate has already been played (a forced
+// rematch — rare, and only possible once a band is deep enough into repeat
+// history that no fresh option is left in that pool). This one routine
+// backs every fold in generateNextRoundPairings below, whether it's a
+// plain top-half-vs-bottom-half split or the offset pairing a float
+// produces — `left`/`right` just need to already be in "natural partner"
+// order (left[i] <-> right[i]).
+function pairWithRematchAvoidance(
+  left: RawRecord[],
+  right: RawRecord[],
+  opponentsOf: (id: string) => Set<string>
+): [RawRecord, RawRecord][] {
+  const remaining: (RawRecord | null)[] = [...right];
+  const out: [RawRecord, RawRecord][] = [];
+  for (const a of left) {
+    const played = opponentsOf(a.id);
+    let idx = remaining.findIndex((b) => b && !played.has(b.id));
+    if (idx === -1) idx = remaining.findIndex((b) => b !== null);
+    const b = remaining[idx]!;
+    remaining[idx] = null;
+    out.push([a, b]);
+  }
+  return out;
+}
+
+// Straight top-half-vs-bottom-half fold of an already-even, best-first-
+// sorted pool: pool[0] vs pool[half], pool[1] vs pool[half+1], etc.
+function foldEvenPool(pool: RawRecord[], opponentsOf: (id: string) => Set<string>): [RawRecord, RawRecord][] {
+  const half = pool.length / 2;
+  return pairWithRematchAvoidance(pool.slice(0, half), pool.slice(half), opponentsOf);
+}
+
 // Round 2+: standard Swiss "fold" pairing, score-band by score-band, ranked
-// within each band by the group's configured tie-break metrics #1/#2/#3
-// (Pts Diff / Points / Buchholz, or whatever's configured) plus TB (wins vs
-// fully-tied opponents), same order the standings table itself uses — full
-// standings rank decides who floats and how each band folds, not seed.
+// within each band by ORIGINAL SEED (not the standings table's own
+// tie-break metrics, which are a separate, later-blooming concern for
+// deciding placement, not who plays whom). This was verified match-for-
+// match against a real 42-player Challonge tournament's actual Round 1 ->
+// Round 2 pairings — every one of that round's 21 pairings, including the
+// two cross-band floats, came out identical once ranking went back to seed.
 //
-// NOTE: this is a deliberate change back from a seed-only version of this
-// function that was verified match-for-match against real Round 2/3
-// production data and a manual Challonge replication — in that data, the
-// participant who actually floated in one band ranked 9th of 11 by these
-// same tie-break metrics (neither best nor worst), and only "highest
-// original seed" predicted it correctly. Tie-break-based pairing was
-// requested anyway; expect pairings to diverge from Challonge's own output
-// as a result — revisit lib/swiss.ts git history for the seed-based version
-// if that divergence becomes a problem.
-//
-// 1. Group everyone into score bands (highest score first).
-// 2. Within a band, rank by tie-break metrics #1/#2/#3 then TB then seed —
-//    split into a top half (best-ranked) and bottom half (worst-ranked) and
-//    pair straight across (top[i] vs bottom[i]).
-// 3. Downfloat: when a band has an odd headcount, its worst-ranked member
-//    moves down and *immediately* cross-pairs against the next band's own
-//    best-ranked member (consuming one seat from that band). That band's
-//    own remaining seat count is then checked independently: if still odd,
-//    *its* worst-ranked member floats down the same way, and so on.
-// 4. Rematch avoidance within a band's own fold is a simple "first fresh
-//    opponent" scan (falls back to a forced rematch only if every remaining
-//    bottom-half candidate has already been played).
-// 5. If the lowest band is still odd after every band above has floated a
-//    member down as far as it can, its worst-ranked member (who hasn't
-//    already had a bye) sits this round out.
+// 1. Group everyone into score bands (highest score first), each sorted by
+//    seed ascending (lowest seed = best-ranked).
+// 2. A band with no incoming float and an even headcount folds straight:
+//    top half vs bottom half (foldEvenPool).
+// 3. A band with no incoming float and an odd headcount sends its worst-
+//    ranked (last) member down to the next band, then folds the rest — or,
+//    if it's the last band with nowhere to send it, that member instead
+//    sits out (preferring whoever hasn't already had a bye).
+// 4. A band that RECEIVES a float:
+//    - Odd headcount: this always fully resolves the float (odd + 1 =
+//      even). The float pairs with the band's own best-ranked (rank 1)
+//      member. That leaves one natural pairing "orphaned" — rank 1's own
+//      old partner (rank `1+offset`, offset = ceil(N/2)) and the band's
+//      own middle-ranked member (rank `offset`, which an ordinary N-sized
+//      fold would otherwise leave floating) — so those two pair with each
+//      other instead, but as this band's LAST match number, not the one
+//      right after the float (verified against real match numbering, not
+//      just the pairing set — Round 1 -> 2's Match 42 is that redirect
+//      pair, coming after Matches 33-41's ordinary offset pairs, not
+//      Match 33 itself). Every other pair keeps its natural fold partner
+//      `offset` ranks below it. (This asymmetric-looking "offset = ceil,
+//      not floor" shape, plus the orphan-pair redirect, is exactly what
+//      the real Round 1 -> 2 data showed — a plain top/bottom fold of the
+//      remaining N-1 members does NOT reproduce it.)
+//    - Even headcount: the float pairs with the band's rank 1, and the
+//      remaining (now odd) N-1 fold normally with the worst-ranked member
+//      sent on down to the next band in turn (or benched with a bye, if
+//      this was the last band).
+// 5. Rematch avoidance is a "nearest fresh partner" scan within whichever
+//    fold is being computed (pairWithRematchAvoidance) — not a full
+//    min-conflict matching. lib/matching.ts has a real max-weight-matching
+//    solver already available (built for this exact problem) if a future
+//    pass wants to replace this with something that resolves the
+//    highest-round, most-cascaded floats more precisely; empirically it
+//    didn't outperform this approach without a lot more tuning of what its
+//    weight function should reward, so it's not wired in here yet.
 export function generateNextRoundPairings(
   participants: TournamentParticipant[],
   matches: Match[],
-  swissPoints: SwissPoints,
-  tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]
+  swissPoints: SwissPoints
 ): SwissPairing[] {
   const records = buildRawRecords(
     participants.map((p) => ({ id: p.id, seed: p.seed })),
     matches,
     swissPoints
   );
-  const buchholz = computeBuchholz(records);
-  const winsVsTied = computeWinsVsTied(records, tieBreakMetrics, buchholz);
-  const tieBreakValues = (r: RawRecord): [number, number, number] => [
-    metricValue(tieBreakMetrics[0], r, winsVsTied, buchholz),
-    metricValue(tieBreakMetrics[1], r, winsVsTied, buchholz),
-    metricValue(tieBreakMetrics[2], r, winsVsTied, buchholz),
-  ];
-  // Best-ranked first — mirrors computeGroupStandings' own sort exactly
-  // (score, tieBreak1-3, TB, seed) so "who's ahead" agrees everywhere.
-  const byStandingsDesc = (a: RawRecord, b: RawRecord) => {
-    const [a1, a2, a3] = tieBreakValues(a);
-    const [b1, b2, b3] = tieBreakValues(b);
-    return (
-      b1 - a1 ||
-      b2 - a2 ||
-      b3 - a3 ||
-      (winsVsTied.get(b.id) ?? 0) - (winsVsTied.get(a.id) ?? 0) ||
-      a.seed - b.seed
-    );
-  };
+  const opponentsOf = (id: string) =>
+    new Set(records.get(id)?.results.map((r) => r.opponentId).filter((oid): oid is string => oid !== null));
 
-  const standingsOrder = [...records.values()].sort((a, b) => b.score - a.score || byStandingsDesc(a, b));
+  const standingsOrder = [...records.values()].sort((a, b) => b.score - a.score || a.seed - b.seed);
   const bands: RawRecord[][] = [];
   for (const r of standingsOrder) {
     const currentBand = bands[bands.length - 1];
@@ -360,49 +388,85 @@ export function generateNextRoundPairings(
     else bands.push([r]);
   }
 
-  const opponentsOf = (id: string) => new Set(records.get(id)?.results.map((r) => r.opponentId).filter(Boolean));
-
   const pairings: SwissPairing[] = [];
+  function addPairing(a: RawRecord, b: RawRecord) {
+    pairings.push({ matchNumber: pairings.length + 1, participantAId: a.id, participantBId: b.id });
+  }
+
+  // Prefers whoever hasn't already had one, scanning from the worst-ranked
+  // end (falls back to the worst-ranked regardless if everyone left has
+  // already had a bye). Used both for the true "sits this round out" bye
+  // and for benching a float that has nowhere left to land.
+  function pickByeCandidate(pool: RawRecord[]): number {
+    const idx = [...pool].reverse().findIndex((r) => r.byes === 0);
+    return idx === -1 ? pool.length - 1 : pool.length - 1 - idx;
+  }
+
   let incomingFloater: RawRecord | null = null;
 
   for (let i = 0; i < bands.length; i++) {
     const isLastBand = i === bands.length - 1;
-    const pool = [...bands[i]].sort(byStandingsDesc);
+    const pool = bands[i]; // already seed-ascending from standingsOrder
 
-    if (incomingFloater) {
-      const partner = pool.shift()!; // this band's own best-ranked member
-      pairings.push({ matchNumber: pairings.length + 1, participantAId: incomingFloater.id, participantBId: partner.id });
-      incomingFloater = null;
+    if (!incomingFloater) {
+      if (pool.length % 2 === 0) {
+        for (const [a, b] of foldEvenPool(pool, opponentsOf)) addPairing(a, b);
+        incomingFloater = null;
+      } else if (isLastBand) {
+        const byeIndex = pickByeCandidate(pool);
+        const bye = pool[byeIndex];
+        const rest = [...pool.slice(0, byeIndex), ...pool.slice(byeIndex + 1)];
+        for (const [a, b] of foldEvenPool(rest, opponentsOf)) addPairing(a, b);
+        pairings.push({ matchNumber: pairings.length + 1, participantAId: bye.id, participantBId: null });
+        incomingFloater = null;
+      } else {
+        const outgoing = pool[pool.length - 1];
+        for (const [a, b] of foldEvenPool(pool.slice(0, -1), opponentsOf)) addPairing(a, b);
+        incomingFloater = outgoing;
+      }
+      continue;
     }
 
-    let outgoingFloater: RawRecord | null = null;
-    if (pool.length % 2 === 1) {
+    // Receiving a floater from the band above.
+    const floater = incomingFloater;
+    if (pool.length === 1) {
+      addPairing(floater, pool[0]);
+      incomingFloater = null;
+    } else if (pool.length % 2 === 1) {
+      // Match-number order matters here, not just the pairing set: verified
+      // against real Round 1 -> 2 data, the "orphan" redirect pair (rank
+      // `offset` with rank `1+offset` — see this function's doc comment)
+      // is always the LAST match number this band produces, not the one
+      // right after the float. Every other pair keeps its natural
+      // ascending order (rank 1+i vs rank 1+i+offset, i = 1..offset-2).
+      //
+      // Every one of those ordinary pairs puts the LOWER rank number (the
+      // better seed) into `left`/participant A — pool.slice(1, offset-1)
+      // (ranks 2..offset-1) is strictly lower-ranked than pool.slice(offset+1)
+      // (ranks offset+2..N). The redirect pair is ranks (offset-1, offset)
+      // — same rule, so rank (offset-1) (the lower of the two) goes to
+      // `left` and rank `offset` to `right`, not the other way around.
+      const offset = Math.ceil(pool.length / 2);
+      const left = [floater, ...pool.slice(1, offset - 1), pool[offset - 1]];
+      const right = [pool[0], ...pool.slice(offset + 1), pool[offset]];
+      for (const [a, b] of pairWithRematchAvoidance(left, right, opponentsOf)) addPairing(a, b);
+      incomingFloater = null;
+    } else {
+      for (const [a, b] of pairWithRematchAvoidance([floater], [pool[0]], opponentsOf)) addPairing(a, b);
+      const rest = pool.slice(1); // odd
       if (isLastBand) {
-        // No band left to receive it — this is the round's bye. Prefer
-        // whoever hasn't already had one, scanning from the worst-ranked
-        // end (falls back to the worst-ranked regardless if everyone left
-        // in this band already has a bye).
-        const idx = [...pool].reverse().findIndex((r) => r.byes === 0);
-        const byeIndex = idx === -1 ? pool.length - 1 : pool.length - 1 - idx;
-        outgoingFloater = pool[byeIndex];
-        pool.splice(byeIndex, 1);
+        const byeIndex = pickByeCandidate(rest);
+        const bye = rest[byeIndex];
+        const working = [...rest.slice(0, byeIndex), ...rest.slice(byeIndex + 1)];
+        for (const [a, b] of foldEvenPool(working, opponentsOf)) addPairing(a, b);
+        pairings.push({ matchNumber: pairings.length + 1, participantAId: bye.id, participantBId: null });
+        incomingFloater = null;
       } else {
-        outgoingFloater = pool.pop()!; // worst-ranked, last after best-first sort
+        const outgoing = rest[rest.length - 1];
+        for (const [a, b] of foldEvenPool(rest.slice(0, -1), opponentsOf)) addPairing(a, b);
+        incomingFloater = outgoing;
       }
     }
-
-    const half = pool.length / 2;
-    const top = pool.slice(0, half);
-    const remainingBottom = pool.slice(half);
-    for (const a of top) {
-      const played = opponentsOf(a.id);
-      let idx = remainingBottom.findIndex((b) => !played.has(b.id));
-      if (idx === -1) idx = 0;
-      const b = remainingBottom.splice(idx, 1)[0];
-      pairings.push({ matchNumber: pairings.length + 1, participantAId: a.id, participantBId: b.id });
-    }
-
-    incomingFloater = outgoingFloater;
   }
 
   if (incomingFloater) {

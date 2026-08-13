@@ -183,6 +183,11 @@ export type Tournament = {
   preregistration_amount: number | null;
   preregistration_instructions: string | null;
   preregistration_qr_url: string | null;
+  // Mirrors supabase/migrations/20250101000028_organizer_console_station.sql
+  // — the organizer's own "stadium" pick in the shared judge console.
+  // Judges have their own via `judges.station_id`; the organizer doesn't
+  // have a `judges` row, so their pick lives here instead.
+  organizer_station_id: string | null;
 };
 
 export type PreregistrationPaymentStatus = "failed" | "pending" | "confirmed";
@@ -274,6 +279,24 @@ export type TournamentStation = {
   created_at: string;
 };
 
+// Per-tournament judge assignment — scaffolded (table + RLS) in
+// 20250101000003_tournament_tables.sql, given the invite/confirm lifecycle
+// and station assignment in 20250101000024_tournament_judges.sql. Distinct
+// from `CommunityJudge` above, which is community-scoped ("apply to judge
+// for this community") rather than tied to one tournament.
+export type Judge = {
+  id: string;
+  tournament_id: string;
+  judge_id: string;
+  role_note: string | null;
+  assigned_at: string;
+  status: JudgeAssignmentStatus;
+  decided_at: string | null;
+  // The station this judge is currently working, if any — at most one
+  // judge per station (partial unique index on this column).
+  station_id: string | null;
+};
+
 export type TournamentReportStatus = "open" | "resolved" | "dismissed";
 
 export type TournamentReport = {
@@ -305,14 +328,22 @@ export type MatchBattle = {
 // participant_a_id/participant_b_id/winner_id point at tournament_participants
 // (repointed from `registrations`, which requires a real account). `a`/`b`
 // (games won per side) is all the organizer-facing report form sets today.
-// The rest is for a judge-facing scoring flow that doesn't exist yet —
-// stored as jsonb so it can be populated later without a migration; the
-// match details view already knows how to render it when present.
+// The rest backs the judge-facing scoring console (app/tournaments/[slug]/judge)
+// — stored as jsonb so it can be extended without a migration; the match
+// details view already knows how to render it when present.
 export type MatchScore = {
   a: number;
   b: number;
   battles?: MatchBattle[];
   judgeName?: string;
+  // @<handle> shown alongside judgeName in the match details narrative.
+  judgeUsername?: string;
+  // Count of *committed* penalties (every 2 penalty presses) charged to
+  // each side — each one already added a point to the other side's `a`/`b`
+  // total; kept separately since penalties aren't a FinishType and so
+  // don't appear in `battles`.
+  penaltiesA?: number;
+  penaltiesB?: number;
   screenshotUrl?: string;
   confirmedByBoth?: boolean;
   inputBy?: "organizer" | "judge";
@@ -381,10 +412,17 @@ export interface TournamentListItem
   community_name: string | null;
 }
 
+// Mirrors the `public.notification_type` Postgres enum — a plain `string`
+// column type here would silently accept any value the app writes, but the
+// DB itself only accepts these (see 20250101000026_notification_type_judge_events.sql,
+// which added the last two — the app inserting an out-of-enum `type` fails
+// the write outright, so a mismatch here is a real live bug, not a lint nit).
+export type NotificationType = "tournament_update" | "registration" | "match_result" | "announcement" | "system" | "judge_invite" | "judge_response";
+
 export type NotificationRow = {
   id: string;
   profile_id: string;
-  type: string;
+  type: NotificationType;
   title: string;
   body: string | null;
   link: string | null;
@@ -431,6 +469,7 @@ export interface Database {
       brackets: TableDef<Bracket>;
       tournament_announcements: TableDef<TournamentAnnouncement>;
       tournament_stations: TableDef<TournamentStation>;
+      judges: TableDef<Judge>;
       tournament_reports: TableDef<TournamentReport>;
       tournament_log_entries: TableDef<TournamentLogEntry>;
       tournament_preregistrations: TableDef<TournamentPreregistration>;
@@ -444,6 +483,7 @@ export interface Database {
       role_status: RoleStatus;
       judge_assignment_status: JudgeAssignmentStatus;
       subscription_plan: SubscriptionPlan;
+      notification_type: NotificationType;
     };
   };
 }

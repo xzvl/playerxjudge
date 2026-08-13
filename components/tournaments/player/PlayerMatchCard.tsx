@@ -25,7 +25,7 @@ function isScore(value: Match["score"]): value is MatchScore {
 // in an already-dense card.
 function FinishTags({ counts, compact }: { counts: FinishCounts; compact?: boolean }) {
   const ranked = rankedFinishes(counts).slice(0, 2);
-  const sizing = compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-1 text-[10px]";
+  const sizing = compact ? "px-1.5 py-0.5 !text-[8px]" : "px-2 py-1 text-[10px]";
   if (ranked.length === 0) {
     return <span className={cn("label-mono border border-outline-variant/30 text-on-surface/40", sizing)}>No available finishes</span>;
   }
@@ -36,7 +36,7 @@ function FinishTags({ counts, compact }: { counts: FinishCounts; compact?: boole
           key={f.type}
           className={cn("label-mono", sizing, i === 0 ? "bg-primary/15 text-primary" : "border border-outline-variant/30 text-on-surface/60")}
         >
-          {f.count} {FINISH_LABEL[f.type]} Finish{f.count === 1 ? "" : "es"}
+          {f.count} {FINISH_LABEL[f.type]}
         </span>
       ))}
     </div>

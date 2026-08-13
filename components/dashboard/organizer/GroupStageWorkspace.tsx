@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Maximize2, Minimize2, Info, Pencil, Play, Swords } from "lucide-react";
+import { ArrowUpCircle, Camera, Download, Eraser, Flame, Gavel, Maximize2, Minimize2, Info, Pencil, Play, RotateCw, Swords, Trophy, Zap } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { useDragScroll } from "@/lib/hooks/use-drag-scroll";
 import { cn } from "@/lib/utils";
 import { computeGroupStandings } from "@/lib/swiss";
 import { TIE_BREAK_OPTIONS, type SwissPoints, type TieBreakMetric } from "@/lib/validations/tournament-wizard";
-import { generateNextRound, reportMatchResult, startMatch } from "@/app/account/organizer/tournament/[slug]/matches-actions";
-import type { FinishType, Match, MatchScore, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { clearMatchResult, generateNextRound, reportMatchResult, startMatch } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import type { FinishType, Match, MatchBattle, MatchScore, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
 
 export interface RosterLite {
   seed: number;
@@ -44,6 +45,24 @@ function formatMetric(value: number, metric?: TieBreakMetric): string {
 }
 
 const FINISH_LABEL: Record<FinishType, string> = { burst: "Burst", spin: "Spin", extreme: "Extreme", over: "Over" };
+
+// Official point values (app/rules/page.tsx's Scoring System table) —
+// first to 4 points wins. Used both by the judge console to tally live
+// totals and here to narrate each battle's point award.
+const FINISH_POINTS: Record<FinishType, number> = { spin: 1, over: 2, burst: 2, extreme: 3 };
+
+// Mirrors PlayerScorePanel's own FINISH_ICON (components/tournaments/judge/PlayerScorePanel.tsx)
+// — same per-battle icon in the live scorecard and here, in the submitted
+// result's timeline.
+const FINISH_ICON: Record<FinishType, typeof RotateCw> = { spin: RotateCw, over: ArrowUpCircle, burst: Zap, extreme: Flame };
+
+function tallyFinishes(participantId: string | undefined, battles: MatchBattle[]): Record<FinishType, number> {
+  const counts: Record<FinishType, number> = { spin: 0, over: 0, burst: 0, extreme: 0 };
+  for (const battle of battles) {
+    if (battle.winnerId === participantId) counts[battle.finishType] += 1;
+  }
+  return counts;
+}
 
 function downloadCsv(filename: string, rows: (string | number)[][]) {
   const csv = rows
@@ -92,6 +111,12 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
   const loserName = match.winner_id === match.participant_a_id ? b?.teamName ?? b?.name : a?.teamName ?? a?.name;
 
   const hi = (text: string) => <span className="font-semibold text-primary">{text}</span>;
+  const strong = (text: string) => <span className="font-semibold text-on-surface">{text}</span>;
+
+  const aName = a?.teamName ?? a?.name ?? "—";
+  const bName = b?.teamName ?? b?.name ?? "—";
+  const aCounts = score && score.battles ? tallyFinishes(match.participant_a_id ?? undefined, score.battles) : null;
+  const bCounts = score && score.battles ? tallyFinishes(match.participant_b_id ?? undefined, score.battles) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,53 +127,65 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
             Round {match.round}, Match {match.match_number}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 px-6 pb-6 text-sm text-on-surface/80">
+        <div className="px-6 pb-6 text-sm text-on-surface/80">
           {match.status !== "completed" || !score ? (
             <p className="text-on-surface/50">No result reported yet.</p>
           ) : score.battles && score.battles.length > 0 ? (
-            <ul className="space-y-2">
+            <Timeline>
               {score.battles.map((battle, i) => {
                 const winner = participantsById.get(battle.winnerId);
+                const winnerBattleName = winner?.teamName ?? winner?.name ?? "—";
                 const loser = battle.winnerId === match.participant_a_id ? b : a;
+                const loserBattleName = loser?.teamName ?? loser?.name ?? "—";
+                const points = FINISH_POINTS[battle.finishType];
                 return (
-                  <li key={i}>
-                    Battle {i + 1}: {hi(winner?.teamName ?? winner?.name ?? "—")}: Beyblade {hi("WON")} by{" "}
-                    {hi(`${FINISH_LABEL[battle.finishType]} Finish`)} against {loser?.teamName ?? loser?.name ?? "—"}: Beyblade
-                  </li>
+                  <TimelineItem key={i} icon={FINISH_ICON[battle.finishType]}>
+                    Battle {i + 1}: {hi(winnerBattleName)} [Beyblade] wins by {hi(`${FINISH_LABEL[battle.finishType]} Finish`)} against{" "}
+                    {strong(loserBattleName)} [Beyblade] and earns {hi(`${points} point${points === 1 ? "" : "s"}`)}.
+                  </TimelineItem>
                 );
               })}
-              <li>
-                Battle Result: {hi(winnerName ?? "—")} defeated {loserName ?? "—"}
-              </li>
-              <li>
+              <TimelineItem icon={Swords}>
+                Battle Result: {hi(winnerName ?? "—")} defeated {strong(loserName ?? "—")}
+              </TimelineItem>
+              {aCounts && bCounts ? (
+                <TimelineItem>
+                  Finishes: {strong(`${aName}:`)} [Spin: {aCounts.spin}, Over: {aCounts.over}, Burst: {aCounts.burst}, Extreme:{" "}
+                  {aCounts.extreme}, Penalty: {score.penaltiesA ?? 0}]
+                  <br />
+                  {strong(`${bName}:`)} [Spin: {bCounts.spin}, Over: {bCounts.over}, Burst: {bCounts.burst}, Extreme: {bCounts.extreme}
+                  , Penalty: {score.penaltiesB ?? 0}]
+                </TimelineItem>
+              ) : null}
+              <TimelineItem icon={Trophy}>
                 Final Score: {score.a} vs {score.b}
-              </li>
+              </TimelineItem>
               {score.judgeName ? (
-                <li>
-                  Judge: {hi(score.judgeName)}
-                </li>
+                <TimelineItem icon={Gavel}>
+                  Judge: {hi(score.judgeName)} {score.judgeUsername ? <span className="text-primary">@{score.judgeUsername}</span> : null}
+                </TimelineItem>
               ) : null}
               {score.screenshotUrl ? (
-                <li>
+                <TimelineItem icon={Camera}>
                   Match Screenshot:{" "}
                   <a href={score.screenshotUrl} target="_blank" rel="noreferrer" className="text-primary underline">
                     {winnerName} vs {loserName}
                     {match.completed_at ? ` — ${new Date(match.completed_at).toLocaleString("en-PH")}` : ""}
                   </a>
-                </li>
+                </TimelineItem>
               ) : null}
-              <li>{score.confirmedByBoth ? "Result confirmed by both players." : "Awaiting confirmation from both players."}</li>
-            </ul>
+              <TimelineItem icon={Info}>{score.confirmedByBoth ? "Result confirmed by both players." : "Awaiting confirmation from both players."}</TimelineItem>
+            </Timeline>
           ) : (
-            <ul className="space-y-2">
-              <li>
-                Battle Result: {hi(winnerName ?? "—")} defeated {loserName ?? "—"}
-              </li>
-              <li>
+            <Timeline>
+              <TimelineItem icon={Swords}>
+                Battle Result: {hi(winnerName ?? "—")} defeated {strong(loserName ?? "—")}
+              </TimelineItem>
+              <TimelineItem icon={Trophy}>
                 Final Score: {score.a} vs {score.b}
-              </li>
-              <li>Result is input by the Organizer/Staff and confirmed by both players.</li>
-            </ul>
+              </TimelineItem>
+              <TimelineItem icon={Info}>Result is input by the Organizer/Staff and confirmed by both players.</TimelineItem>
+            </Timeline>
           )}
         </div>
       </DialogContent>
@@ -232,7 +269,67 @@ export function ReportMatchDialog({ open, onOpenChange, match, participantsById,
   );
 }
 
-function MatchRow({ match, participantsById, pending, locked, onStart, onReport, onDetails }: { match: Match; participantsById: Map<string, RosterLite>; pending: boolean; locked: boolean; onStart: () => void; onReport: () => void; onDetails: () => void }) {
+// The Clear icon's confirmation — only ever opened on an already-completed
+// match (see MatchRow/BracketMatchCard's own `hasScore` gate), so there's
+// always a real result to describe here.
+export function ClearResultDialog({
+  open,
+  onOpenChange,
+  match,
+  participantsById,
+  pending,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  match: Match | null;
+  participantsById: Map<string, RosterLite>;
+  pending: boolean;
+  onConfirm: () => void;
+}) {
+  if (!match) return null;
+  const a = match.participant_a_id ? participantsById.get(match.participant_a_id) : undefined;
+  const b = match.participant_b_id ? participantsById.get(match.participant_b_id) : undefined;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Clear this match&apos;s result?</DialogTitle>
+          <DialogDescription>
+            Round {match.round}, Match {match.match_number} — {a?.teamName ?? a?.name ?? "TBD"} vs {b?.teamName ?? b?.name ?? "TBD"}.
+            This permanently deletes the reported score, battle history, and any screenshot — the match goes back to unplayed.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="p-6 pt-0">
+          <Button type="button" variant="destructive" tooltip="Permanently clear this match's result" disabled={pending} onClick={onConfirm}>
+            {pending ? "Clearing..." : "Clear Result"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MatchRow({
+  match,
+  participantsById,
+  pending,
+  locked,
+  onStart,
+  onReport,
+  onDetails,
+  onClear,
+}: {
+  match: Match;
+  participantsById: Map<string, RosterLite>;
+  pending: boolean;
+  locked: boolean;
+  onStart: () => void;
+  onReport: () => void;
+  onDetails: () => void;
+  onClear: () => void;
+}) {
   const a = match.participant_a_id ? participantsById.get(match.participant_a_id) ?? null : null;
   const isBye = match.participant_b_id === null;
   const b = isBye ? null : match.participant_b_id ? participantsById.get(match.participant_b_id) ?? null : null;
@@ -280,6 +377,11 @@ function MatchRow({ match, participantsById, pending, locked, onStart, onReport,
                 </Button>
               )
             ) : null}
+            {!locked && match.status === "completed" ? (
+              <Button type="button" variant="ghost" size="icon" aria-label="Clear result" disabled={pending} onClick={onClear}>
+                <Eraser className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
             <Button type="button" variant="ghost" size="icon" aria-label="Match details" disabled={pending} onClick={onDetails}>
               <Info className="h-3.5 w-3.5" />
             </Button>
@@ -290,7 +392,35 @@ function MatchRow({ match, participantsById, pending, locked, onStart, onReport,
   );
 }
 
-function RoundColumn({ round, matches, participantsById, pending, locked, isGenerated, canGenerate, generating, onGenerate, onStart, onReport, onDetails }: { round: number; matches: Match[]; participantsById: Map<string, RosterLite>; pending: boolean; locked: boolean; isGenerated: boolean; canGenerate: boolean; generating: boolean; onGenerate: () => void; onStart: (id: string) => void; onReport: (m: Match) => void; onDetails: (m: Match) => void }) {
+function RoundColumn({
+  round,
+  matches,
+  participantsById,
+  pending,
+  locked,
+  isGenerated,
+  canGenerate,
+  generating,
+  onGenerate,
+  onStart,
+  onReport,
+  onDetails,
+  onClear,
+}: {
+  round: number;
+  matches: Match[];
+  participantsById: Map<string, RosterLite>;
+  pending: boolean;
+  locked: boolean;
+  isGenerated: boolean;
+  canGenerate: boolean;
+  generating: boolean;
+  onGenerate: () => void;
+  onStart: (id: string) => void;
+  onReport: (m: Match) => void;
+  onDetails: (m: Match) => void;
+  onClear: (m: Match) => void;
+}) {
   return (
     <div className="flex w-72 shrink-0 flex-col gap-3">
       <p className="label-mono sticky top-0 bg-surface py-1 text-center text-on-surface/40">Round {round}</p>
@@ -306,6 +436,7 @@ function RoundColumn({ round, matches, participantsById, pending, locked, isGene
               onStart={() => onStart(m.id)}
               onReport={() => onReport(m)}
               onDetails={() => onDetails(m)}
+              onClear={() => onClear(m)}
             />
           ))}
         </div>
@@ -331,6 +462,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
 
   const [reportingMatch, setReportingMatch] = useState<Match | null>(null);
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
+  const [clearingMatch, setClearingMatch] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [generating, startGenerating] = useTransition();
@@ -365,6 +497,23 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
         setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       }
       setReportingMatch(null);
+    });
+  }
+
+  function handleClearConfirm() {
+    if (!clearingMatch) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await clearMatchResult(clearingMatch.id, slug);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      if (result.match) {
+        const updated = result.match;
+        setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      }
+      setClearingMatch(null);
     });
   }
 
@@ -418,6 +567,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
             onStart={handleStart}
             onReport={setReportingMatch}
             onDetails={setDetailsMatch}
+            onClear={setClearingMatch}
           />
         ))}
       </div>
@@ -435,6 +585,14 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
         onOpenChange={(open) => !open && setDetailsMatch(null)}
         match={detailsMatch}
         participantsById={participantsById}
+      />
+      <ClearResultDialog
+        open={clearingMatch !== null}
+        onOpenChange={(open) => !open && setClearingMatch(null)}
+        match={clearingMatch}
+        participantsById={participantsById}
+        pending={pending}
+        onConfirm={handleClearConfirm}
       />
     </div>
   );

@@ -18,7 +18,7 @@ import {
 } from "@/lib/final-stage-placeholder";
 import { computeFinishCounts, participantMatches } from "@/lib/player-view-stats";
 import { TIE_BREAK_OPTIONS } from "@/lib/validations/tournament-wizard";
-import { getCurrentUser, getCurrentUserRoles } from "@/lib/supabase/get-user";
+import { getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -45,6 +45,7 @@ export default async function TournamentPlayerPage({
 
   const authUser = await getCurrentUser();
   const roles = authUser ? await getCurrentUserRoles() : [];
+  const notificationCount = authUser ? await getUnreadNotificationCount() : 0;
   const user: NavUser | null = authUser
     ? {
         email: authUser.email ?? null,
@@ -77,7 +78,7 @@ export default async function TournamentPlayerPage({
         : (workspace.participants[0]?.id ?? null);
 
     return (
-      <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user}>
+      <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
         <PlayerPreviewView workspace={workspace} selectedId={selectedId} />
       </PlayerViewShell>
     );
@@ -157,7 +158,7 @@ export default async function TournamentPlayerPage({
   const matchesPlayed = selectedMatches.filter((m) => m.status === "completed").length;
 
   return (
-    <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user}>
+    <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
       <div className="grid items-start gap-8 lg:grid-cols-3">
         <div className="space-y-12 lg:col-span-2 overflow-hidden">
           <PlayerCurrentStats

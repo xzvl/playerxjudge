@@ -6,7 +6,7 @@ import "./globals.css";
 import { Providers } from "@/app/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { getCurrentUser, getCurrentUserRoles } from "@/lib/supabase/get-user";
+import { getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
 const inter = Inter({
@@ -48,6 +48,10 @@ export const metadata: Metadata = {
       "Discover, join, and organize Beyblade X community tournaments. Track brackets, leaderboards, and communities in one place.",
   },
   robots: { index: true, follow: true },
+  // app/favicon.ico is already picked up by Next's file convention on its
+  // own, but declaring it explicitly guarantees the <link rel="icon"> tag
+  // lands in <head> rather than relying on that convention silently.
+  icons: { icon: "/favicon.ico" },
 };
 
 export const viewport: Viewport = {
@@ -59,7 +63,9 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const authUser = await getCurrentUser();
-  const roles = authUser ? await getCurrentUserRoles() : [];
+  const [roles, notificationCount] = authUser
+    ? await Promise.all([getCurrentUserRoles(), getUnreadNotificationCount()])
+    : ([[], 0] as const);
   const user: NavUser | null = authUser
     ? {
         email: authUser.email ?? null,
@@ -82,7 +88,7 @@ export default async function RootLayout({
           >
             Skip to content
           </a>
-          <Header user={user} />
+          <Header user={user} notificationCount={notificationCount} />
           <main id="main-content">{children}</main>
           <Footer />
         </Providers>

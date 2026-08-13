@@ -14,12 +14,23 @@ export interface ComboboxOption {
 
 export function Combobox({
   label,
+  hideLabel = false,
+  placeholder,
   value,
   onValueChange,
   options,
   className,
 }: {
   label: string;
+  // `label` still drives the search input's aria-label and placeholder
+  // even when this is set — it only skips the visible "Label: " prefix on
+  // the closed button, for callers whose surrounding UI already makes the
+  // field's purpose obvious (see JudgeConsole's Stadium field).
+  hideLabel?: boolean;
+  // Shown (dimmed) on the closed button in place of the "Label: " prefix
+  // when nothing's selected yet and hideLabel is set — without it, hiding
+  // the label would leave an empty-looking button with no selection.
+  placeholder?: string;
   value: string;
   onValueChange: (value: string) => void;
   options: readonly ComboboxOption[];
@@ -32,7 +43,8 @@ export function Combobox({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectedLabel = options.find((o) => o.value === value)?.label ?? "";
+  const selectedOption = options.find((o) => o.value === value);
+  const selectedLabel = selectedOption?.label ?? (hideLabel ? (placeholder ?? "") : "");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -96,8 +108,8 @@ export function Combobox({
         data-state={open ? "open" : "closed"}
       >
         <span className="line-clamp-1 text-left">
-          <span className="text-on-surface/40">{label}: </span>
-          {selectedLabel}
+          {hideLabel ? null : <span className="text-on-surface/40">{label}: </span>}
+          <span className={cn(hideLabel && !selectedOption && "text-on-surface/40")}>{selectedLabel}</span>
         </span>
         <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-50 transition-transform", open && "rotate-180")} />
       </button>

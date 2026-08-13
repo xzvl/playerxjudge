@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 
 import { WorkspaceBracket } from "@/components/dashboard/organizer/WorkspaceBracket";
-import { MatchDetailsDialog, ReportMatchDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
-import { startMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import { ClearResultDialog, MatchDetailsDialog, ReportMatchDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
+import { clearMatchResult, startMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import { advanceWinners, applyRealMatches, populateSectionFromFeeder, type PlacementSection } from "@/lib/final-stage-placeholder";
 import type { WorkspaceBracketRound, WorkspaceMatch } from "@/lib/mock/tournament-workspace";
 import type { Bracket, Match } from "@/lib/types/database";
@@ -44,6 +44,7 @@ export function FinalStageBracketWorkspace({
   );
   const [reportingId, setReportingId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [clearingId, setClearingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -107,12 +108,30 @@ export function FinalStageBracketWorkspace({
     });
   }
 
+  function handleClearConfirm() {
+    if (!clearingId) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await clearMatchResult(clearingId, slug);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      if (result.match) {
+        const updated = result.match;
+        setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      }
+      setClearingId(null);
+    });
+  }
+
   const sharedActions = {
     isInteractive: (m: WorkspaceMatch) => matchesById.has(m.id),
     pending,
     onStart: handleStart,
     onReport: (m: WorkspaceMatch) => setReportingId(m.id),
     onDetails: (m: WorkspaceMatch) => setDetailsId(m.id),
+    onClear: (m: WorkspaceMatch) => setClearingId(m.id),
     locked,
   };
 
@@ -150,6 +169,14 @@ export function FinalStageBracketWorkspace({
         onOpenChange={(open) => !open && setDetailsId(null)}
         match={detailsId ? matchesById.get(detailsId) ?? null : null}
         participantsById={participantsById}
+      />
+      <ClearResultDialog
+        open={clearingId !== null}
+        onOpenChange={(open) => !open && setClearingId(null)}
+        match={clearingId ? matchesById.get(clearingId) ?? null : null}
+        participantsById={participantsById}
+        pending={pending}
+        onConfirm={handleClearConfirm}
       />
     </div>
   );

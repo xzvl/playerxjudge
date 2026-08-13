@@ -13,10 +13,10 @@ import { ProfileMenu, type NavUser } from "@/components/layout/ProfileMenu";
 // signed-in ones get their avatar -> account dropdown via ProfileMenu. Unlike
 // the global Header, everything here stays visible at every breakpoint —
 // this page has no separate mobile-menu sheet to fall back on.
-export function PlayerViewHeaderActions({ user }: { user: NavUser | null }) {
+export function PlayerViewHeaderActions({ user, notificationCount = 0 }: { user: NavUser | null; notificationCount?: number }) {
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <NotificationsBell count={user ? 2 : 0} />
+      <NotificationsBell count={user ? notificationCount : 0} enabled={!!user} />
       {user ? (
         <ProfileMenu user={user} />
       ) : (

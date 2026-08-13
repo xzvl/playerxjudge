@@ -1,5 +1,5 @@
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import type { TournamentStatus } from "@/lib/types/database";
+import type { JudgeAssignmentStatus, TournamentStatus } from "@/lib/types/database";
 import type { ReportStatus, RegistrationStatus } from "@/lib/mock/organizer-dashboard";
 
 function statusLabel(status: string) {
@@ -29,6 +29,24 @@ const REGISTRATION_STATUS_VARIANTS: Record<RegistrationStatus, BadgeProps["varia
 
 export function RegistrationStatusBadge({ status }: { status: RegistrationStatus }) {
   return <Badge variant={REGISTRATION_STATUS_VARIANTS[status]}>{statusLabel(status)}</Badge>;
+}
+
+// pending = invited, not yet confirmed by the judge; removed rows are
+// deleted outright (see removeJudge) rather than ever rendered this way.
+const JUDGE_ASSIGNMENT_STATUS_VARIANTS: Record<JudgeAssignmentStatus, BadgeProps["variant"]> = {
+  pending: "outline",
+  approved: "success",
+  removed: "destructive",
+};
+
+const JUDGE_ASSIGNMENT_STATUS_LABEL: Record<JudgeAssignmentStatus, string> = {
+  pending: "Pending",
+  approved: "Confirmed",
+  removed: "Removed",
+};
+
+export function JudgeAssignmentStatusBadge({ status }: { status: JudgeAssignmentStatus }) {
+  return <Badge variant={JUDGE_ASSIGNMENT_STATUS_VARIANTS[status]}>{JUDGE_ASSIGNMENT_STATUS_LABEL[status]}</Badge>;
 }
 
 const REPORT_STATUS_VARIANTS: Record<ReportStatus, BadgeProps["variant"]> = {

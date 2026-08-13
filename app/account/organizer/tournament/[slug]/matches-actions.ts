@@ -7,9 +7,8 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { computeGroupStandings, generateInitialPairings, generateNextRoundPairings } from "@/lib/swiss";
 import { buildPlacementSections, buildRound1Pairings, qualifiedSlots } from "@/lib/final-stage-placeholder";
 import { logTournamentEvent } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
-import type { Bracket, Match, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import type { Bracket, Match, MatchBattle, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
 import type { RoleActionState } from "@/lib/validations/roles";
-import type { TieBreakMetric } from "@/lib/validations/tournament-wizard";
 
 function groupStagePath(slug: string) {
   return `/account/organizer/tournament/${slug}`;
@@ -17,6 +16,14 @@ function groupStagePath(slug: string) {
 
 function finalStagePath(slug: string) {
   return `/account/organizer/tournament/${slug}/final-stage`;
+}
+
+// A confirmed judge (is_judge_of_tournament) can call startMatch/
+// reportMatchResult directly from their own station view, not just the
+// organizer's workspace — revalidate that path too so it's not just their
+// own session's automatic post-action refresh keeping it fresh.
+function judgeViewPath(slug: string) {
+  return `/tournaments/${slug}/judge`;
 }
 
 // Called alongside the status→"ongoing" transition when "Start Group Stage"
@@ -101,13 +108,7 @@ export async function generateNextRound(
   }
 
   const swissPoints = tournament.format_settings.groupStage.swissPoints;
-  const groupTieBreaks = tournament.format_settings.groupTieBreaks;
-  const tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric] = [
-    groupTieBreaks.tieBreak1,
-    groupTieBreaks.tieBreak2,
-    groupTieBreaks.tieBreak3,
-  ];
-  const pairings = generateNextRoundPairings(members as TournamentParticipant[], matches, swissPoints, tieBreakMetrics);
+  const pairings = generateNextRoundPairings(members as TournamentParticipant[], matches, swissPoints);
   const nextRound = currentRound + 1;
   // Match numbers continue on from this group's previous rounds rather than
   // resetting to 1 each round (round 1's 22 matches are 1-22, so round 2
@@ -147,6 +148,7 @@ export async function startMatch(matchId: string, slug: string): Promise<RoleAct
 
   if (error) return { status: "error", message: error.message };
   revalidatePath(groupStagePath(slug), "layout");
+  revalidatePath(judgeViewPath(slug));
   return { status: "success" };
 }
 
@@ -188,6 +190,7 @@ export async function reportMatchResult(
   if (error) return { status: "error", message: error.message };
 
   revalidatePath(groupStagePath(slug), "layout");
+  revalidatePath(judgeViewPath(slug));
 
   const match = data as Match;
   if (match.group_id !== null) return { status: "success", match };
@@ -195,6 +198,139 @@ export async function reportMatchResult(
   // Final-stage match — automatically pair up the next round (and any
   // placement-bracket rounds that just became reachable) the moment this
   // was the last result a round needed, no manual "Generate Round" click.
+  const advanced = await autoAdvanceFinalStage(match.tournament_id, slug);
+  return { status: "success", match, advancedMatches: advanced.matches, advancedBrackets: advanced.brackets };
+}
+
+// The group stage and final stage workspaces' "Clear" icon (only shown on
+// an already-completed match) — wipes a single match's reported result
+// back to `scheduled` with no score, winner, battles, or judge/screenshot
+// record, as if it had never been played. Round/match_number/participants/
+// group_id/bracket_id are untouched, so it stays exactly where it was and
+// can just be re-reported. Deliberately doesn't try to unwind anything
+// downstream (a final-stage winner that already advanced into a generated
+// next-round match stays there) — same gap "Edit Result" already has today
+// when it changes a completed match's winner.
+export async function clearMatchResult(matchId: string, slug: string): Promise<RoleActionState & { match?: Match }> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("matches")
+    .select("round, match_number, status")
+    .eq("id", matchId)
+    .maybeSingle();
+  if (fetchError) return { status: "error", message: fetchError.message };
+  if (!existing) return { status: "error", message: "Match not found." };
+  if (existing.status !== "completed") return { status: "error", message: "This match has no reported result to clear." };
+
+  const { data, error } = await supabase
+    .from("matches")
+    .update({ score: {}, winner_id: null, status: "scheduled", completed_at: null })
+    .eq("id", matchId)
+    .select()
+    .single();
+  if (error) return { status: "error", message: error.message };
+
+  const match = data as Match;
+  await logTournamentEvent(match.tournament_id, "Organizer", `cleared the result for Round ${existing.round}, Match ${existing.match_number}`);
+
+  revalidatePath(groupStagePath(slug), "layout");
+  revalidatePath(finalStagePath(slug), "layout");
+  revalidatePath(judgeViewPath(slug));
+  revalidatePath(`/account/organizer/tournament/${slug}/log`);
+
+  return { status: "success", match };
+}
+
+// The judge scoring console's own submit (app/tournaments/[slug]/judge) —
+// same shape of write as reportMatchResult but with the full battle-by-
+// battle record a live-scored match actually has, rather than just the
+// final a/b tally. Authorization is the same RLS
+// (matches_write_judge_organizer_or_admin already covers judge-or-organizer);
+// this only additionally requires both sides to have confirmed in the UI
+// before it's ever called.
+export async function submitJudgedMatchResult(
+  matchId: string,
+  slug: string,
+  payload: {
+    scoreA: number;
+    scoreB: number;
+    battles: MatchBattle[];
+    penaltiesA: number;
+    penaltiesB: number;
+    judgeName: string;
+    judgeUsername: string;
+    participantAName: string;
+    participantBName: string;
+    // Uploaded separately just before this call (see uploadMatchScreenshot
+    // in app/tournaments/[slug]/judge/actions.ts and JudgeConsole's
+    // handleBothConfirmed) — undefined if the capture/upload failed, which
+    // shouldn't block the result itself from saving.
+    screenshotUrl?: string;
+  }
+): Promise<RoleActionState & { match?: Match; advancedMatches?: Match[]; advancedBrackets?: { key: string; id: string }[] }> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const { scoreA, scoreB, battles, penaltiesA, penaltiesB, judgeName, judgeUsername, participantAName, participantBName, screenshotUrl } = payload;
+  if (!Number.isInteger(scoreA) || !Number.isInteger(scoreB) || scoreA < 0 || scoreB < 0) {
+    return { status: "error", message: "Scores must be zero or a positive whole number." };
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("matches")
+    .select("participant_a_id, participant_b_id")
+    .eq("id", matchId)
+    .maybeSingle();
+  if (fetchError) return { status: "error", message: fetchError.message };
+  if (!existing) return { status: "error", message: "Match not found." };
+
+  const winnerId = scoreA === scoreB ? null : scoreA > scoreB ? existing.participant_a_id : existing.participant_b_id;
+
+  const { data, error } = await supabase
+    .from("matches")
+    .update({
+      score: {
+        a: scoreA,
+        b: scoreB,
+        battles,
+        penaltiesA,
+        penaltiesB,
+        judgeName,
+        judgeUsername,
+        confirmedByBoth: true,
+        inputBy: "judge",
+        ...(screenshotUrl ? { screenshotUrl } : {}),
+      },
+      winner_id: winnerId,
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", matchId)
+    .select()
+    .single();
+
+  if (error) return { status: "error", message: error.message };
+
+  const match = data as Match;
+
+  // A tie has no winnerId (see above) and nothing sensible to narrate as a
+  // "win for X over Y" — only log a decisive result.
+  if (winnerId) {
+    const winnerName = scoreA > scoreB ? participantAName : participantBName;
+    const loserName = scoreA > scoreB ? participantBName : participantAName;
+    await logTournamentEvent(match.tournament_id, judgeName, `reported a ${scoreA}-${scoreB} win for ${winnerName} over ${loserName}`);
+  }
+
+  revalidatePath(groupStagePath(slug), "layout");
+  revalidatePath(judgeViewPath(slug));
+  revalidatePath(`/account/organizer/tournament/${slug}/log`);
+
+  if (match.group_id !== null) return { status: "success", match };
+
   const advanced = await autoAdvanceFinalStage(match.tournament_id, slug);
   return { status: "success", match, advancedMatches: advanced.matches, advancedBrackets: advanced.brackets };
 }

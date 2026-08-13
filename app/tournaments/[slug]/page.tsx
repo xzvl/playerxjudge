@@ -12,6 +12,8 @@ import { VenueMapSection } from "@/components/tournaments/VenueMapSection";
 import { TournamentPageActionButton } from "@/components/tournaments/TournamentPageActionButton";
 import { formatDate, formatTime } from "@/lib/format";
 import { getPublicTournamentBySlug } from "@/lib/tournaments/public-listings";
+import { getCurrentUser } from "@/lib/supabase/get-user";
+import { createClient } from "@/lib/supabase/server";
 import type { MockTournament } from "@/lib/mock/tournaments";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -35,10 +37,31 @@ function formatDateTime(iso: string | null | undefined): string {
   return `${formatDate(iso)} · ${formatTime(iso)}`;
 }
 
+// Whether the signed-in visitor is this tournament's organizer or one of
+// its approved judges — the "Judge Scoring!" button below Go Shoot!/
+// Register Now links straight to their console (/tournaments/[slug]/judge)
+// only when this is true. Same organizer-or-approved-judge gate that page
+// itself enforces, so the button never appears for someone it would just
+// bounce.
+async function canJudgeTournament(tournamentId: string): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (!user) return false;
+
+  const supabase = await createClient();
+  const [{ data: tournamentRow }, { data: judgeRow }] = await Promise.all([
+    supabase.from("tournaments").select("organizer_id").eq("id", tournamentId).maybeSingle(),
+    supabase.from("judges").select("status").eq("tournament_id", tournamentId).eq("judge_id", user.id).maybeSingle(),
+  ]);
+
+  return tournamentRow?.organizer_id === user.id || judgeRow?.status === "approved";
+}
+
 export default async function TournamentDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const tournament = await getPublicTournamentBySlug(slug);
   if (!tournament) notFound();
+
+  const canJudge = await canJudgeTournament(tournament.id);
 
   const prizes = tournament.prizes ?? [];
   const rangeSections = tournament.prizeRangeSections ?? [];
@@ -65,7 +88,7 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
       />
 
       <div className="mt-4 lg:hidden">
-        <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} />
+        <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} canJudge={canJudge} />
       </div>
 
       <div className="mt-8 space-y-3">
@@ -192,7 +215,7 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
 
         <div className="space-y-6 lg:sticky lg:top-20 lg:self-start">
           <div className="hidden lg:block">
-            <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} />
+            <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} canJudge={canJudge} />
           </div>
 
           <div className="border border-outline-variant/25 p-4">

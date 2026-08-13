@@ -1,25 +1,28 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Info, Pencil, Play, Swords } from "lucide-react";
+import { Eraser, Info, Pencil, Play, Swords } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useDragScroll } from "@/lib/hooks/use-drag-scroll";
 import { cn } from "@/lib/utils";
 import type { WorkspaceBracketRound, WorkspaceMatch, WorkspaceParticipant } from "@/lib/mock/tournament-workspace";
 
-// Wires up hover action icons (Start / Report / Edit / Details) on whichever
-// matches `isInteractive` returns true for — real Round 1 matches on the
-// Final Stage page once it's started, per FinalStageBracketWorkspace. Any
-// other consumer that doesn't pass `actions` gets the plain read-only card
-// this component has always rendered.
+// Wires up hover action icons (Start / Report / Edit / Clear / Details) on
+// whichever matches `isInteractive` returns true for — real Round 1 matches
+// on the Final Stage page once it's started, per FinalStageBracketWorkspace.
+// Any other consumer that doesn't pass `actions` gets the plain read-only
+// card this component has always rendered.
 export interface BracketActions {
   isInteractive: (match: WorkspaceMatch) => boolean;
   pending: boolean;
   onStart: (match: WorkspaceMatch) => void;
   onReport: (match: WorkspaceMatch) => void;
   onDetails: (match: WorkspaceMatch) => void;
-  // Once the tournament is finished, Start/Report/Edit no longer make
+  // Wipes a completed match's score/winner back to unplayed — only ever
+  // offered when `hasScore` (see BracketMatchCard) is true.
+  onClear: (match: WorkspaceMatch) => void;
+  // Once the tournament is finished, Start/Report/Edit/Clear no longer make
   // sense — only Match Details stays available.
   locked?: boolean;
 }
@@ -132,6 +135,18 @@ function BracketMatchCard({
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             )}
+            {!actions.locked && match.status === "complete" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Clear result"
+                disabled={actions.pending}
+                onClick={() => actions.onClear(match)}
+              >
+                <Eraser className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="ghost"

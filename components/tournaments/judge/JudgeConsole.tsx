@@ -1,42 +1,292 @@
 "use client";
 
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { BarChart3, Swords, Trophy, UserRound } from "lucide-react";
+import { LogOut, RefreshCw, Trash2, Trophy } from "lucide-react";
 
-import { PlayerViewHeaderActions } from "@/components/tournaments/player/PlayerViewHeaderActions";
-import type { NavUser } from "@/components/layout/ProfileMenu";
+import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
+import { JudgePlayerPicker, type JudgePlayerOption } from "@/components/tournaments/judge/JudgePlayerPicker";
+import {
+  PlayerScorePanel,
+  emptyPlayerScoreState,
+  committedPenalties,
+  ownScore,
+  type BoxEvent,
+  type PlayerScoreState,
+} from "@/components/tournaments/judge/PlayerScorePanel";
+import { ConfirmResultDialog } from "@/components/tournaments/judge/ConfirmResultDialog";
+import { JudgeViewResultDialog } from "@/components/tournaments/judge/JudgeViewResultDialog";
+import { JudgeStadiumPromptDialog } from "@/components/tournaments/judge/JudgeStadiumPromptDialog";
+import { submitJudgedMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import { signOutJudgeSession, setOwnStation, uploadMatchScreenshot } from "@/app/tournaments/[slug]/judge/actions";
+import { captureElementAsWebp } from "@/lib/images/screenshot";
+import { cn } from "@/lib/utils";
+import type { FinishType, MatchBattle } from "@/lib/types/database";
 
-// The player-view page's own app-shell: a full left <aside> nav on desktop
-// (icon + title + subtitle, anchored to the page's own sections) that
-// collapses into a fixed bottom bar (icon + title only — subtitle drops)
-// below the 1024px/`lg` breakpoint. The site's global Header hides itself on
-// this route (see Header.tsx) — the content header below carries its own
-// right-side notification bell / sign-in-join / profile menu instead of
-// stacking a second header on top of this page's own nav.
+export interface JudgeMatchLite {
+  id: string;
+  round: number;
+  matchNumber: number;
+  groupId: string | null;
+  participantAId: string | null;
+  participantBId: string | null;
+}
+
+export interface JudgeMatchContext {
+  matchId: string;
+  round: number;
+  matchNumber: number;
+  stage: string;
+  participantAId: string;
+  participantBId: string;
+}
+
+export interface JudgeStationOption {
+  id: string;
+  name: string;
+  currentMatchId: string | null;
+}
+
+type Side = "left" | "right";
+
 const NAV_ITEMS = [
-  { id: "player", label: "Player", sub: "Current Stats", icon: UserRound },
-  { id: "tournament", label: "Tournament", sub: "Stages and Standing", icon: Trophy },
-  { id: "matches", label: "Matches", sub: "Upcoming / Recent Battle", icon: Swords },
-  { id: "statistics", label: "Statistics", sub: "Your Finishes", icon: BarChart3 },
+  { id: "switch", label: "Switch", sub: "Swap players side", icon: RefreshCw },
+  { id: "clear", label: "Clear", sub: "Clear players and scores", icon: Trash2 },
 ] as const;
 
-export function PlayerViewShell({
+export function JudgeConsole({
+  slug,
+  tournamentId,
   tournamentTitle,
-  organizedBy,
-  user,
-  notificationCount,
-  children,
+  stations,
+  initialStationId,
+  judgeName,
+  judgeUsername,
+  participants,
+  matches,
+  groups,
+  initialMatch,
 }: {
+  slug: string;
+  tournamentId: string;
   tournamentTitle: string;
-  organizedBy: string;
-  user: NavUser | null;
-  notificationCount?: number;
-  children: ReactNode;
+  stations: JudgeStationOption[];
+  initialStationId: string | null;
+  judgeName: string;
+  judgeUsername: string;
+  participants: JudgePlayerOption[];
+  matches: JudgeMatchLite[];
+  groups: { id: string; label: string }[];
+  initialMatch: JudgeMatchContext | null;
 }) {
+  const groupLabelById = useMemo(() => new Map(groups.map((g) => [g.id, g.label])), [groups]);
+
+  const [player1, setPlayer1] = useState<PlayerScoreState>(() => ({
+    ...emptyPlayerScoreState(),
+    participantId: initialMatch?.participantAId ?? null,
+  }));
+  const [player2, setPlayer2] = useState<PlayerScoreState>(() => ({
+    ...emptyPlayerScoreState(),
+    participantId: initialMatch?.participantBId ?? null,
+  }));
+  const [matchContext, setMatchContext] = useState<JudgeMatchContext | null>(initialMatch);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [viewResultOpen, setViewResultOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [stationId, setStationId] = useState<string | null>(initialStationId);
+  // Nudges whoever opened the console to claim a stadium before scoring —
+  // only once, and only when there's actually a choice to make; picking one
+  // (from here or the header field below) dismisses it for the rest of the
+  // session.
+  const [stadiumPromptOpen, setStadiumPromptOpen] = useState(() => stations.length > 0 && !initialStationId);
+  const seqRef = useRef(0);
+  // The console's own root — every dialog here (Confirm Result, View
+  // Result, the stadium popup) is a Radix Dialog, which portals its content
+  // to `document.body` rather than rendering inside this tree. Capturing
+  // this ref instead of document.body is what keeps those popups out of
+  // the Submit Result screenshot.
+  const consoleRef = useRef<HTMLDivElement>(null);
+
+  function nextSeq() {
+    seqRef.current += 1;
+    return seqRef.current;
+  }
+
+  function stateSetter(side: Side) {
+    return side === "left" ? setPlayer1 : setPlayer2;
+  }
+
+  // Picking a participant on either side looks up their one active
+  // (non-completed) match and fills the *other* side with the real
+  // opponent, plus the round/stage that match is actually part of.
+  function selectPlayer(side: Side, participantId: string) {
+    const match = matches.find((m) => m.participantAId === participantId || m.participantBId === participantId);
+    const picked: PlayerScoreState = { participantId, events: [], penaltyProgress: 0 };
+
+    if (!match || !match.participantAId || !match.participantBId) {
+      stateSetter(side)(picked);
+      stateSetter(side === "left" ? "right" : "left")(emptyPlayerScoreState());
+      setMatchContext(null);
+      return;
+    }
+
+    const opponentId = match.participantAId === participantId ? match.participantBId : match.participantAId;
+    const opponent: PlayerScoreState = { participantId: opponentId, events: [], penaltyProgress: 0 };
+    stateSetter(side)(picked);
+    stateSetter(side === "left" ? "right" : "left")(opponent);
+    setMatchContext({
+      matchId: match.id,
+      round: match.round,
+      matchNumber: match.matchNumber,
+      stage: match.groupId ? `Group ${groupLabelById.get(match.groupId) ?? "?"}` : "Final Stage",
+      participantAId: match.participantAId,
+      participantBId: match.participantBId,
+    });
+  }
+
+  // Fills both sides from whatever match a stadium is currently running —
+  // same shape of fill as the initial server-side load (see
+  // app/tournaments/[slug]/judge/page.tsx), just re-runnable every time the
+  // Stadium field changes instead of only once at mount.
+  function applyStationMatch(currentMatchId: string | null) {
+    if (!currentMatchId) return;
+    const stationMatch = matches.find((m) => m.id === currentMatchId);
+    if (!stationMatch?.participantAId || !stationMatch?.participantBId) return;
+    setPlayer1({ participantId: stationMatch.participantAId, events: [], penaltyProgress: 0 });
+    setPlayer2({ participantId: stationMatch.participantBId, events: [], penaltyProgress: 0 });
+    setMatchContext({
+      matchId: stationMatch.id,
+      round: stationMatch.round,
+      matchNumber: stationMatch.matchNumber,
+      stage: stationMatch.groupId ? `Group ${groupLabelById.get(stationMatch.groupId) ?? "?"}` : "Final Stage",
+      participantAId: stationMatch.participantAId,
+      participantBId: stationMatch.participantBId,
+    });
+  }
+
+  // Claims a stadium as the current session's own (persisted server-side —
+  // see setOwnStation) and, if that stadium already has a match running,
+  // loads it the same way picking a player does.
+  function handleStationChange(newStationId: string) {
+    const resolved = newStationId || null;
+    setStationId(resolved);
+    setStadiumPromptOpen(false);
+    void setOwnStation(slug, resolved);
+    if (resolved) {
+      const station = stations.find((s) => s.id === resolved);
+      if (station) applyStationMatch(station.currentMatchId);
+    }
+  }
+
+  function incrementFinish(side: Side, kind: FinishType) {
+    stateSetter(side)((prev) => ({ ...prev, events: [...prev.events, { kind, seq: nextSeq() }] }));
+  }
+
+  function decrementFinish(side: Side, kind: FinishType) {
+    stateSetter(side)((prev) => {
+      const idx = prev.events.map((e) => e.kind).lastIndexOf(kind);
+      if (idx === -1) return prev;
+      return { ...prev, events: [...prev.events.slice(0, idx), ...prev.events.slice(idx + 1)] };
+    });
+  }
+
+  function penaltyPlus(side: Side) {
+    stateSetter(side)((prev) =>
+      prev.penaltyProgress === 0
+        ? { ...prev, penaltyProgress: 1 }
+        : { ...prev, penaltyProgress: 0, events: [...prev.events, { kind: "penalty", seq: nextSeq() }] }
+    );
+  }
+
+  function penaltyMinus(side: Side) {
+    stateSetter(side)((prev) => {
+      if (prev.penaltyProgress === 1) return { ...prev, penaltyProgress: 0 };
+      const idx = prev.events.map((e) => e.kind).lastIndexOf("penalty");
+      if (idx === -1) return prev;
+      return { ...prev, penaltyProgress: 1, events: [...prev.events.slice(0, idx), ...prev.events.slice(idx + 1)] };
+    });
+  }
+
+  function handleSwitch() {
+    setPlayer1(player2);
+    setPlayer2(player1);
+  }
+
+  function handleClear() {
+    setPlayer1(emptyPlayerScoreState());
+    setPlayer2(emptyPlayerScoreState());
+    setMatchContext(null);
+    setSaveError(null);
+  }
+
+  async function handleBothConfirmed() {
+    if (!matchContext) return;
+    setSaving(true);
+    setSaveError(null);
+
+    const aState = player1.participantId === matchContext.participantAId ? player1 : player2;
+    const bState = aState === player1 ? player2 : player1;
+    const aName = aState === player1 ? name1 : name2;
+    const bName = aState === player1 ? name2 : name1;
+
+    const merged: (BoxEvent & { winnerId: string })[] = [
+      ...aState.events.map((e) => ({ ...e, winnerId: aState.participantId! })),
+      ...bState.events.map((e) => ({ ...e, winnerId: bState.participantId! })),
+    ].sort((x, y) => x.seq - y.seq);
+    const battles: MatchBattle[] = merged
+      .filter((e) => e.kind !== "penalty")
+      .map((e) => ({ winnerId: e.winnerId, finishType: e.kind as FinishType }));
+
+    // Proof-of-result screenshot of the console itself (both scorecards,
+    // header, everything in consoleRef) — deliberately not document.body,
+    // since that would also pick up the Confirm Result dialog's portal
+    // (see consoleRef's comment above). Best-effort: a capture or upload
+    // failure shouldn't block the actual result from being saved, just
+    // leave it without a screenshot.
+    let screenshotUrl: string | undefined;
+    try {
+      const webpBlob = await captureElementAsWebp(consoleRef.current ?? document.body);
+      const webpFile = new File([webpBlob], "match-screenshot.webp", { type: "image/webp" });
+      const formData = new FormData();
+      formData.set("file", webpFile);
+      const uploadResult = await uploadMatchScreenshot(tournamentId, matchContext.matchId, formData);
+      if (uploadResult.status === "success" && uploadResult.url) screenshotUrl = uploadResult.url;
+    } catch {
+      // Ignored — see comment above.
+    }
+
+    const result = await submitJudgedMatchResult(matchContext.matchId, slug, {
+      scoreA: ownScore(aState) + committedPenalties(bState),
+      scoreB: ownScore(bState) + committedPenalties(aState),
+      battles,
+      penaltiesA: committedPenalties(aState),
+      penaltiesB: committedPenalties(bState),
+      judgeName,
+      judgeUsername,
+      participantAName: aName,
+      participantBName: bName,
+      screenshotUrl,
+    });
+
+    setSaving(false);
+    if (result.status === "error") {
+      setSaveError(result.message ?? "Something went wrong.");
+      return;
+    }
+    setConfirmOpen(false);
+    handleClear();
+  }
+
+  const score1 = ownScore(player1) + committedPenalties(player2);
+  const score2 = ownScore(player2) + committedPenalties(player1);
+  const name1 = participants.find((p) => p.id === player1.participantId)?.displayName ?? "Player 1";
+  const name2 = participants.find((p) => p.id === player2.participantId)?.displayName ?? "Player 2";
+
   return (
-    <div className="mx-auto flex max-w-[1440px]">
-      <aside className="sticky top-0 hidden h-[calc(100vh)] w-64 shrink-0 flex-col border-r border-outline-variant/25 bg-surface-container-lowest lg:flex">
+    <div ref={consoleRef} className="mx-auto flex max-w-[1440px]">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-outline-variant/25 bg-surface-container-lowest lg:flex">
         <div className="p-4">
           <Link href="/" className="heading text-lg">
             <svg xmlns="http://www.w3.org/2000/svg" width="200" height="25" viewBox="0 0 2102 226">
@@ -47,59 +297,159 @@ export function PlayerViewShell({
             </g>
             </svg>
           </Link>
-          <p className="label-mono mt-4 text-primary">Dashboard</p>
+          <p className="label-mono mt-4 text-primary">Judge Console</p>
         </div>
         <nav className="flex-1 overflow-y-auto p-2">
           {NAV_ITEMS.map(({ id, label, sub, icon: Icon }) => (
-            <a
+            <button
               key={id}
-              href={`#${id}`}
-              className="flex items-center gap-3 px-2 py-3 text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface"
+              type="button"
+              onClick={id === "switch" ? handleSwitch : handleClear}
+              className="flex w-full items-center gap-3 px-2 py-3 text-left text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface"
             >
               <Icon className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-on-surface">{label}</span>
                 <span className="label-mono block text-[10px] text-on-surface/40">{sub}</span>
               </span>
-            </a>
+            </button>
           ))}
+          <Link
+            href={`/tournaments/${slug}/player`}
+            className="flex w-full items-center gap-3 px-2 py-3 text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <Trophy className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-on-surface">Tournament</span>
+              <span className="label-mono block text-[10px] text-on-surface/40">Visit the tournament</span>
+            </span>
+          </Link>
+          <form action={signOutJudgeSession.bind(null, slug)}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 px-2 py-3 text-left text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface"
+            >
+              <LogOut className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-on-surface">Sign Out</span>
+                <span className="label-mono block text-[10px] text-on-surface/40">Back to tournament details</span>
+              </span>
+            </button>
+          </form>
         </nav>
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="flex items-start justify-between gap-4 border-b border-outline-variant/25 px-4 py-5 md:px-8">
-          <div className="min-w-0">
-            <h1 className="heading truncate text-base sm:text-xl md:text-2xl">{tournamentTitle}</h1>
-            <p className="mt-1 text-sm text-on-surface/50">Organized by {organizedBy}</p>
+        <header className="border-b border-outline-variant/25 px-4 py-5 md:px-8">
+          <p className="label-mono mb-4 text-center text-on-surface/40">{tournamentTitle}</p>
+          <div className="flex items-start justify-between gap-4">
+            <JudgePlayerPicker
+              label="Player 1"
+              sideLabel="[X Side]"
+              options={participants}
+              selectedId={player1.participantId}
+              onSelect={(id) => selectPlayer("left", id)}
+            />
+            <div className="shrink-0 pt-1 text-center">
+              <p className="label-mono text-primary">{matchContext ? `Round ${matchContext.round}` : "—"}</p>
+              <p className="label-mono text-[10px] text-on-surface/40">{matchContext?.stage ?? "No match"}</p>
+            </div>
+            <JudgePlayerPicker
+              label="Player 2"
+              sideLabel="[B Side]"
+              options={participants}
+              selectedId={player2.participantId}
+              onSelect={(id) => selectPlayer("right", id)}
+              align="right"
+            />
           </div>
-          <PlayerViewHeaderActions user={user} notificationCount={notificationCount} />
         </header>
 
-        <div className="px-4 py-8 pb-24 md:px-8 lg:pb-8">{children}</div>
+        <div className="grid gap-4 lg:gap-6 px-4 py-8 pb-24 md:px-8 grid-cols-[1fr_auto_1fr] lg:pb-8">
+          <PlayerScorePanel
+            state={player1}
+            bonusPenalties={committedPenalties(player2)}
+            onIncrementFinish={(kind) => incrementFinish("left", kind)}
+            onDecrementFinish={(kind) => decrementFinish("left", kind)}
+            onPenaltyPlus={() => penaltyPlus("left")}
+            onPenaltyMinus={() => penaltyMinus("left")}
+          />
+
+          <div className="flex flex-col items-center gap-4 lg:w-56">
+            <div className="w-full space-y-2 border border-outline-variant/25 bg-surface-container-low p-4">
+              {stations.length > 0 ? (
+                <Combobox
+                  label="Stadium"
+                  hideLabel
+                  placeholder="Select a stadium"
+                  value={stationId ?? ""}
+                  onValueChange={handleStationChange}
+                  options={stations.map((s) => ({ value: s.id, label: s.name }))}
+                />
+              ) : (
+                <p className="text-center font-medium text-on-surface">No stadiums set up</p>
+              )}
+              <p className="label-mono text-center text-[10px] text-on-surface/40">{judgeName}</p>
+            </div>
+
+            <div className="label-mono flex w-full items-center justify-center gap-2 text-on-surface/40">
+              <span>X Side</span>
+              <span aria-hidden="true">|</span>
+              <span>B Side</span>
+            </div>
+
+            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <p className={cn("text-center font-mono text-4xl font-bold", score1 > score2 ? "text-primary" : "text-on-surface")}>{score1}</p>
+              <span className="text-on-surface/30">vs</span>
+              <p className={cn("text-center font-mono text-4xl font-bold", score2 > score1 ? "text-primary" : "text-on-surface")}>{score2}</p>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={!matchContext}
+              onClick={() => setViewResultOpen(true)}
+              tooltip="Preview this battle's result so far"
+            >
+              View Result
+            </Button>
+            <Button className="w-full" disabled={!matchContext} onClick={() => setConfirmOpen(true)} tooltip="Submit this battle's result">
+              Submit Result
+            </Button>
+          </div>
+
+          <PlayerScorePanel
+            state={player2}
+            bonusPenalties={committedPenalties(player1)}
+            onIncrementFinish={(kind) => incrementFinish("right", kind)}
+            onDecrementFinish={(kind) => decrementFinish("right", kind)}
+            onPenaltyPlus={() => penaltyPlus("right")}
+            onPenaltyMinus={() => penaltyMinus("right")}
+          />
+        </div>
       </div>
 
       <nav
-        aria-label="Player view sections"
+        aria-label="Judge console actions"
         className="fixed inset-x-0 bottom-0 z-40 flex border-t border-outline-variant/25 bg-surface-container-lowest lg:hidden"
       >
-        {NAV_ITEMS.slice(0, 2).map(({ id, label, icon: Icon }) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
-          >
-            <Icon className="h-5 w-5" aria-hidden="true" />
-            <span className="label-mono !text-[8px]">{label}</span>
-          </a>
-        ))}
-
-        {/* Brand mark, dead center of the bar between Tournament and
-            Matches — doubles as a link back home. */}
-        <Link
-          href="/"
-          aria-label="PlayerXJudge home"
-          className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-on-surface transition-colors hover:text-primary"
+        <button
+          type="button"
+          onClick={handleSwitch}
+          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
         >
+          <RefreshCw className="h-5 w-5" aria-hidden="true" />
+          <span className="label-mono !text-[8px]">Switch</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleClear}
+          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
+        >
+          <Trash2 className="h-5 w-5" aria-hidden="true" />
+          <span className="label-mono !text-[8px]">Clear</span>
+        </button>
+        <Link href="/" className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-on-surface transition-colors hover:text-primary">
           <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 1024 1024">
           <g>
           <path d="M 185.75 653.17 C185.59,732.86 185.16,774.43 184.50,774.63 C183.95,774.79 181.02,772.64 178.00,769.84 C174.98,767.05 170.25,763.07 167.50,760.99 C164.75,758.92 160.95,755.60 159.05,753.61 C157.16,751.63 155.13,749.99 154.55,749.99 C153.97,749.98 151.48,748.04 149.00,745.68 C146.52,743.31 142.02,739.54 139.00,737.30 C135.98,735.06 131.95,731.60 130.05,729.61 C128.16,727.63 126.13,725.99 125.55,725.97 C124.97,725.96 122.19,723.82 119.37,721.22 C116.54,718.62 111.93,714.56 109.12,712.19 L 104.00 707.89 L 104.00 321.17 L 107.75 317.70 C114.28,311.66 125.99,301.58 129.20,299.25 C130.90,298.02 134.38,295.09 136.95,292.75 C139.51,290.41 146.05,284.90 151.49,280.50 C156.92,276.10 164.62,269.58 168.58,266.00 C175.10,260.12 188.45,248.73 202.32,237.20 C205.17,234.83 211.32,229.57 216.00,225.51 C220.68,221.44 229.00,214.27 234.50,209.56 C247.95,198.06 259.63,187.85 268.35,180.00 C278.96,170.44 294.90,157.00 295.62,157.00 C295.97,157.00 299.23,154.11 302.88,150.57 C306.52,147.04 310.85,143.12 312.50,141.87 C314.15,140.62 318.88,136.64 323.00,133.01 C327.12,129.39 331.45,125.77 332.62,124.96 C333.79,124.16 337.10,121.58 339.99,119.23 C344.13,115.86 345.53,115.20 346.62,116.10 C347.79,117.07 347.97,148.97 347.75,323.87 L 347.50 530.50 L 287.50 531.11 C254.50,531.44 218.16,531.78 206.75,531.86 L 186.01 532.00 ZM 699.13 900.34 C697.65,902.12 696.72,902.39 695.67,901.33 C695.30,900.97 695.00,827.90 695.00,738.96 C695.00,603.45 695.22,577.06 696.37,576.11 C697.35,575.30 708.87,575.05 737.10,575.24 L 776.47 575.50 L 777.18 579.50 C777.57,581.70 777.91,613.54 777.94,650.25 C777.98,695.02 778.34,717.00 779.02,717.00 C779.58,717.00 781.95,715.30 784.27,713.22 C786.60,711.14 790.75,707.68 793.50,705.53 C796.25,703.38 800.85,699.57 803.72,697.06 C817.04,685.41 828.69,675.10 833.33,670.86 L 838.40 666.22 L 838.24 512.86 C838.14,428.51 838.05,358.94 838.03,358.26 C838.02,357.57 836.10,355.64 833.77,353.95 C831.45,352.27 825.79,347.32 821.20,342.95 C816.61,338.58 812.53,335.00 812.13,335.00 C811.72,335.00 807.37,331.26 802.45,326.70 C797.53,322.13 792.45,317.67 791.16,316.79 C789.88,315.91 785.83,312.30 782.16,308.76 C778.50,305.23 774.75,301.92 773.84,301.42 C772.92,300.91 770.22,298.69 767.84,296.48 C765.45,294.26 761.03,290.44 758.01,287.98 C754.99,285.51 750.04,281.17 747.01,278.32 C743.98,275.47 739.70,271.80 737.50,270.16 C735.30,268.52 731.06,264.89 728.08,262.09 C725.10,259.29 722.40,256.99 722.08,256.98 C721.76,256.98 719.03,254.68 716.00,251.88 C712.97,249.08 708.25,245.09 705.50,243.02 C702.95,241.09 701.10,240.08 699.79,238.61 C696.41,234.82 696.46,227.97 696.71,194.69 C696.75,190.34 696.78,185.54 696.82,180.24 C697.09,136.53 697.40,126.13 698.43,126.74 C699.13,127.16 703.04,130.48 707.10,134.13 C718.40,144.26 728.63,153.14 733.29,156.86 C735.61,158.71 741.22,163.77 745.77,168.11 C750.33,172.45 754.38,176.01 754.77,176.03 C755.17,176.04 757.53,177.91 760.00,180.18 C762.47,182.45 767.42,186.67 771.00,189.55 C774.58,192.44 779.97,197.36 783.00,200.49 C786.03,203.62 789.22,206.48 790.10,206.84 C790.97,207.20 795.02,210.50 799.10,214.17 C810.70,224.61 825.07,237.15 830.00,241.14 C832.47,243.14 836.85,247.07 839.72,249.89 C842.59,252.70 845.21,255.00 845.53,255.00 C846.15,255.00 863.32,269.80 872.93,278.61 C875.99,281.43 879.03,283.90 879.68,284.11 C880.32,284.33 883.96,287.47 887.75,291.11 C891.55,294.74 895.15,297.89 895.77,298.11 C896.39,298.32 900.48,301.76 904.87,305.75 C909.26,309.74 913.25,313.00 913.74,313.00 C914.23,313.00 915.84,314.26 917.31,315.80 L 920.00 318.61 L 920.00 708.84 L 911.76 716.42 C907.23,720.59 903.10,724.00 902.59,724.00 C902.08,724.00 898.92,726.51 895.58,729.58 C892.24,732.64 885.22,738.77 880.00,743.18 C859.35,760.63 854.59,764.73 848.17,770.55 C844.50,773.87 839.70,777.92 837.50,779.54 C835.30,781.16 830.30,785.52 826.38,789.24 C822.47,792.96 818.96,796.00 818.59,796.00 C818.22,796.00 814.20,799.58 809.66,803.96 C805.12,808.34 799.63,813.22 797.46,814.81 C795.28,816.40 786.08,824.31 777.00,832.38 C767.92,840.45 760.05,847.39 759.50,847.79 C758.32,848.65 746.58,859.01 732.91,871.25 C727.54,876.06 722.94,880.00 722.69,880.00 C722.44,880.00 718.54,883.47 714.03,887.72 C709.52,891.96 704.62,896.16 703.16,897.05 C701.70,897.95 699.88,899.42 699.13,900.34 ZM 187.75 446.92 C190.41,448.47 264.24,448.36 265.80,446.80 C266.71,445.89 267.00,427.42 267.00,369.80 C267.00,301.15 266.85,294.00 265.41,294.00 C263.43,294.00 259.67,296.78 251.14,304.57 C247.49,307.90 242.25,312.25 239.50,314.23 C236.75,316.20 233.41,318.98 232.08,320.41 C230.74,321.83 229.20,323.00 228.66,323.00 C228.11,323.00 224.66,325.81 220.99,329.25 C217.32,332.69 209.90,339.10 204.49,343.50 C199.09,347.90 192.72,353.24 190.33,355.38 L 186.00 359.25 L 186.00 402.58 C186.00,442.78 186.13,445.97 187.75,446.92 Z" fill="rgb(256,256,256)"/>
@@ -107,18 +457,52 @@ export function PlayerViewShell({
           </g>
           </svg>
         </Link>
-
-        {NAV_ITEMS.slice(2).map(({ id, label, icon: Icon }) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
-          >
-            <Icon className="h-5 w-5" aria-hidden="true" />
-            <span className="label-mono !text-[8px]">{label}</span>
-          </a>
-        ))}
+        <Link
+          href={`/tournaments/${slug}/player`}
+          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
+        >
+          <Trophy className="h-5 w-5" aria-hidden="true" />
+          <span className="label-mono !text-[8px]">Tournament</span>
+        </Link>
+        <form action={signOutJudgeSession.bind(null, slug)} className="flex flex-1">
+          <button type="submit" className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary">
+            <LogOut className="h-5 w-5" aria-hidden="true" />
+            <span className="label-mono !text-[8px]">Sign Out</span>
+          </button>
+        </form>
       </nav>
+
+      <ConfirmResultDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        player1Name={name1}
+        player2Name={name2}
+        score1={score1}
+        score2={score2}
+        onBothConfirmed={handleBothConfirmed}
+        saving={saving}
+        error={saveError}
+      />
+
+      <JudgeViewResultDialog
+        open={viewResultOpen}
+        onOpenChange={setViewResultOpen}
+        round={matchContext?.round ?? null}
+        matchNumber={matchContext?.matchNumber ?? null}
+        player1Name={name1}
+        player2Name={name2}
+        player1={player1}
+        player2={player2}
+        score1={score1}
+        score2={score2}
+      />
+
+      <JudgeStadiumPromptDialog
+        open={stadiumPromptOpen}
+        onOpenChange={setStadiumPromptOpen}
+        stations={stations}
+        onSelect={handleStationChange}
+      />
     </div>
   );
 }

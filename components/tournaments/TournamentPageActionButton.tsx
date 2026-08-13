@@ -15,20 +15,34 @@ export function TournamentPageActionButton({
   tournament,
   hasStarted,
   completed,
+  canJudge,
 }: {
   tournament: MockTournament;
   hasStarted: boolean;
   completed: boolean;
+  // Whether the signed-in visitor is this tournament's organizer or one of
+  // its approved judges (see canJudgeTournament in app/tournaments/[slug]/page.tsx)
+  // — shows a second "Judge Scoring!" button straight to their console.
+  canJudge: boolean;
 }) {
   const [preRegisterOpen, setPreRegisterOpen] = useState(false);
   const actionLabel = completed ? "View Result" : hasStarted ? "Go Shoot!" : "Register Now";
   const actionTooltip = completed ? "See the final results" : hasStarted ? "Watch this tournament live" : "Register for this tournament";
 
+  const judgeButton = canJudge ? (
+    <Button asChild size="lg" variant="outline" className="mt-3 w-full" tooltip="Open the judge scoring console for this tournament">
+      <Link href={`/tournaments/${tournament.slug}/judge`}>Judge Scoring!</Link>
+    </Button>
+  ) : null;
+
   if (hasStarted) {
     return (
-      <Button asChild size="lg" className="w-full" tooltip={actionTooltip}>
-        <Link href={`/tournaments/${tournament.slug}/player`}>{actionLabel}</Link>
-      </Button>
+      <>
+        <Button asChild size="lg" className="w-full" tooltip={actionTooltip}>
+          <Link href={`/tournaments/${tournament.slug}/player`}>{actionLabel}</Link>
+        </Button>
+        {judgeButton}
+      </>
     );
   }
 
@@ -37,6 +51,7 @@ export function TournamentPageActionButton({
       <Button size="lg" className="w-full" tooltip={actionTooltip} onClick={() => setPreRegisterOpen(true)}>
         {actionLabel}
       </Button>
+      {judgeButton}
       <PreRegisterDialog tournament={tournament} open={preRegisterOpen} onOpenChange={setPreRegisterOpen} />
     </>
   );

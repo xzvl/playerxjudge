@@ -35,7 +35,11 @@ export default async function AdminDashboardPage() {
     const supabase = await createClient();
     const { data } = await supabase
       .from("profile_roles")
-      .select("id, role, requested_at, profiles(username, display_name)")
+      // `profiles!profile_roles_profile_id_fkey` disambiguates the embed —
+      // profile_roles has two FKs into profiles (profile_id and
+      // decided_by), so the bare `profiles(...)` shorthand is rejected as
+      // ambiguous (PGRST201).
+      .select("id, role, requested_at, profiles!profile_roles_profile_id_fkey(username, display_name)")
       .eq("status", "pending")
       .order("requested_at");
 
