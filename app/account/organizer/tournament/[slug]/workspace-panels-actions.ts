@@ -61,6 +61,10 @@ export async function updateReportStatus(
   if (error) return { status: "error", message: error.message };
 
   revalidatePath(workspacePath(slug, "reports"), "layout");
+  // Also called from the organizer's cross-tournament Reports view
+  // (app/account/organizer/reports), which lists this same report — see
+  // OrganizerReportsPanel.
+  revalidatePath("/account/organizer/reports");
   return { status: "success" };
 }
 

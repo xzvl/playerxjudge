@@ -1,4 +1,4 @@
-import { UserRound } from "lucide-react";
+import { Radio, UserRound } from "lucide-react";
 
 import { PlayerNamePicker, type PlayerOption } from "@/components/tournaments/player/PlayerNamePicker";
 import { finalRankLabel } from "@/lib/final-stage-placeholder";
@@ -30,6 +30,7 @@ export function PlayerCurrentStats({
   showFinalRanking,
   tieBreakMetrics,
   tieBreakOptions,
+  currentStationName,
 }: {
   statusLabel: string;
   isOngoing: boolean;
@@ -42,6 +43,11 @@ export function PlayerCurrentStats({
   showFinalRanking: boolean;
   tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric] | null;
   tieBreakOptions: readonly { value: string; label: string }[];
+  // The stadium the selected participant is playing at right now — set
+  // only while they have a match a judge has actually started (see
+  // startMatchAtStation in JudgeConsole.tsx), null the moment it's
+  // reported or cleared.
+  currentStationName?: string | null;
 }) {
   return (
     <section id="player" className="scroll-mt-20">
@@ -52,6 +58,11 @@ export function PlayerCurrentStats({
         <span className={`label-mono px-2 py-1 ${isOngoing ? "animate-blink text-primary" : "text-on-surface/50"}`}>
           {statusLabel}
         </span>
+        {currentStationName ? (
+          <span className="label-mono flex items-center gap-1.5 bg-primary/10 px-2 py-1 text-primary">
+            <Radio className="h-3 w-3" aria-hidden="true" /> Station: {currentStationName}
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-6">

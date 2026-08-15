@@ -17,8 +17,8 @@ function ParticipantLine({ participant, isBye }: { participant: TournamentPartic
   if (!participant) return <span className="text-sm text-on-surface/40">TBD</span>;
   return (
     <span className="flex min-w-0 items-center gap-2 text-sm">
-      <span className="shrink-0 font-mono text-xs text-on-surface/40">#{participant.seed}</span>
-      <span className="truncate text-on-surface">{participant.team_name ?? participant.name}</span>
+      <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
+      <span className="truncate text-xs text-on-surface">{participant.team_name ?? participant.name}</span>
     </span>
   );
 }
@@ -28,7 +28,7 @@ function MatchCard({ index, a, b }: { index: number; a: TournamentParticipant | 
     <div className="border border-outline-variant/25 bg-surface-container-low p-1">
       <div className="flex min-h-[50px] items-center gap-3">
         <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{index + 1}</span>
-        <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <ParticipantLine participant={a} />
           <ParticipantLine participant={b} isBye={b === null} />
         </div>
@@ -77,7 +77,7 @@ export function GroupStageRound1Preview({
 
       {pairings.length > 0 ? (
         <div className="flex gap-6 overflow-auto pb-4">
-          <div className="flex w-72 shrink-0 flex-col gap-3">
+          <div className="flex w-64 shrink-0 flex-col gap-3">
             <p className="label-mono sticky top-0 bg-surface py-1 text-center text-on-surface/40">Round 1</p>
             <div className="space-y-2">
               {pairings.map((p, i) => (

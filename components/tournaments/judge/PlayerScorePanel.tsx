@@ -118,12 +118,12 @@ function BoxCell({ event }: { event: BoxEvent | undefined }) {
 
 function Stepper({ label, points, value, onPlus, onMinus }: { label: string; points: string; value: number; onPlus: () => void; onMinus: () => void }) {
   return (
-    <div className="lg:flex items-center justify-between gap-2 border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
-      <div className="flex justify-between mb-2 gap-2">
+    <div className="lg:flex items-center justify-between gap-2 border border-outline-variant/20 bg-surface-container-lowest px-2 py-2">
+      <div className="flex justify-between mb-2 gap-1 lg:gap-2">
         <p className="text-xs font-medium text-on-surface">{label}</p>
         <p className="label-mono text-[9px] text-on-surface/40">{points}</p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex justify-between gap-1 lg:gap-2">
         <button
           type="button"
           aria-label={`Decrease ${label}`}
@@ -166,7 +166,7 @@ export function PlayerScorePanel({
   let cursor = 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-2 lg:space-y-5">
       <div className="w-full space-y-1.5">
         {BOX_ROWS.map((count, rowIndex) => {
           const cells = Array.from({ length: count }, () => boxed[cursor++]);
@@ -180,7 +180,7 @@ export function PlayerScorePanel({
         })}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1 lg:space-y-2">
         {FINISH_ORDER.map((kind) => (
           <Stepper
             key={kind}

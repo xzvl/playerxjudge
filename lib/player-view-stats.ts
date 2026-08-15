@@ -66,3 +66,30 @@ export function scoreFor(participantId: string, match: Match): { mine: number; t
     ? { mine: match.score.a, theirs: match.score.b }
     : { mine: match.score.b, theirs: match.score.a };
 }
+
+export interface SideRecord {
+  wins: number;
+  played: number;
+}
+
+// "X Side" / "B Side" are this app's names for the two match seats
+// (participant_a_id / participant_b_id — same convention the judge
+// console's header uses: Player 1 defaults to X Side, Player 2 to B Side).
+// Win rate per side only counts decisively-completed matches (a tie has no
+// winner_id, so it's excluded from both `wins` and `played` rather than
+// counting as a loss).
+export function sideRecords(participantId: string, matches: Match[]): { xSide: SideRecord; bSide: SideRecord } {
+  const xSide: SideRecord = { wins: 0, played: 0 };
+  const bSide: SideRecord = { wins: 0, played: 0 };
+  for (const m of matches) {
+    if (m.status !== "completed" || !m.winner_id) continue;
+    if (m.participant_a_id === participantId) {
+      xSide.played += 1;
+      if (m.winner_id === participantId) xSide.wins += 1;
+    } else if (m.participant_b_id === participantId) {
+      bSide.played += 1;
+      if (m.winner_id === participantId) bSide.wins += 1;
+    }
+  }
+  return { xSide, bSide };
+}

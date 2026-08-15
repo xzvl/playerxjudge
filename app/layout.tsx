@@ -79,8 +79,25 @@ export default async function RootLayout({
     : null;
 
   return (
-    <html lang="en" className="dark scroll-smooth">
+    // suppressHydrationWarning is scoped to this element's own attributes
+    // only (not its subtree) — needed because the inline script below sets
+    // data-theme on the real DOM before React hydrates, which would
+    // otherwise always mismatch what the server actually rendered here.
+    // Same caveat every "apply a saved theme via a pre-hydration script"
+    // approach has (next-themes included).
+    <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-inter`}>
+        {/* Applies a saved light-theme preference before first paint — see
+            ThemeToggle. Runs as the first thing in <body> (before anything
+            else is parsed) so there's no flash of the wrong theme; the
+            default (this script doing nothing) is the dark palette
+            <html>/globals.css already render without it. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              '(function(){try{if(localStorage.getItem("theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();',
+          }}
+        />
         <Providers>
           <a
             href="#main-content"

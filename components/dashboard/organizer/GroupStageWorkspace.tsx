@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpCircle, Camera, Download, Eraser, Flame, Gavel, Maximize2, Minimize2, Info, Pencil, Play, RotateCw, Swords, Trophy, Zap } from "lucide-react";
+import { ArrowUpCircle, Camera, Download, Eraser, Flame, Gavel, Maximize2, Minimize2, Info, Pencil, Play, Radio, RotateCw, Swords, Trophy, Zap } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,25 @@ import { useDragScroll } from "@/lib/hooks/use-drag-scroll";
 import { cn } from "@/lib/utils";
 import { computeGroupStandings } from "@/lib/swiss";
 import { TIE_BREAK_OPTIONS, type SwissPoints, type TieBreakMetric } from "@/lib/validations/tournament-wizard";
-import { clearMatchResult, generateNextRound, reportMatchResult, startMatch } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import {
+  clearMatchResult,
+  generateNextRound,
+  reportMatchResult,
+  startMatch,
+  swapMatchParticipants,
+  type MatchSlot,
+} from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import type { FinishType, Match, MatchBattle, MatchScore, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+
+// What's carried through the browser's native HTML5 drag-and-drop data
+// transfer when an organizer drags a player's name off a match slot —
+// picked up by whichever other slot it's dropped on (see
+// MatchParticipantSlot) and forwarded to swapMatchParticipants as-is.
+interface DragPayload {
+  matchId: string;
+  slot: MatchSlot;
+  participantName: string;
+}
 
 export interface RosterLite {
   seed: number;
@@ -77,13 +94,74 @@ function downloadCsv(filename: string, rows: (string | number)[][]) {
   URL.revokeObjectURL(url);
 }
 
-function ParticipantLine({ participant, isBye }: { participant: RosterLite | null; isBye?: boolean }) {
+// A participant name row, draggable: a name picked up here
+// and dropped onto another eligible slot re-pairs the two matches (see
+// swapMatchParticipants). `eligible` gates both ends of the drag — the
+// match this slot belongs to needs to be unplayed and unlocked, same as the
+// server re-checks — so a slot that can't be dragged also can't be dropped
+// onto.
+function MatchParticipantSlot({
+  participant,
+  isBye,
+  matchId,
+  slot,
+  eligible,
+  onSwap,
+}: {
+  participant: RosterLite | null;
+  isBye?: boolean;
+  matchId: string;
+  slot: MatchSlot;
+  eligible: boolean;
+  onSwap: (from: DragPayload, to: DragPayload) => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+
   if (isBye) return <span className="text-sm italic text-on-surface/40">Bye</span>;
   if (!participant) return <span className="text-sm text-on-surface/40">TBD</span>;
+
+  const name = participant.teamName ?? participant.name;
+
+  function handleDragStart(e: DragEvent<HTMLSpanElement>) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/json", JSON.stringify({ matchId, slot, participantName: name } satisfies DragPayload));
+  }
+
+  function handleDragOver(e: DragEvent<HTMLSpanElement>) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOver(true);
+  }
+
+  function handleDrop(e: DragEvent<HTMLSpanElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    let payload: DragPayload;
+    try {
+      payload = JSON.parse(e.dataTransfer.getData("application/json"));
+    } catch {
+      return;
+    }
+    if (payload.matchId === matchId && payload.slot === slot) return;
+    onSwap(payload, { matchId, slot, participantName: name });
+  }
+
   return (
-    <span className="flex min-w-0 items-center gap-2 text-sm">
-      <span className="shrink-0 font-mono text-xs text-on-surface/40">#{participant.seed}</span>
-      <span className="truncate text-on-surface">{participant.teamName ?? participant.name}</span>
+    <span
+      draggable={eligible}
+      onDragStart={eligible ? handleDragStart : undefined}
+      onDragOver={eligible ? handleDragOver : undefined}
+      onDragLeave={eligible ? () => setDragOver(false) : undefined}
+      onDrop={eligible ? handleDrop : undefined}
+      title={eligible ? "Drag to swap with another player" : undefined}
+      className={cn(
+        "flex min-w-0 items-center gap-2 rounded-sm text-sm transition-colors",
+        eligible && "cursor-grab active:cursor-grabbing",
+        dragOver && "bg-primary/10 ring-1 ring-primary/40"
+      )}
+    >
+      <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
+      <span className="truncate text-xs text-on-surface">{name}</span>
     </span>
   );
 }
@@ -147,9 +225,9 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
               })}
               <TimelineItem icon={Swords}>
                 Battle Result: {hi(winnerName ?? "—")} defeated {strong(loserName ?? "—")}
-              </TimelineItem>
+              </TimelineItem >
               {aCounts && bCounts ? (
-                <TimelineItem>
+                <TimelineItem icon={Swords}>
                   Finishes: {strong(`${aName}:`)} [Spin: {aCounts.spin}, Over: {aCounts.over}, Burst: {aCounts.burst}, Extreme:{" "}
                   {aCounts.extreme}, Penalty: {score.penaltiesA ?? 0}]
                   <br />
@@ -164,6 +242,9 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
                 <TimelineItem icon={Gavel}>
                   Judge: {hi(score.judgeName)} {score.judgeUsername ? <span className="text-primary">@{score.judgeUsername}</span> : null}
                 </TimelineItem>
+              ) : null}
+              {score.station ? (
+                <TimelineItem icon={Radio}>Station: {hi(score.station)}</TimelineItem>
               ) : null}
               {score.screenshotUrl ? (
                 <TimelineItem icon={Camera}>
@@ -320,6 +401,7 @@ function MatchRow({
   onReport,
   onDetails,
   onClear,
+  onSwap,
 }: {
   match: Match;
   participantsById: Map<string, RosterLite>;
@@ -329,6 +411,7 @@ function MatchRow({
   onReport: () => void;
   onDetails: () => void;
   onClear: () => void;
+  onSwap: (from: DragPayload, to: DragPayload) => void;
 }) {
   const a = match.participant_a_id ? participantsById.get(match.participant_a_id) ?? null : null;
   const isBye = match.participant_b_id === null;
@@ -336,11 +419,14 @@ function MatchRow({
   const score = isScore(match.score) ? match.score : null;
   const aWins = score !== null && match.winner_id === match.participant_a_id;
   const bWins = score !== null && match.winner_id === match.participant_b_id;
+  // Only an unplayed, unlocked match's names can be dragged or dropped onto
+  // — matches swapMatchParticipants' own check.
+  const swappable = !locked && match.status === "scheduled";
 
   return (
     <div
       className={cn(
-        "group relative border p-1",
+        "group relative border lg:p-1",
         match.status === "ongoing" ? "border-primary/60 bg-primary/5" : "border-outline-variant/25 bg-surface-container-low"
       )}
     >
@@ -348,11 +434,11 @@ function MatchRow({
         <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{match.match_number}</span>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
-            <ParticipantLine participant={a} />
+            <MatchParticipantSlot participant={a} matchId={match.id} slot="a" eligible={swappable && a !== null} onSwap={onSwap} />
             {score ? <ScoreChip value={score.a} isWinner={aWins} isLoser={bWins} /> : null}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <ParticipantLine participant={b} isBye={isBye} />
+            <MatchParticipantSlot participant={b} isBye={isBye} matchId={match.id} slot="b" eligible={swappable && b !== null} onSwap={onSwap} />
             {score && !isBye ? <ScoreChip value={score.b} isWinner={bWins} isLoser={aWins} /> : null}
           </div>
         </div>
@@ -406,6 +492,7 @@ function RoundColumn({
   onReport,
   onDetails,
   onClear,
+  onSwap,
 }: {
   round: number;
   matches: Match[];
@@ -420,9 +507,10 @@ function RoundColumn({
   onReport: (m: Match) => void;
   onDetails: (m: Match) => void;
   onClear: (m: Match) => void;
+  onSwap: (from: DragPayload, to: DragPayload) => void;
 }) {
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-3">
+    <div className="flex w-64 shrink-0 flex-col gap-3">
       <p className="label-mono sticky top-0 bg-surface py-1 text-center text-on-surface/40">Round {round}</p>
       {isGenerated ? (
         <div className="space-y-2">
@@ -437,6 +525,7 @@ function RoundColumn({
               onReport={() => onReport(m)}
               onDetails={() => onDetails(m)}
               onClear={() => onClear(m)}
+              onSwap={onSwap}
             />
           ))}
         </div>
@@ -533,6 +622,21 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
     });
   }
 
+  function handleSwap(from: DragPayload, to: DragPayload) {
+    setError(null);
+    startTransition(async () => {
+      const result = await swapMatchParticipants(slug, from, to);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      if (result.matches) {
+        const updated = result.matches;
+        setMatches((prev) => prev.map((m) => updated.find((u) => u.id === m.id) ?? m));
+      }
+    });
+  }
+
   const rounds = Array.from({ length: swissRoundsCap }, (_, i) => i + 1);
 
   return (
@@ -550,7 +654,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
 
       <div
         ref={scrollRef}
-        className="flex max-h-[70vh] cursor-grab select-none gap-6 overflow-auto pb-4 active:cursor-grabbing"
+        className="flex max-h-[85vh] lg:max-h-[75vh] cursor-grab select-none gap-6 overflow-auto px-1 pb-4 active:cursor-grabbing"
       >
         {rounds.map((r) => (
           <RoundColumn
@@ -568,6 +672,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
             onReport={setReportingMatch}
             onDetails={setDetailsMatch}
             onClear={setClearingMatch}
+            onSwap={handleSwap}
           />
         ))}
       </div>
@@ -650,22 +755,22 @@ export function GroupStandingsTable({
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.participantId} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
-              <td className="p-3 font-mono text-on-surface/60">{i + 1}</td>
-              <td className="p-3 font-medium text-on-surface">
+              <td className="px-3 py-2 text-sm text-on-surface/60">{i + 1}</td>
+              <td className="px-3 py-2 text-sm text-on-surface">
                 {showAdvanceTags && i < advanceCount! ? (
                   <span className="label-mono mr-2 inline-block bg-error px-1.5 py-0.5 text-[10px] text-on-error">ADV</span>
                 ) : null}
                 {r.teamName ?? r.name}
               </td>
-              <td className="p-3 text-on-surface/60">
+              <td className="px-3 py-2 text-sm text-on-surface/60">
                 {r.wins}-{r.losses}-{r.ties}
               </td>
-              <td className="p-3 font-mono text-on-surface">{formatMetric(r.score)}</td>
-              <td className="p-3 text-on-surface/60">{formatMetric(r.tieBreak1, tieBreakMetrics[0])}</td>
-              <td className="p-3 text-on-surface/60">{formatMetric(r.tieBreak2, tieBreakMetrics[1])}</td>
-              <td className="p-3 text-on-surface/60">{formatMetric(r.tieBreak3, tieBreakMetrics[2])}</td>
-              <td className="p-3 text-on-surface/60">{r.winsVsTied}</td>
-              <td className="p-3">
+              <td className="px-3 py-2 text-sm font-mono text-on-surface">{formatMetric(r.score)}</td>
+              <td className="px-3 py-2 text-sm text-on-surface/60">{formatMetric(r.tieBreak1, tieBreakMetrics[0])}</td>
+              <td className="px-3 py-2 text-sm text-on-surface/60">{formatMetric(r.tieBreak2, tieBreakMetrics[1])}</td>
+              <td className="px-3 py-2 text-sm text-on-surface/60">{formatMetric(r.tieBreak3, tieBreakMetrics[2])}</td>
+              <td className="px-3 py-2 text-sm text-on-surface/60">{r.winsVsTied}</td>
+              <td className="px-3 py-2 text-sm">
                 <div className="flex gap-1">
                   {r.matchHistory.map((m, idx) => (
                     <span

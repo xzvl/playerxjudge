@@ -23,8 +23,8 @@ function ParticipantLine({ participant, isBye }: { participant: RosterLite | nul
   if (!participant) return <span className="text-sm text-on-surface/40">TBD</span>;
   return (
     <span className="flex min-w-0 items-center gap-2 text-sm">
-      <span className="shrink-0 font-mono text-xs text-on-surface/40">#{participant.seed}</span>
-      <span className="truncate text-on-surface">{participant.teamName ?? participant.name}</span>
+      <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
+      <span className="truncate text-xs text-on-surface">{participant.teamName ?? participant.name}</span>
     </span>
   );
 }
@@ -67,12 +67,12 @@ function MatchRow({
   return (
     <div
       className={cn(
-        "group relative border p-1",
+        "group relative border lg:p-1",
         match.status === "ongoing" ? "border-primary/60 bg-primary/5" : "border-outline-variant/25 bg-surface-container-low",
         isSelectedMatch && "ring-2 ring-primary/70"
       )}
     >
-      <div className="flex min-h-[50px] items-center gap-3">
+      <div className="flex min-h-[48px] items-center gap-3">
         <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{match.match_number}</span>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
@@ -113,7 +113,7 @@ function RoundColumn({
   selectedParticipantId?: string | null;
 }) {
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-3">
+    <div className="flex w-64 shrink-0 flex-col gap-3">
       <p className="label-mono sticky top-0 bg-surface py-1 text-center text-on-surface/40">Round {round}</p>
       {matches.length > 0 ? (
         <div className="space-y-2">
@@ -160,7 +160,7 @@ export function ReadOnlyGroupMatches({
 
   return (
     <div>
-      <div ref={scrollRef} className="flex max-h-[70vh] cursor-grab select-none gap-6 overflow-auto pb-4 active:cursor-grabbing">
+      <div ref={scrollRef} className="flex max-h-[85vh] lg:max-h-[75vh] cursor-grab select-none gap-6 overflow-auto px-1 pb-4 active:cursor-grabbing">
         {rounds.map((r) => (
           <RoundColumn
             key={r}

@@ -16,9 +16,10 @@ import {
   placeholderSlots,
   qualifiedSlots,
 } from "@/lib/final-stage-placeholder";
-import { computeFinishCounts, participantMatches } from "@/lib/player-view-stats";
+import { computeFinishCounts, participantMatches, sideRecords } from "@/lib/player-view-stats";
 import { TIE_BREAK_OPTIONS } from "@/lib/validations/tournament-wizard";
 import { getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
+import { createClient } from "@/lib/supabase/server";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -135,6 +136,27 @@ export default async function TournamentPlayerPage({
   const selectedParticipant = selectedId ? participants.find((p) => p.id === selectedId) ?? null : null;
   const groupRow = selectedId ? standingsByParticipantId.get(selectedId) ?? null : null;
 
+  // Which stadium the selected participant is playing at right now, if any
+  // — the judge console assigns a match to a station the moment it's
+  // started (startMatchAtStation in JudgeConsole.tsx) and clears it again
+  // on submit, so "ongoing" here always means "actually up at that
+  // station", not just "the pairing exists". tournament_stations is
+  // publicly selectable (see 20250101000030_judge_station_updates.sql) same
+  // as groups/participants/matches already are on this page.
+  const selectedOngoingMatch = selectedId
+    ? matches.find((m) => m.status === "ongoing" && (m.participant_a_id === selectedId || m.participant_b_id === selectedId))
+    : null;
+  let currentStationName: string | null = null;
+  if (selectedOngoingMatch) {
+    const supabase = await createClient();
+    const { data: stationRow } = await supabase
+      .from("tournament_stations")
+      .select("name")
+      .eq("current_match_id", selectedOngoingMatch.id)
+      .maybeSingle();
+    currentStationName = stationRow?.name ?? null;
+  }
+
   const groupLabelById = new Map(groups.map((g) => [g.id, g.label]));
   function stageLabelFor(match: { group_id: string | null }): string {
     if (match.group_id === null) return "Final";
@@ -156,6 +178,9 @@ export default async function TournamentPlayerPage({
   const selectedMatches = selectedId ? participantMatches(selectedId, matches) : [];
   const selectedFinishCounts = selectedId ? computeFinishCounts(selectedId, matches) : { burst: 0, spin: 0, extreme: 0, over: 0 };
   const matchesPlayed = selectedMatches.filter((m) => m.status === "completed").length;
+  const { xSide, bSide } = selectedId
+    ? sideRecords(selectedId, selectedMatches)
+    : { xSide: { wins: 0, played: 0 }, bSide: { wins: 0, played: 0 } };
 
   return (
     <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
@@ -173,6 +198,7 @@ export default async function TournamentPlayerPage({
             showFinalRanking={finalStageStarted}
             tieBreakMetrics={tieBreakMetrics}
             tieBreakOptions={TIE_BREAK_OPTIONS}
+            currentStationName={currentStationName}
           />
 
           <PlayerStagesSection
@@ -213,6 +239,8 @@ export default async function TournamentPlayerPage({
             finishCounts={selectedFinishCounts}
             matchesPlayed={matchesPlayed}
             matchesSeated={selectedMatches.length}
+            xSide={xSide}
+            bSide={bSide}
           />
         </div>
       </div>

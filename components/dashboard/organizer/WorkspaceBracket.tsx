@@ -31,8 +31,8 @@ function ParticipantLine({ participant }: { participant: WorkspaceParticipant | 
   if (!participant) return <span className="text-sm text-on-surface/40">TBD</span>;
   return (
     <span className="flex min-w-0 items-center gap-2 text-sm">
-      <span className="shrink-0 font-mono text-xs text-on-surface/40">#{participant.seed}</span>
-      <span className="truncate text-on-surface">{participant.teamName ?? participant.name}</span>
+      <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
+      <span className="truncate text-xs text-on-surface">{participant.teamName ?? participant.name}</span>
     </span>
   );
 }
@@ -72,7 +72,7 @@ function BracketMatchCard({
   return (
     <div
       className={cn(
-        "group relative border p-1",
+        "group relative border lg:p-1",
         match.status === "in_progress" ? "border-primary/60 bg-primary/5" : "border-outline-variant/25 bg-surface-container-low",
         isSelectedMatch && "ring-2 ring-primary/70"
       )}
@@ -233,11 +233,11 @@ export function WorkspaceBracket({
   }
 
   return (
-    <div ref={scrollRef} className="flex max-h-[70vh] cursor-grab select-none overflow-auto pb-4 active:cursor-grabbing">
+    <div ref={scrollRef} className="flex max-h-[85vh] lg:max-h-[75vh] cursor-grab select-none overflow-auto px-1 pb-4 active:cursor-grabbing">
       {rounds.map((round, r) => (
         <div key={round.label} className="flex shrink-0">
           {r > 0 ? <RoundConnector matchCount={rounds[r - 1].matches.length} /> : null}
-          <div className="flex w-72 shrink-0 flex-col gap-3">
+          <div className="flex w-64 shrink-0 flex-col gap-3">
             <ColumnHeader>{hideRoundLabels ? undefined : round.label}</ColumnHeader>
             <div className="flex flex-1 flex-col justify-around gap-3">
               {round.matches.map((match, i) => (

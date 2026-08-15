@@ -1,5 +1,5 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { FINISH_LABEL, totalFinishes, type FinishCounts } from "@/lib/player-view-stats";
+import { FINISH_LABEL, totalFinishes, type FinishCounts, type SideRecord } from "@/lib/player-view-stats";
 import type { FinishType } from "@/lib/types/database";
 
 function initials(name: string) {
@@ -7,7 +7,16 @@ function initials(name: string) {
   return parts.slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 }
 
-function StatBar({ label, value, percent }: { label: string; value: number; percent: number }) {
+// Win rate display for a SideRecord — "—" (not "0%") when the player has
+// never sat on this side yet, so an unplayed side reads as "no data" rather
+// than "always loses here".
+function sideWinPercent(record: SideRecord): { value: string; percent: number } {
+  if (record.played === 0) return { value: "—", percent: 0 };
+  const percent = (record.wins / record.played) * 100;
+  return { value: `${Math.round(percent)}%`, percent };
+}
+
+function StatBar({ label, value, percent }: { label: string; value: string | number; percent: number }) {
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
@@ -28,13 +37,19 @@ export function PlayerStatsSidebar({
   finishCounts,
   matchesPlayed,
   matchesSeated,
+  xSide,
+  bSide,
 }: {
   playerName: string;
   finishCounts: FinishCounts;
   matchesPlayed: number;
   matchesSeated: number;
+  xSide: SideRecord;
+  bSide: SideRecord;
 }) {
   const total = totalFinishes(finishCounts);
+  const xSideWin = sideWinPercent(xSide);
+  const bSideWin = sideWinPercent(bSide);
 
   return (
     <div className="space-y-6">
@@ -62,6 +77,8 @@ export function PlayerStatsSidebar({
           value={matchesPlayed}
           percent={matchesSeated > 0 ? (matchesPlayed / matchesSeated) * 100 : 0}
         />
+        <StatBar label="X Side Win %" value={xSideWin.value} percent={xSideWin.percent} />
+        <StatBar label="B Side Win %" value={bSideWin.value} percent={bSideWin.percent} />
       </div>
     </div>
   );

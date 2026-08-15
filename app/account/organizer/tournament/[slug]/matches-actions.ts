@@ -244,6 +244,76 @@ export async function clearMatchResult(matchId: string, slug: string): Promise<R
   return { status: "success", match };
 }
 
+export type MatchSlot = "a" | "b";
+
+// Drag-and-drop re-pairing on the group stage workspace's Matches tab (see
+// MatchParticipantSlot in GroupStageWorkspace.tsx) — swaps the participants
+// seated in two match slots. Only ever offered there on unplayed matches
+// within the same round, and re-checked here since this is the actual
+// authority: swapping a completed match's participants would silently
+// rewrite a result that's already been reported, and swapping across rounds
+// would disagree with how that later round's own pairing was derived from
+// the earlier round's standings.
+export async function swapMatchParticipants(
+  slug: string,
+  from: { matchId: string; slot: MatchSlot; participantName: string },
+  to: { matchId: string; slot: MatchSlot; participantName: string }
+): Promise<RoleActionState & { matches?: Match[] }> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+  if (from.matchId === to.matchId && from.slot === to.slot) return { status: "success" };
+
+  const supabase = await createClient();
+  const { data: rows, error: fetchError } = await supabase
+    .from("matches")
+    .select("*")
+    .in("id", Array.from(new Set([from.matchId, to.matchId])));
+  if (fetchError) return { status: "error", message: fetchError.message };
+
+  const matchById = new Map(((rows as Match[] | null) ?? []).map((m) => [m.id, m]));
+  const fromMatch = matchById.get(from.matchId);
+  const toMatch = matchById.get(to.matchId);
+  if (!fromMatch || !toMatch) return { status: "error", message: "Match not found." };
+
+  if (fromMatch.status !== "scheduled" || toMatch.status !== "scheduled") {
+    return { status: "error", message: "Only unplayed matches can be re-paired." };
+  }
+  if (fromMatch.round !== toMatch.round || fromMatch.group_id !== toMatch.group_id) {
+    return { status: "error", message: "Players can only be swapped within the same round." };
+  }
+
+  const fromField = from.slot === "a" ? "participant_a_id" : "participant_b_id";
+  const toField = to.slot === "a" ? "participant_a_id" : "participant_b_id";
+  const fromParticipantId = fromMatch[fromField];
+  const toParticipantId = toMatch[toField];
+  if (!fromParticipantId || !toParticipantId) {
+    return { status: "error", message: "Both slots need a player to swap." };
+  }
+  if (fromParticipantId === toParticipantId) return { status: "success" };
+
+  // Same match, different sides just merges into one patch with both fields;
+  // two different matches get one patch each.
+  const patchByMatchId = new Map<string, Partial<Pick<Match, "participant_a_id" | "participant_b_id">>>();
+  patchByMatchId.set(fromMatch.id, { ...patchByMatchId.get(fromMatch.id), [fromField]: toParticipantId });
+  patchByMatchId.set(toMatch.id, { ...patchByMatchId.get(toMatch.id), [toField]: fromParticipantId });
+
+  const updated: Match[] = [];
+  for (const [matchId, patch] of patchByMatchId) {
+    const { data, error } = await supabase.from("matches").update(patch).eq("id", matchId).select().single();
+    if (error) return { status: "error", message: error.message };
+    updated.push(data as Match);
+  }
+
+  await logTournamentEvent(
+    fromMatch.tournament_id,
+    "Organizer",
+    `swapped ${from.participantName} and ${to.participantName} in Round ${fromMatch.round}`
+  );
+
+  revalidatePath(groupStagePath(slug), "layout");
+  return { status: "success", matches: updated };
+}
+
 // The judge scoring console's own submit (app/tournaments/[slug]/judge) —
 // same shape of write as reportMatchResult but with the full battle-by-
 // battle record a live-scored match actually has, rather than just the
@@ -269,12 +339,18 @@ export async function submitJudgedMatchResult(
     // handleBothConfirmed) — undefined if the capture/upload failed, which
     // shouldn't block the result itself from saving.
     screenshotUrl?: string;
+    // The stadium/station name the judge had claimed when they submitted
+    // (JudgeConsole's own `stations` list, matched against `stationId`) —
+    // undefined if they hadn't picked one. Snapshotted onto the result the
+    // same way judgeName/judgeUsername are, rather than a live station_id
+    // reference, so it survives that station being renamed or removed.
+    station?: string;
   }
 ): Promise<RoleActionState & { match?: Match; advancedMatches?: Match[]; advancedBrackets?: { key: string; id: string }[] }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
 
-  const { scoreA, scoreB, battles, penaltiesA, penaltiesB, judgeName, judgeUsername, participantAName, participantBName, screenshotUrl } = payload;
+  const { scoreA, scoreB, battles, penaltiesA, penaltiesB, judgeName, judgeUsername, participantAName, participantBName, screenshotUrl, station } = payload;
   if (!Number.isInteger(scoreA) || !Number.isInteger(scoreB) || scoreA < 0 || scoreB < 0) {
     return { status: "error", message: "Scores must be zero or a positive whole number." };
   }
@@ -304,6 +380,7 @@ export async function submitJudgedMatchResult(
         confirmedByBoth: true,
         inputBy: "judge",
         ...(screenshotUrl ? { screenshotUrl } : {}),
+        ...(station ? { station } : {}),
       },
       winner_id: winnerId,
       status: "completed",

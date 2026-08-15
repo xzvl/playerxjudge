@@ -104,10 +104,10 @@ export function Combobox({
         aria-expanded={open}
         aria-controls={listboxId}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 w-full items-center justify-between gap-2 border border-outline-variant/40 bg-surface-container-low px-4 py-2 text-sm text-on-surface transition-colors focus:outline-none focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-primary"
+        className="flex h-11 w-full items-center justify-between gap-2 border border-outline-variant/40 bg-surface-container-low px-2 py-2 text-sm text-on-surface transition-colors focus:outline-none focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-primary"
         data-state={open ? "open" : "closed"}
       >
-        <span className="line-clamp-1 text-left">
+        <span className="line-clamp-1 text-left text-xs font-medium text-on-surface">
           {hideLabel ? null : <span className="text-on-surface/40">{label}: </span>}
           <span className={cn(hideLabel && !selectedOption && "text-on-surface/40")}>{selectedLabel}</span>
         </span>
@@ -144,7 +144,7 @@ export function Combobox({
                   onClick={() => selectOption(option)}
                   onMouseEnter={() => setActiveIndex(i)}
                   className={cn(
-                    "flex w-full items-center gap-2 px-3 py-2 text-left text-on-surface/80",
+                    "flex w-full items-center gap-2 px-2 py-2 text-left !text-[12px] text-on-surface/80",
                     option.disabled
                       ? "cursor-not-allowed text-on-surface/30"
                       : i === activeIndex
@@ -155,7 +155,7 @@ export function Combobox({
                   <Check className={cn("h-3.5 w-3.5 shrink-0", option.value === value ? "opacity-100" : "opacity-0")} />
                   {option.label}
                   {option.disabled && option.disabledReason ? (
-                    <span className="label-mono ml-auto text-[9px] text-on-surface/30">{option.disabledReason}</span>
+                    <span className="label-mono ml-auto text-[8px] text-on-surface/30">{option.disabledReason}</span>
                   ) : null}
                 </button>
               ))

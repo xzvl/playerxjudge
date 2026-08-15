@@ -1,7 +1,6 @@
 import {
   BarChart3,
   Bell,
-  CheckSquare,
   DollarSign,
   Download,
   FileText,
@@ -91,11 +90,6 @@ const ORGANIZER_DASHBOARD_SUB_ITEMS: DashboardNavItem[] = [
     label: "Participants",
     href: "/account/organizer/participants",
     icon: <Users className="h-4 w-4 shrink-0" />,
-  },
-  {
-    label: "Check-in",
-    href: "/account/organizer/check-in",
-    icon: <CheckSquare className="h-4 w-4 shrink-0" />,
   },
   {
     label: "Export CSV",

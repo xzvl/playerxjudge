@@ -4,7 +4,10 @@ import { useEffect, useRef } from "react";
 // matches, final-stage bracket), in addition to native horizontal/vertical
 // scrollbars/wheel/trackpad scrolling. Skips capture when the press starts on
 // an interactive element so buttons/links/inputs inside the scroll area keep
-// receiving normal clicks.
+// receiving normal clicks — also skips `[draggable]` elements (the group
+// stage's player-name swap targets, see MatchParticipantSlot) since grabbing
+// pointer capture here would stop the browser's own native drag-and-drop
+// gesture from ever starting on them.
 export function useDragScroll<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
 
@@ -20,7 +23,7 @@ export function useDragScroll<T extends HTMLElement>() {
 
     function onPointerDown(e: PointerEvent) {
       if (e.button !== 0 || !el) return;
-      if ((e.target as HTMLElement | null)?.closest("button, a, input")) return;
+      if ((e.target as HTMLElement | null)?.closest("button, a, input, [draggable]")) return;
       dragging = true;
       startX = e.clientX;
       startY = e.clientY;

@@ -39,6 +39,14 @@ export type MatchStatus = "scheduled" | "ongoing" | "completed" | "disputed";
 // `interface` with the same members fails that check ("index signature is
 // missing"), which otherwise silently collapses the whole Database generic
 // to `never` wherever it's used (e.g. `createServerClient<Database>()`).
+// Mirrors the `public.user_role` Postgres enum (20250101000001_extensions_enums.sql)
+// — a profile's own single platform-level role, distinct from `AppRole`
+// below (which backs `profile_roles`, the apply-and-get-approved system for
+// player/judge/organizer/sponsor). `is_admin()` in Postgres checks this
+// same column (`role in ('admin', 'super_admin')`); the admin approval page
+// (app/account/admin) mirrors that check in the app layer.
+export type PlatformRole = "guest" | "player" | "judge" | "organizer" | "sponsor" | "admin" | "super_admin";
+
 export type Profile = {
   id: string;
   username: string;
@@ -58,14 +66,22 @@ export type Profile = {
   full_body_photo_url: string | null;
   half_body_photo_url: string | null;
   subscription_plan: SubscriptionPlan;
+  role: PlatformRole;
   created_at: string;
 };
+
+export type ProfileCommunityStatus = "pending" | "approved";
 
 export type ProfileCommunity = {
   id: string;
   profile_id: string;
   community_id: string;
   created_at: string;
+  // Mirrors supabase/migrations/20250101000032_community_join_requests.sql —
+  // a player picking a community in Account Settings now requests to join
+  // (pending) rather than joining outright; an organizer accepts/declines it
+  // on the community's Members page.
+  status: ProfileCommunityStatus;
 };
 
 export type ProfileRole = {
@@ -347,6 +363,11 @@ export type MatchScore = {
   screenshotUrl?: string;
   confirmedByBoth?: boolean;
   inputBy?: "organizer" | "judge";
+  // The stadium/station this match was played at (tournament_stations.name),
+  // snapshotted at submit time — see submitJudgedMatchResult. A name, not a
+  // station id, since a station can be renamed or removed later and the
+  // result should still say where it actually happened.
+  station?: string;
 };
 
 // Mirrors supabase/migrations/20250101000003_tournament_tables.sql's
@@ -444,6 +465,48 @@ export type CommunityRow = {
   owner_id: string | null;
   created_at: string;
   updated_at: string;
+  // Mirrors supabase/migrations/20250101000031_community_profile_fields.sql
+  // — the Create Community form's own Location/Social Media sections. Free-
+  // text `province` (not `province_id` above, unused by that form) mirrors
+  // the same address_line/city/province/lat/lng shape the tournament wizard
+  // settled on — see Tournament's own `province` field for why.
+  headquarter_name: string | null;
+  address_line: string | null;
+  city: string | null;
+  province: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  alt_logo_url: string | null;
+  pin_logo_url: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  youtube_url: string | null;
+  messenger_url: string | null;
+  // Mirrors supabase/migrations/20250101000033_community_status_fields.sql.
+  started_at: string | null;
+  status: CommunityStatus;
+  // Admin-only — the organizer's own Settings form never writes this (see
+  // updateCommunity); only the admin approval page does.
+  approval_status: CommunityApprovalStatus;
+};
+
+export type CommunityStatus = "active" | "inactive";
+export type CommunityApprovalStatus = "pending" | "approved";
+
+// Mirrors supabase/migrations/20250101000003_tournament_tables.sql's
+// `organizers` table — co-organizer staff on a community (distinct from a
+// tournament's own `organizer_id`, which is always the community's owner or
+// an independent solo organizer). Nothing writes to this yet (no "invite a
+// co-organizer" flow exists), but it's real and publicly selectable
+// (organizers_select_all), so the Community Management page's "communities
+// you own or help run" reads it for real — see
+// app/account/organizer/community/page.tsx.
+export type Organizer = {
+  id: string;
+  community_id: string;
+  profile_id: string;
+  role: string;
+  created_at: string;
 };
 
 type TableDef<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
@@ -460,6 +523,7 @@ export interface Database {
       sponsors: TableDef<Sponsor>;
       notifications: TableDef<NotificationRow>;
       communities: TableDef<CommunityRow>;
+      organizers: TableDef<Organizer>;
       provinces: TableDef<Province>;
       tournaments: TableDef<Tournament>;
       tournament_groups: TableDef<TournamentGroup>;

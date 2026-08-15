@@ -1,23 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Flag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportStatusBadge } from "@/components/dashboard/organizer/badges";
 import { formatDate } from "@/lib/format";
-import { MOCK_REPORTS, type MockReport, type ReportStatus } from "@/lib/mock/organizer-dashboard";
+import { updateReportStatus } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
+import type { TournamentReportStatus } from "@/lib/types/database";
 
-export function ReportsPanel() {
-  const [reports, setReports] = useState<MockReport[]>(MOCK_REPORTS);
+export interface OrganizerReportItem {
+  id: string;
+  tournamentSlug: string;
+  tournamentTitle: string;
+  reporterName: string;
+  targetLabel: string;
+  reason: string;
+  status: TournamentReportStatus;
+  createdAt: string;
+}
+
+// Cross-tournament version of TournamentReportsPanel (which this otherwise
+// mirrors) — one report can belong to any of the organizer's tournaments, so
+// each row carries its own `tournamentSlug` to pass into updateReportStatus
+// rather than a single slug prop.
+export function ReportsPanel({ reports }: { reports: OrganizerReportItem[] }) {
+  const [items, setItems] = useState<OrganizerReportItem[]>(reports);
   const [view, setView] = useState<"open" | "closed">("open");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  function setStatus(id: string, status: ReportStatus) {
-    setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  function setStatus(report: OrganizerReportItem, status: TournamentReportStatus) {
+    setError(null);
+    startTransition(async () => {
+      const result = await updateReportStatus(report.id, report.tournamentSlug, status);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      setItems((prev) => prev.map((r) => (r.id === report.id ? { ...r, status } : r)));
+    });
   }
 
-  const visible = reports.filter((r) => (view === "open" ? r.status === "open" : r.status !== "open"));
+  const visible = items.filter((r) => (view === "open" ? r.status === "open" : r.status !== "open"));
 
   return (
     <div>
@@ -27,6 +53,12 @@ export function ReportsPanel() {
           <TabsTrigger value="closed">Resolved &amp; Dismissed</TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {error ? (
+        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
       {visible.length > 0 ? (
         <ul className="space-y-3">
@@ -42,15 +74,27 @@ export function ReportsPanel() {
                 </div>
                 <p className="mt-1 text-sm text-on-surface/60">{r.reason}</p>
                 <p className="label-mono mt-2 text-on-surface/30">
-                  Reported by {r.reporterName} &middot; {formatDate(r.createdAt)}
+                  {r.tournamentTitle} &middot; Reported by {r.reporterName} &middot; {formatDate(r.createdAt)}
                 </p>
               </div>
               {r.status === "open" ? (
                 <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" tooltip="Mark this report resolved" onClick={() => setStatus(r.id, "resolved")}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    tooltip="Mark this report resolved"
+                    disabled={pending}
+                    onClick={() => setStatus(r, "resolved")}
+                  >
                     Resolve
                   </Button>
-                  <Button variant="outline" size="sm" tooltip="Dismiss this report" onClick={() => setStatus(r.id, "dismissed")}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    tooltip="Dismiss this report"
+                    disabled={pending}
+                    onClick={() => setStatus(r, "dismissed")}
+                  >
                     Dismiss
                   </Button>
                 </div>
@@ -59,7 +103,8 @@ export function ReportsPanel() {
                   variant="outline"
                   size="sm"
                   tooltip="Reopen this report"
-                  onClick={() => setStatus(r.id, "open")}
+                  disabled={pending}
+                  onClick={() => setStatus(r, "open")}
                   className="shrink-0"
                 >
                   Reopen

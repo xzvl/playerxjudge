@@ -84,21 +84,38 @@ export async function updateTournamentInfo(input: TournamentInfoInput): Promise<
 
   if (profileError) return { status: "error", message: profileError.message };
 
-  const { error: deleteError } = await supabase
+  // Diff against what's already there rather than delete-then-reinsert
+  // everything — a community that's still selected keeps whatever status an
+  // organizer already gave it (see 20250101000032_community_join_requests.sql);
+  // re-inserting it here would silently reset an approved membership back to
+  // a pending request every time this form is saved. Only genuinely new
+  // picks land as a fresh (pending) request; only genuinely removed ones are
+  // deleted.
+  const { data: existingRows, error: existingError } = await supabase
     .from("profile_communities")
-    .delete()
+    .select("community_id")
     .eq("profile_id", user.id);
+  if (existingError) return { status: "error", message: existingError.message };
 
-  if (deleteError) return { status: "error", message: deleteError.message };
+  const existingIds = new Set((existingRows ?? []).map((r) => r.community_id));
+  const selectedIds = new Set(parsed.data.communityIds);
+  const toRemove = [...existingIds].filter((id) => !selectedIds.has(id));
+  const toAdd = [...selectedIds].filter((id) => !existingIds.has(id));
 
-  const { error: insertError } = await supabase.from("profile_communities").insert(
-    parsed.data.communityIds.map((communityId) => ({
-      profile_id: user.id,
-      community_id: communityId,
-    }))
-  );
+  if (toRemove.length > 0) {
+    const { error } = await supabase.from("profile_communities").delete().eq("profile_id", user.id).in("community_id", toRemove);
+    if (error) return { status: "error", message: error.message };
+  }
 
-  if (insertError) return { status: "error", message: insertError.message };
+  if (toAdd.length > 0) {
+    const { error } = await supabase.from("profile_communities").insert(
+      toAdd.map((communityId) => ({
+        profile_id: user.id,
+        community_id: communityId,
+      }))
+    );
+    if (error) return { status: "error", message: error.message };
+  }
 
   revalidatePath("/account/settings");
   return { status: "success", message: "Tournament information updated." };

@@ -21,6 +21,15 @@ export async function getCurrentProfile(): Promise<Profile | null> {
   return (data as Profile | null) ?? null;
 }
 
+// Mirrors the Postgres `is_admin()` helper (role in ('admin', 'super_admin'))
+// — the app-layer check for gating things like app/account/admin, since
+// there's no in-app admin role-request flow the way organizer/judge/sponsor
+// have (see profile_roles) — a profile's `role` is a platform-level column,
+// not something anyone can self-apply for.
+export function isAdminProfile(profile: Profile | null): boolean {
+  return profile?.role === "admin" || profile?.role === "super_admin";
+}
+
 export async function getCurrentUserRoles(): Promise<ProfileRole[]> {
   const user = await getCurrentUser();
   if (!user) return [];

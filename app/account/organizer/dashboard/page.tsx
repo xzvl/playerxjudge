@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BarChart3,
-  CheckSquare,
   DollarSign,
   Download,
   FileText,
@@ -19,12 +18,6 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { decideCommunityJudge } from "@/app/account/organizer/dashboard/actions";
 import { formatCompactNumber, formatCurrency } from "@/lib/format";
-import {
-  MOCK_ORGANIZED_TOURNAMENTS,
-  MOCK_ORGANIZER_REGISTRATIONS,
-  MOCK_REPORTS,
-  MOCK_REVENUE,
-} from "@/lib/mock/organizer-dashboard";
 
 export const metadata: Metadata = { title: "Organizer Dashboard", robots: { index: false, follow: false } };
 
@@ -35,7 +28,6 @@ const OTHER_FEATURES = [
   { label: "Community Management", href: "/account/organizer/community", icon: Users2 },
   { label: "Reports", href: "/account/organizer/reports", icon: FileText },
   { label: "Participants", href: "/account/organizer/participants", icon: Users },
-  { label: "Check-in", href: "/account/organizer/check-in", icon: CheckSquare },
   { label: "Export CSV", href: "/account/organizer/export-csv", icon: Download },
 ];
 
@@ -48,6 +40,10 @@ interface JudgeAssignmentRow {
 
 export default async function OrganizerDashboardPage() {
   let assignments: JudgeAssignmentRow[] = [];
+  let totalTournaments = 0;
+  let totalParticipants = 0;
+  let totalRevenue = 0;
+  let openReports = 0;
 
   if (isSupabaseConfigured) {
     const user = await getCurrentUser();
@@ -68,12 +64,39 @@ export default async function OrganizerDashboardPage() {
         .order("requested_at");
       assignments = (data as unknown as JudgeAssignmentRow[] | null) ?? [];
     }
-  }
 
-  const totalTournaments = MOCK_ORGANIZED_TOURNAMENTS.length;
-  const totalParticipants = MOCK_ORGANIZER_REGISTRATIONS.filter((r) => r.status !== "cancelled").length;
-  const totalRevenue = MOCK_REVENUE.filter((r) => r.status === "paid").reduce((sum, r) => sum + r.amount, 0);
-  const openReports = MOCK_REPORTS.filter((r) => r.status === "open").length;
+    if (user) {
+      const { data: tournamentRows } = await supabase
+        .from("tournaments")
+        .select("id, entry_fee, preregistration_amount")
+        .eq("organizer_id", user.id);
+      const tournaments = tournamentRows ?? [];
+      totalTournaments = tournaments.length;
+      const tournamentIds = tournaments.map((t) => t.id);
+
+      if (tournamentIds.length > 0) {
+        const [{ count: participantCount }, { data: preregRows }, { count: reportCount }] = await Promise.all([
+          supabase.from("tournament_participants").select("id", { count: "exact", head: true }).in("tournament_id", tournamentIds),
+          // Advance-payment pre-registrations are the only real money-tracking
+          // data in the app right now (see RevenuePanel) — "confirmed" is
+          // what the organizer marks once they've checked the uploaded
+          // screenshot.
+          supabase
+            .from("tournament_preregistrations")
+            .select("tournament_id")
+            .eq("advance_payment", true)
+            .eq("payment_status", "confirmed")
+            .in("tournament_id", tournamentIds),
+          supabase.from("tournament_reports").select("id", { count: "exact", head: true }).eq("status", "open").in("tournament_id", tournamentIds),
+        ]);
+        totalParticipants = participantCount ?? 0;
+        openReports = reportCount ?? 0;
+
+        const feeByTournamentId = new Map(tournaments.map((t) => [t.id, t.preregistration_amount ?? t.entry_fee ?? 0]));
+        totalRevenue = (preregRows ?? []).reduce((sum, r) => sum + (feeByTournamentId.get(r.tournament_id) ?? 0), 0);
+      }
+    }
+  }
 
   return (
     <div className="space-y-10">

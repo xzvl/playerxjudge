@@ -242,5 +242,3 @@ export const MOCK_ORGANIZED_COMMUNITIES: MockOrganizedCommunity[] = [
   { id: "c2", name: "BGC Blade Club", province: "Metro Manila", memberCount: 88, isPremium: false, createdAt: "2026-02-10T00:00:00.000Z" },
   { id: "c3", name: "Marikina Riverbank League", province: "Metro Manila", memberCount: 56, isPremium: false, createdAt: "2026-05-20T00:00:00.000Z" },
 ];
-
-export const FREE_PLAN_TOURNAMENT_LIMIT = 5;

@@ -1,20 +1,29 @@
 import type { Metadata } from "next";
-import { Users2 } from "lucide-react";
 
-import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
+import { FindCommunitySection } from "@/components/communities/FindCommunitySection";
+import { CommunityListingsPanel } from "@/components/communities/CommunityListingsPanel";
+import { getPublicApprovedCommunities } from "@/lib/communities/public-profile";
 
 export const metadata: Metadata = {
   title: "Communities",
   description: "Discover Beyblade X communities near you, their members, events, and sponsors.",
 };
 
-export default function CommunitiesPage() {
+export default async function CommunitiesPage() {
+  const communities = await getPublicApprovedCommunities();
+
   return (
-    <PagePlaceholder
-      eyebrow="Discover"
-      title="Communities"
-      description="Community directory, profiles, and events are coming in the next build phase."
-      Icon={Users2}
-    />
+    <div>
+      <FindCommunitySection />
+
+      <section className="mx-auto max-w-[1440px] px-4 pb-16 md:px-16">
+        <div className="mb-8">
+          <p className="label-mono text-primary">Directory</p>
+          <h2 className="heading mt-2 text-3xl md:text-4xl">All Communities</h2>
+          <p className="mt-3 max-w-xl text-sm text-on-surface/60">Every approved community, from casual meetups to major-tournament hosts.</p>
+        </div>
+        <CommunityListingsPanel communities={communities} />
+      </section>
+    </div>
   );
 }

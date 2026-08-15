@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Trophy } from "lucide-react";
-
-import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
 import { TournamentListings } from "@/components/tournaments/TournamentListings";
+import { FindTournamentSection } from "@/components/tournaments/FindTournamentSection";
 
 export const metadata: Metadata = {
   title: "Tournaments",
@@ -12,12 +10,7 @@ export const metadata: Metadata = {
 export default function TournamentsPage() {
   return (
     <div>
-      <PagePlaceholder
-        eyebrow="Browse"
-        title="All Tournaments"
-        description="Filter by province, community, and format to find your next battle."
-        Icon={Trophy}
-      />
+      <FindTournamentSection />
       <TournamentListings />
     </div>
   );

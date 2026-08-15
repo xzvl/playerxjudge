@@ -102,7 +102,7 @@ export function PaymentScreenshotField({
             <span className="px-1 text-center text-[9px] leading-tight text-on-surface/30">No image</span>
           )}
         </div>
-        <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <p className="truncate text-sm text-on-surface">{meta?.name ?? "No image selected"}</p>
           <p className="text-xs text-on-surface/40">
             {meta ? `${formatFileSize(meta.sizeBytes)} · ${meta.width}×${meta.height}px` : "No size yet"}

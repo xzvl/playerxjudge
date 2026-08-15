@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  /* Dark is the app's original/default theme — every value below is
+     unchanged from before theming existed, just expressed as a CSS variable
+     instead of a literal so ThemeToggle (see components/layout/ThemeToggle.tsx)
+     has something to override. `--m3-*` are the xzvlstore-derived M3 token
+     palette (see tailwind.config.ts); the shadcn slots above them are a
+     separate, smaller set some primitive components lean on directly. Both
+     use raw "R G B" / "H S% L%" triples (no rgb()/hsl() wrapper) so
+     Tailwind's `rgb(var(...) / <alpha-value>)` opacity-modifier trick works. */
   :root {
     /* shadcn/ui semantic slots mapped onto the xzvlstore-derived palette (HSL, no hsl() wrapper) */
     --background: 0 0% 7%;
@@ -25,6 +33,130 @@
     --input: 8 25% 30%;
     --ring: 359 90% 49%;
     --radius: 0rem;
+
+    --m3-on-secondary-container: 180 181 181;
+    --m3-on-primary-fixed: 74 0 0;
+    --m3-primary: 237 13 17;
+    --m3-outline: 177 135 128;
+    --m3-on-error: 105 0 5;
+    --m3-on-tertiary-container: 0 40 91;
+    --m3-on-surface-variant: 235 187 180;
+    --m3-on-primary: 255 255 255;
+    --m3-secondary-fixed-dim: 198 198 199;
+    --m3-on-tertiary-fixed-variant: 0 68 145;
+    --m3-primary-container: 182 11 14;
+    --m3-primary-fixed-dim: 255 106 109;
+    --m3-secondary-fixed: 226 226 226;
+    --m3-surface-bright: 57 57 57;
+    --m3-secondary-container: 69 71 71;
+    --m3-background: 19 19 19;
+    --m3-inverse-surface: 226 226 226;
+    --m3-surface: 19 19 19;
+    --m3-on-surface: 226 226 226;
+    --m3-on-tertiary-fixed: 0 26 64;
+    --m3-error-container: 147 0 10;
+    --m3-inverse-on-surface: 48 48 48;
+    --m3-on-secondary: 47 49 49;
+    --m3-secondary: 198 198 199;
+    --m3-inverse-primary: 255 100 103;
+    --m3-outline-variant: 96 62 57;
+    --m3-surface-container: 31 31 31;
+    --m3-surface-container-highest: 53 53 53;
+    --m3-on-secondary-fixed: 26 28 28;
+    --m3-surface-variant: 53 53 53;
+    --m3-on-primary-fixed-variant: 122 0 0;
+    --m3-surface-container-low: 27 27 27;
+    --m3-surface-container-lowest: 14 14 14;
+    --m3-on-background: 226 226 226;
+    --m3-surface-tint: 237 13 17;
+    --m3-error: 255 180 171;
+    --m3-surface-dim: 19 19 19;
+    --m3-on-tertiary: 0 47 103;
+    --m3-tertiary-container: 72 143 255;
+    --m3-surface-container-high: 42 42 42;
+    --m3-primary-fixed: 255 215 216;
+    --m3-on-primary-container: 255 247 247;
+    --m3-tertiary-fixed-dim: 172 199 255;
+    --m3-tertiary: 172 199 255;
+    --m3-on-secondary-fixed-variant: 69 71 71;
+    --m3-on-error-container: 255 218 214;
+    --m3-tertiary-fixed: 215 226 255;
+  }
+
+  /* Light mode — same red primary/brand hue, everything else flipped to a
+     light, warm-neutral (rose-tinted, matching --m3-outline's own hue)
+     surface scale. Toggled by ThemeToggle setting `data-theme="light"` on
+     `<html>`; anything not overridden here (the "*-fixed*" M3 roles) is
+     genuinely meant to stay identical in both themes — that's what "fixed"
+     means in Material 3's own color system. */
+  :root[data-theme="light"] {
+    --background: 7 100% 98%;
+    --foreground: 9 12% 11%;
+    --card: 7 100% 98%;
+    --card-foreground: 9 12% 11%;
+    --popover: 7 100% 98%;
+    --popover-foreground: 9 12% 11%;
+    --primary: 359 90% 49%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 87%;
+    --secondary-foreground: 0 0% 11%;
+    --muted: 9 47% 94%;
+    --muted-foreground: 7 12% 29%;
+    --accent: 9 33% 92%;
+    --accent-foreground: 9 12% 11%;
+    --destructive: 359 90% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 9 25% 80%;
+    --input: 9 25% 80%;
+    --ring: 359 90% 49%;
+
+    --m3-on-secondary-container: 26 28 28;
+    --m3-on-primary-fixed: 74 0 0;
+    --m3-primary: 237 13 17;
+    --m3-outline: 133 115 112;
+    --m3-on-error: 255 255 255;
+    --m3-on-tertiary-container: 0 40 91;
+    --m3-on-surface-variant: 83 67 65;
+    --m3-on-primary: 255 255 255;
+    --m3-secondary-fixed-dim: 198 198 199;
+    --m3-on-tertiary-fixed-variant: 0 68 145;
+    --m3-primary-container: 255 218 214;
+    --m3-primary-fixed-dim: 255 106 109;
+    --m3-secondary-fixed: 226 226 226;
+    --m3-surface-bright: 255 248 247;
+    --m3-secondary-container: 222 222 222;
+    --m3-background: 255 248 247;
+    --m3-inverse-surface: 54 47 45;
+    --m3-surface: 255 248 247;
+    --m3-on-surface: 32 26 25;
+    --m3-on-tertiary-fixed: 0 26 64;
+    --m3-error-container: 255 218 214;
+    --m3-inverse-on-surface: 251 238 236;
+    --m3-on-secondary: 255 255 255;
+    --m3-secondary: 93 95 94;
+    --m3-inverse-primary: 255 180 171;
+    --m3-outline-variant: 216 194 190;
+    --m3-surface-container: 247 235 233;
+    --m3-surface-container-highest: 235 223 221;
+    --m3-on-secondary-fixed: 26 28 28;
+    --m3-surface-variant: 232 211 208;
+    --m3-on-primary-fixed-variant: 122 0 0;
+    --m3-surface-container-low: 253 241 239;
+    --m3-surface-container-lowest: 255 255 255;
+    --m3-on-background: 32 26 25;
+    --m3-surface-tint: 237 13 17;
+    --m3-error: 186 26 26;
+    --m3-surface-dim: 228 215 213;
+    --m3-on-tertiary: 255 255 255;
+    --m3-tertiary-container: 214 227 255;
+    --m3-surface-container-high: 241 229 227;
+    --m3-primary-fixed: 255 215 216;
+    --m3-on-primary-container: 65 0 2;
+    --m3-tertiary-fixed-dim: 172 199 255;
+    --m3-tertiary: 65 95 145;
+    --m3-on-secondary-fixed-variant: 69 71 71;
+    --m3-on-error-container: 65 0 2;
+    --m3-tertiary-fixed: 215 226 255;
   }
 }
 

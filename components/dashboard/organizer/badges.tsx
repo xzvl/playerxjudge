@@ -1,6 +1,6 @@
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import type { JudgeAssignmentStatus, TournamentStatus } from "@/lib/types/database";
-import type { ReportStatus, RegistrationStatus } from "@/lib/mock/organizer-dashboard";
+import type { CommunityApprovalStatus, CommunityStatus, JudgeAssignmentStatus, TournamentReportStatus, TournamentStatus } from "@/lib/types/database";
+import type { RegistrationStatus } from "@/lib/mock/organizer-dashboard";
 
 function statusLabel(status: string) {
   return status.replace(/_/g, " ");
@@ -49,12 +49,36 @@ export function JudgeAssignmentStatusBadge({ status }: { status: JudgeAssignment
   return <Badge variant={JUDGE_ASSIGNMENT_STATUS_VARIANTS[status]}>{JUDGE_ASSIGNMENT_STATUS_LABEL[status]}</Badge>;
 }
 
-const REPORT_STATUS_VARIANTS: Record<ReportStatus, BadgeProps["variant"]> = {
+const REPORT_STATUS_VARIANTS: Record<TournamentReportStatus, BadgeProps["variant"]> = {
   open: "destructive",
   resolved: "success",
   dismissed: "outline",
 };
 
-export function ReportStatusBadge({ status }: { status: ReportStatus }) {
+export function ReportStatusBadge({ status }: { status: TournamentReportStatus }) {
   return <Badge variant={REPORT_STATUS_VARIANTS[status]}>{statusLabel(status)}</Badge>;
+}
+
+// The organizer's own operational toggle (Settings -> Status) — not to be
+// confused with CommunityApprovalStatusBadge below, which is the separate
+// admin-only pending/approved gate.
+const COMMUNITY_STATUS_VARIANTS: Record<CommunityStatus, BadgeProps["variant"]> = {
+  active: "success",
+  inactive: "outline",
+};
+
+export function CommunityStatusBadge({ status }: { status: CommunityStatus }) {
+  return <Badge variant={COMMUNITY_STATUS_VARIANTS[status]}>{statusLabel(status)}</Badge>;
+}
+
+// Mirrors supabase/migrations/20250101000033_community_status_fields.sql —
+// only an admin can flip this (see app/account/admin/communities); it's
+// display-only everywhere else.
+const COMMUNITY_APPROVAL_STATUS_VARIANTS: Record<CommunityApprovalStatus, BadgeProps["variant"]> = {
+  pending: "outline",
+  approved: "success",
+};
+
+export function CommunityApprovalStatusBadge({ status }: { status: CommunityApprovalStatus }) {
+  return <Badge variant={COMMUNITY_APPROVAL_STATUS_VARIANTS[status]}>{statusLabel(status)}</Badge>;
 }

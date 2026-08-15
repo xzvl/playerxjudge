@@ -13,7 +13,9 @@ export interface JudgePlayerOption {
 // The header's Player 1 / Player 2 pickers — same search-input-in-a-
 // listbox interaction as PlayerNamePicker (components/tournaments/player/PlayerNamePicker.tsx)
 // and AddJudgeCombobox, scaled to fit a header column and right-aligned
-// when `align="right"` (Player 2's side).
+// when `align="right"` (Player 2's side). Below `lg` the header is tight —
+// the "Player 1"/"Player 2" label drops and only the stadium side label
+// ("[X Side]"/"[B Side]") stays, picking the full label back up at `lg`.
 export function JudgePlayerPicker({
   label,
   sideLabel,
@@ -69,11 +71,13 @@ export function JudgePlayerPicker({
       <p className={cn("label-mono flex items-center gap-1.5 text-on-surface/40", align === "right" && "justify-end")}>
         {align === "right" ? (
           <>
-            {sideLabel} {label}
+            <span>{sideLabel}</span>
+            <span className="hidden lg:inline">{label}</span>
           </>
         ) : (
           <>
-            {label} {sideLabel}
+            <span className="hidden lg:inline">{label}</span>
+            <span>{sideLabel}</span>
           </>
         )}
       </p>
