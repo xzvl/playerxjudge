@@ -3,11 +3,11 @@ import { Swords } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatCounter } from "@/components/home/StatCounter";
-import { PLATFORM_STATS } from "@/lib/mock/tournaments";
 import { getPublicTournamentCount } from "@/lib/tournaments/public-listings";
+import { getPlatformStats } from "@/lib/platform-stats";
 
 export async function Hero() {
-  const tournamentCount = await getPublicTournamentCount();
+  const [tournamentCount, platformStats] = await Promise.all([getPublicTournamentCount(), getPlatformStats()]);
 
   return (
     <section className="cyber-grid relative overflow-hidden border-b border-outline-variant/25">
@@ -34,10 +34,10 @@ export async function Hero() {
           </div>
 
           <dl className="mt-14 grid grid-cols-2 gap-8 sm:grid-cols-4">
-            <StatCounter label="Players" value={PLATFORM_STATS.players} />
-            <StatCounter label="Judges" value={PLATFORM_STATS.judges} />
+            <StatCounter label="Players" value={platformStats.players} />
+            <StatCounter label="Judges" value={platformStats.judges} />
             <StatCounter label="Tournaments" value={tournamentCount} />
-            <StatCounter label="Communities" value={PLATFORM_STATS.communities} />
+            <StatCounter label="Communities" value={platformStats.communities} />
           </dl>
         </div>
 

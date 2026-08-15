@@ -91,29 +91,29 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
         <TournamentPageActionButton tournament={tournament} hasStarted={hasStarted} completed={completed} canJudge={canJudge} />
       </div>
 
-      <div className="mt-8 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <BattleTypeBadge type={tournament.battleType} />
-          <TournamentTypeBadge type={tournament.tournamentType} />
-          <span
-            className={`label-mono px-2 py-1 ${
-              tournament.liveStatus === "ongoing" ? "animate-blink text-primary" : "text-on-surface/50"
-            }`}
-          >
-            {LIVE_STATUS_LABEL[tournament.liveStatus]}
-          </span>
-        </div>
-        <h1 className="heading text-3xl md:text-4xl">{tournament.title}</h1>
-        {tournament.description ? (
-          <div
-            className="prose-editor max-w-2xl text-sm text-on-surface/60 [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
-            dangerouslySetInnerHTML={{ __html: tournament.description }}
-          />
-        ) : null}
-      </div>
-
       <div className="mt-8 grid items-start gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <BattleTypeBadge type={tournament.battleType} />
+              <TournamentTypeBadge type={tournament.tournamentType} />
+              <span
+                className={`label-mono px-2 py-1 ${
+                  tournament.liveStatus === "ongoing" ? "animate-blink text-primary" : "text-on-surface/50"
+                }`}
+              >
+                {LIVE_STATUS_LABEL[tournament.liveStatus]}
+              </span>
+            </div>
+            <h1 className="heading text-3xl md:text-4xl">{tournament.title}</h1>
+            {tournament.description ? (
+              <div
+                className="prose-editor max-w-2xl text-sm text-on-surface/60 [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+                dangerouslySetInnerHTML={{ __html: tournament.description }}
+              />
+            ) : null}
+          </div>
           {hasPrizesToShow ? (
             <section aria-labelledby="prizes-heading">
               <h2 id="prizes-heading" className="label-mono mb-3 flex items-center gap-2 text-primary">
