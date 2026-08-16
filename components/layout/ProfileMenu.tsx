@@ -24,6 +24,9 @@ export type NavUser = {
   // application shouldn't see it either, matching
   // app/account/organizer/layout.tsx's own gate on the destination page.
   isOrganizer: boolean;
+  // The player's main community (profiles.community_id), for the mobile
+  // nav's "Community/Individual" line — null shows "Individual".
+  communityName: string | null;
 };
 
 export function ProfileMenu({ user }: { user: NavUser | null }) {

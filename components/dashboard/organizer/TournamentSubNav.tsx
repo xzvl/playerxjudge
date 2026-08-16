@@ -68,22 +68,23 @@ export function TournamentSubNav({ baseHref, isTwoStage }: { baseHref: string; i
     const link = (
       <Link
         href={item.href}
-        aria-label={collapsed ? item.label : undefined}
+        aria-label={item.label}
         className={cn(
-          "label-mono flex items-center gap-3 border-l-2 px-4 py-3 transition-colors",
-          collapsed && "justify-center px-0",
+          "label-mono flex items-center justify-center gap-3 border-l-2 px-0 py-3 transition-colors",
+          !collapsed && "lg:justify-start lg:px-4",
           active
             ? "border-primary bg-primary/10 text-primary"
             : "border-transparent text-on-surface/60 hover:border-outline-variant/60 hover:text-on-surface"
         )}
       >
         {item.icon}
-        {!collapsed && item.label}
+        <span className={cn("hidden", !collapsed && "lg:inline")}>{item.label}</span>
       </Link>
     );
 
-    if (!collapsed) return <div key={item.href}>{link}</div>;
-
+    // Below lg this rail is always icon-only (the collapse toggle itself
+    // hides there — see the Button below), so the tooltip earns its keep
+    // at every breakpoint now, not just when desktop is collapsed.
     return (
       <Tooltip key={item.href}>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
@@ -95,8 +96,8 @@ export function TournamentSubNav({ baseHref, isTwoStage }: { baseHref: string; i
   return (
     <nav
       className={cn(
-        "flex w-full shrink-0 flex-col gap-1 border-b border-outline-variant/25 pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4",
-        collapsed ? "lg:w-14" : "lg:w-56"
+        "flex w-14 shrink-0 flex-col items-center gap-1 border-r border-outline-variant/25 pr-2",
+        !collapsed && "lg:w-56 lg:items-stretch lg:pr-4"
       )}
     >
       <Button
@@ -107,13 +108,13 @@ export function TournamentSubNav({ baseHref, isTwoStage }: { baseHref: string; i
         aria-expanded={!collapsed}
         tooltip={collapsed ? "Expand navigation" : "Collapse navigation"}
         tooltipSide="right"
-        className={cn("mb-1", collapsed ? "self-center" : "self-end")}
+        className={cn("mb-1 hidden self-center lg:flex", !collapsed && "lg:self-end")}
       >
         {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
       </Button>
 
       {primaryItems.map(renderItem)}
-      <div className="my-2 border-t border-outline-variant/25" />
+      <div className="my-2 w-full border-t border-outline-variant/25" />
       {secondaryItems.map(renderItem)}
     </nav>
   );

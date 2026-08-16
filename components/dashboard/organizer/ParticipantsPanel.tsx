@@ -171,52 +171,84 @@ export function ParticipantsPanel({
       ) : null}
 
       {pageRows.length > 0 ? (
-        <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead>
-              <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                <SortableHeader label="Player" active={sortKey === "player"} dir={sortDir} onClick={() => toggleSort("player")} />
-                <SortableHeader label="Team" active={sortKey === "team"} dir={sortDir} onClick={() => toggleSort("team")} />
-                <SortableHeader label="Tournament" active={sortKey === "tournament"} dir={sortDir} onClick={() => toggleSort("tournament")} />
-                <SortableHeader label="Seed" active={sortKey === "seed"} dir={sortDir} onClick={() => toggleSort("seed")} />
-                <SortableHeader label="Group" active={sortKey === "group"} dir={sortDir} onClick={() => toggleSort("group")} />
-                <SortableHeader label="Registered" active={sortKey === "registered"} dir={sortDir} onClick={() => toggleSort("registered")} />
-                <th className="p-4" scope="col">Linked Account</th>
-                <th className="p-4" scope="col">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
-                  <td className="p-4 font-medium text-on-surface">{r.playerName}</td>
-                  <td className="p-4 text-on-surface/60">{r.teamName ?? "—"}</td>
-                  <td className="p-4 text-on-surface/60">{r.tournamentTitle}</td>
-                  <td className="p-4 text-on-surface/60">{r.seed}</td>
-                  <td className="p-4 text-on-surface/60">{r.groupLabel ? `Group ${r.groupLabel}` : "—"}</td>
-                  <td className="p-4 text-on-surface/60">{formatDate(r.registeredAt)}</td>
-                  <td className="p-4">
-                    <LinkedAccountCell link={r.link} />
-                  </td>
-                  <td className="p-4">
-                    {r.link?.status === "pending" ? (
-                      <div className="flex gap-1">
-                        <ParticipantLinkActions
-                          participantLabel={r.teamName ?? r.playerName}
-                          link={r.link}
-                          onConfirmed={() => handleLinkConfirmed(r.id)}
-                          onDeclined={() => handleLinkDeclined(r.id)}
-                          onError={setError}
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-on-surface/30">—</span>
-                    )}
-                  </td>
+        <>
+          {/* Below lg: one row per participant. */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {pageRows.map((r) => (
+              <article key={r.id} className="border border-outline-variant/25 bg-surface-container-low p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-on-surface">{r.playerName}</span>
+                  <LinkedAccountCell link={r.link} />
+                </div>
+                {r.teamName ? <p className="mt-1 text-sm text-on-surface/60">{r.teamName}</p> : null}
+                <p className="mt-1 text-sm text-on-surface/60">{r.tournamentTitle}</p>
+                <p className="mt-2 text-sm text-on-surface/60">
+                  Seed: {r.seed} <span className="text-on-surface/30">|</span> Group: {r.groupLabel ?? "—"}
+                </p>
+                <p className="mt-1 text-xs text-on-surface/50">Registered: {formatDate(r.registeredAt)}</p>
+                {r.link?.status === "pending" ? (
+                  <div className="mt-3 flex gap-1">
+                    <ParticipantLinkActions
+                      participantLabel={r.teamName ?? r.playerName}
+                      link={r.link}
+                      onConfirmed={() => handleLinkConfirmed(r.id)}
+                      onDeclined={() => handleLinkDeclined(r.id)}
+                      onError={setError}
+                    />
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+
+          {/* lg and up: the full table. */}
+          <div className="hidden overflow-x-auto border border-outline-variant/25 lg:block">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead>
+                <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
+                  <SortableHeader label="Player" active={sortKey === "player"} dir={sortDir} onClick={() => toggleSort("player")} />
+                  <SortableHeader label="Team" active={sortKey === "team"} dir={sortDir} onClick={() => toggleSort("team")} />
+                  <SortableHeader label="Tournament" active={sortKey === "tournament"} dir={sortDir} onClick={() => toggleSort("tournament")} />
+                  <SortableHeader label="Seed" active={sortKey === "seed"} dir={sortDir} onClick={() => toggleSort("seed")} />
+                  <SortableHeader label="Group" active={sortKey === "group"} dir={sortDir} onClick={() => toggleSort("group")} />
+                  <SortableHeader label="Registered" active={sortKey === "registered"} dir={sortDir} onClick={() => toggleSort("registered")} />
+                  <th className="p-4" scope="col">Linked Account</th>
+                  <th className="p-4" scope="col">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                    <td className="p-4 font-medium text-on-surface">{r.playerName}</td>
+                    <td className="p-4 text-on-surface/60">{r.teamName ?? "—"}</td>
+                    <td className="p-4 text-on-surface/60">{r.tournamentTitle}</td>
+                    <td className="p-4 text-on-surface/60">{r.seed}</td>
+                    <td className="p-4 text-on-surface/60">{r.groupLabel ? `Group ${r.groupLabel}` : "—"}</td>
+                    <td className="p-4 text-on-surface/60">{formatDate(r.registeredAt)}</td>
+                    <td className="p-4">
+                      <LinkedAccountCell link={r.link} />
+                    </td>
+                    <td className="p-4">
+                      {r.link?.status === "pending" ? (
+                        <div className="flex gap-1">
+                          <ParticipantLinkActions
+                            participantLabel={r.teamName ?? r.playerName}
+                            link={r.link}
+                            onConfirmed={() => handleLinkConfirmed(r.id)}
+                            onDeclined={() => handleLinkDeclined(r.id)}
+                            onError={setError}
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-on-surface/30">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : (
         <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
           {tournaments.length === 0 ? "You don't have any tournaments yet." : "No participants match your filter."}

@@ -6,7 +6,13 @@ import "./globals.css";
 import { Providers } from "@/app/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
+import {
+  buildNavUser,
+  getCurrentUser,
+  getCurrentUserCommunityName,
+  getCurrentUserRoles,
+  getUnreadNotificationCount,
+} from "@/lib/supabase/get-user";
 import { getActiveSponsors } from "@/lib/sponsors/queries";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
@@ -64,21 +70,13 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const authUser = await getCurrentUser();
-  const [[roles, notificationCount], sponsors] = await Promise.all([
-    authUser ? Promise.all([getCurrentUserRoles(), getUnreadNotificationCount()]) : Promise.resolve([[], 0] as const),
+  const [[roles, notificationCount, communityName], sponsors] = await Promise.all([
+    authUser
+      ? Promise.all([getCurrentUserRoles(), getUnreadNotificationCount(), getCurrentUserCommunityName()])
+      : Promise.resolve([[], 0, null] as const),
     getActiveSponsors(),
   ]);
-  const user: NavUser | null = authUser
-    ? {
-        email: authUser.email ?? null,
-        displayName:
-          (authUser.user_metadata?.display_name as string | undefined) ??
-          authUser.email?.split("@")[0] ??
-          "Player",
-        avatarUrl: (authUser.user_metadata?.avatar_url as string | undefined) ?? null,
-        isOrganizer: roles.some((r) => r.role === "organizer" && r.status === "approved"),
-      }
-    : null;
+  const user: NavUser | null = authUser ? buildNavUser(authUser, roles, communityName) : null;
 
   return (
     // suppressHydrationWarning is scoped to this element's own attributes

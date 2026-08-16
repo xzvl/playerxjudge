@@ -600,6 +600,64 @@ export type StaticPage = {
   updated_by: string | null;
 };
 
+// Mirrors supabase/migrations/20250101000038_beyblades.sql — the
+// admin-managed parts catalog behind /backend/beyblades.
+export type BeybladeType = "attack" | "balance" | "defense" | "stamina";
+
+export type BeybladeSeries = "plastic_generation" | "metal_generation" | "burst_generation" | "x_generation";
+
+export type BeybladeSystemLine = "basic_line" | "unique_line" | "custom_line";
+
+// "blade" is the composite/assembled piece — only meaningful for
+// system_line: 'custom_line', where it's built from the other
+// component categories (lock_chip/main_blade/over_blade/metal_blade/
+// assist_blade) via the *_id columns below. Every other category stands
+// on its own.
+export type BeybladeCategory =
+  | "lock_chip"
+  | "main_blade"
+  | "over_blade"
+  | "metal_blade"
+  | "assist_blade"
+  | "blade"
+  | "ratchet_integrated_blade"
+  | "ratchet"
+  | "bit"
+  | "ratchet_integrated_bit";
+
+export type BeybladeSpinDirection = "right" | "left" | "dual";
+
+export type Beyblade = {
+  id: string;
+  code: string;
+  name: string;
+  short_name: string;
+  type: BeybladeType;
+  series: BeybladeSeries;
+  system_line: BeybladeSystemLine;
+  category: BeybladeCategory;
+  spin_direction: BeybladeSpinDirection;
+  attack: number | null;
+  defense: number | null;
+  stamina: number | null;
+  height: number | null;
+  dash: number | null;
+  burst_resistance: number | null;
+  description: string | null;
+  // WebP, stored at `${id}/image.webp` in the `beyblade-images` bucket —
+  // see 20250101000039_beyblade_images.sql.
+  image_url: string | null;
+  // Self-referencing "Blade" assembly — see BeybladeCategory above.
+  lock_chip_id: string | null;
+  main_blade_id: string | null;
+  over_blade_id: string | null;
+  metal_blade_id: string | null;
+  assist_blade_id: string | null;
+  expand_blade: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 type TableDef<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 
 // Minimal Supabase Database type shape so `@supabase/ssr` generics compile
@@ -632,6 +690,7 @@ export interface Database {
       tournament_preregistrations: TableDef<TournamentPreregistration>;
       faqs: TableDef<Faq>;
       static_pages: TableDef<StaticPage>;
+      beyblades: TableDef<Beyblade>;
     };
     Views: {
       public_preregistrations: TableDef<PublicPreregistration>;

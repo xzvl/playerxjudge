@@ -7,7 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ACCOUNT_SETTINGS_NAV_ITEM, getAccountNavItems } from "@/components/dashboard/accountNavItems";
-import { getCurrentUser, getCurrentUserRoles } from "@/lib/supabase/get-user";
+import {
+  buildNavUser,
+  getCurrentUser,
+  getCurrentUserCommunityName,
+  getCurrentUserRoles,
+  getUnreadNotificationCount,
+} from "@/lib/supabase/get-user";
 
 export const metadata: Metadata = {
   title: "Account",
@@ -60,9 +66,20 @@ export default async function AccountPage() {
   }
 
   const navItems = getAccountNavItems(roles);
+  const [notificationCount, communityName] = await Promise.all([
+    getUnreadNotificationCount(),
+    getCurrentUserCommunityName(),
+  ]);
+  const navUser = buildNavUser(user, roles, communityName);
 
   return (
-    <DashboardShell roleLabel="Account" navItems={navItems} settingsItem={ACCOUNT_SETTINGS_NAV_ITEM}>
+    <DashboardShell
+      roleLabel="Account"
+      navItems={navItems}
+      settingsItem={ACCOUNT_SETTINGS_NAV_ITEM}
+      user={navUser}
+      notificationCount={notificationCount}
+    >
       <div className="mx-auto max-w-3xl space-y-8">
         <div>
           <p className="label-mono text-primary">Account</p>

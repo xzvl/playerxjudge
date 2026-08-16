@@ -6,7 +6,7 @@ import { Facebook, Instagram, Youtube } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SponsorMarquee } from "@/components/marquee/SponsorMarquee";
-import { isTournamentConsoleRoute } from "@/lib/routes";
+import { isAccountRoute, isBackendRoute, isTournamentConsoleRoute } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import type { MarqueeSponsor } from "@/lib/sponsors/queries";
 
@@ -49,6 +49,11 @@ const SOCIALS = [
 
 export function Footer({ sponsors }: { sponsors: MarqueeSponsor[] }) {
   const pathname = usePathname();
+  // Every /account and /backend page is its own app shell (DashboardShell's
+  // standalone mode) with no room for the marketing footer below it — drop
+  // it entirely there, at every breakpoint.
+  if (isAccountRoute(pathname) || isBackendRoute(pathname)) return null;
+
   // The player view and judge console both have their own bottom nav that
   // already fills that space on mobile — hide the full marketing footer
   // there instead of stacking under it (see PlayerViewShell / JudgeConsole).

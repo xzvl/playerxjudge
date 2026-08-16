@@ -18,7 +18,7 @@ import {
 } from "@/lib/final-stage-placeholder";
 import { computeFinishCounts, participantMatches, sideRecords } from "@/lib/player-view-stats";
 import { TIE_BREAK_OPTIONS } from "@/lib/validations/tournament-wizard";
-import { getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
+import { buildNavUser, getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
@@ -47,17 +47,10 @@ export default async function TournamentPlayerPage({
   const authUser = await getCurrentUser();
   const roles = authUser ? await getCurrentUserRoles() : [];
   const notificationCount = authUser ? await getUnreadNotificationCount() : 0;
-  const user: NavUser | null = authUser
-    ? {
-        email: authUser.email ?? null,
-        displayName:
-          (authUser.user_metadata?.display_name as string | undefined) ??
-          authUser.email?.split("@")[0] ??
-          "Player",
-        avatarUrl: (authUser.user_metadata?.avatar_url as string | undefined) ?? null,
-        isOrganizer: roles.some((r) => r.role === "organizer" && r.status === "approved"),
-      }
-    : null;
+  // communityName is always null here — this console header
+  // (PlayerViewHeaderActions) has no mobile-menu sheet to show it in,
+  // unlike the site-wide Header, so it's not worth an extra query.
+  const user: NavUser | null = authUser ? buildNavUser(authUser, roles, null) : null;
 
   const organizedBy = tournament.communityName ?? tournament.organizerName;
   const statusLabel = STATUS_LABEL[tournament.status] ?? "Not Yet Started";

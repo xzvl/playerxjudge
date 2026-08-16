@@ -28,6 +28,13 @@ export interface JudgeMatchRow {
 type SortKey = "playerA" | "playerB" | "tournament" | "round" | "reportedAt";
 type SortDir = "asc" | "desc";
 
+// "Group A - Round 3", or just "Final Round" once out of group play — no
+// per-round naming exists for the final bracket, so every non-group stage
+// collapses to one label rather than a fabricated round number.
+function stageRoundLabel(stage: string, round: number): string {
+  return stage === "Final Stage" ? "Final Round" : `${stage} - Round ${round}`;
+}
+
 function SortableHeader({
   label,
   active,
@@ -152,38 +159,62 @@ export function JudgeMatchHistoryPanel({
       </div>
 
       {pageRows.length > 0 ? (
-        <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead>
-              <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                <SortableHeader label="Player A" active={sortKey === "playerA"} dir={sortDir} onClick={() => toggleSort("playerA")} />
-                <SortableHeader label="Player B" active={sortKey === "playerB"} dir={sortDir} onClick={() => toggleSort("playerB")} />
-                <SortableHeader label="Tournament" active={sortKey === "tournament"} dir={sortDir} onClick={() => toggleSort("tournament")} />
-                <SortableHeader label="Stage / Round" active={sortKey === "round"} dir={sortDir} onClick={() => toggleSort("round")} />
-                <th className="p-4" scope="col">Result</th>
-                <th className="p-4" scope="col">Winner</th>
-                <SortableHeader label="Reported Date Time" active={sortKey === "reportedAt"} dir={sortDir} onClick={() => toggleSort("reportedAt")} />
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
-                  <td className="p-4 font-medium text-on-surface">{r.playerAName}</td>
-                  <td className="p-4 font-medium text-on-surface">{r.playerBName}</td>
-                  <td className="p-4 text-on-surface/60">{r.tournamentTitle}</td>
-                  <td className="p-4 text-on-surface/60">
-                    {r.stage} · Round {r.round}
-                  </td>
-                  <td className="p-4 font-mono text-on-surface">{r.result}</td>
-                  <td className="p-4 text-on-surface/60">{r.winnerName}</td>
-                  <td className="p-4 text-on-surface/60">
-                    {r.reportedAt ? `${formatDate(r.reportedAt)} · ${formatTime(r.reportedAt)}` : "—"}
-                  </td>
+        <>
+          {/* Below lg: one row per match. */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {pageRows.map((r) => (
+              <article key={r.id} className="border border-outline-variant/25 bg-surface-container-low p-4">
+                <p className="font-medium">
+                  <span className={r.winnerName === r.playerAName ? "text-primary" : "text-on-surface"}>{r.playerAName}</span>{" "}
+                  <span className="text-on-surface/40">vs</span>{" "}
+                  <span className={r.winnerName === r.playerBName ? "text-primary" : "text-on-surface"}>{r.playerBName}</span>
+                </p>
+                <p className="mt-1 text-sm text-on-surface/60">{r.tournamentTitle}</p>
+                <p className="mt-1 text-sm text-on-surface/60">{stageRoundLabel(r.stage, r.round)}</p>
+                <p className="mt-2 text-sm text-on-surface/60">
+                  Result: <span className="label-mono border border-outline-variant/40 px-1.5 py-0.5 text-on-surface">{r.result}</span>
+                </p>
+                <p className="mt-2 text-xs text-on-surface/50">
+                  Date and Time: {r.reportedAt ? `${formatDate(r.reportedAt)} · ${formatTime(r.reportedAt)}` : "—"}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          {/* lg and up: the full table. */}
+          <div className="hidden overflow-x-auto border border-outline-variant/25 lg:block">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead>
+                <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
+                  <SortableHeader label="Player A" active={sortKey === "playerA"} dir={sortDir} onClick={() => toggleSort("playerA")} />
+                  <SortableHeader label="Player B" active={sortKey === "playerB"} dir={sortDir} onClick={() => toggleSort("playerB")} />
+                  <SortableHeader label="Tournament" active={sortKey === "tournament"} dir={sortDir} onClick={() => toggleSort("tournament")} />
+                  <SortableHeader label="Stage / Round" active={sortKey === "round"} dir={sortDir} onClick={() => toggleSort("round")} />
+                  <th className="p-4" scope="col">Result</th>
+                  <th className="p-4" scope="col">Winner</th>
+                  <SortableHeader label="Reported Date Time" active={sortKey === "reportedAt"} dir={sortDir} onClick={() => toggleSort("reportedAt")} />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                    <td className="p-4 font-medium text-on-surface">{r.playerAName}</td>
+                    <td className="p-4 font-medium text-on-surface">{r.playerBName}</td>
+                    <td className="p-4 text-on-surface/60">{r.tournamentTitle}</td>
+                    <td className="p-4 text-on-surface/60">
+                      {r.stage} · Round {r.round}
+                    </td>
+                    <td className="p-4 font-mono text-on-surface">{r.result}</td>
+                    <td className="p-4 text-on-surface/60">{r.winnerName}</td>
+                    <td className="p-4 text-on-surface/60">
+                      {r.reportedAt ? `${formatDate(r.reportedAt)} · ${formatTime(r.reportedAt)}` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : (
         <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
           {rows.length === 0 ? "You haven't reported any matches yet." : "No matches match your filters."}

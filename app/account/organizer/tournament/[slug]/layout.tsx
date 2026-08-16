@@ -36,7 +36,10 @@ export default async function TournamentWorkspaceLayout({
       </div>
       <p className="mt-1 text-sm text-on-surface/50">/tournaments/{tournament.slug}</p>
 
-      <div className="mt-8 flex flex-col gap-8 lg:flex-row">
+      {/* TournamentSubNav is always a left rail now (icon-only below lg,
+          same as it collapses to on desktop) rather than stacking above
+          the content on mobile — so this stays a row at every breakpoint. */}
+      <div className="mt-8 flex gap-4 lg:gap-8">
         <TournamentSubNav baseHref={baseHref} isTwoStage={tournament.format_settings?.stageType === "two_stage"} />
         <div className="min-w-0 flex-1">{children}</div>
       </div>

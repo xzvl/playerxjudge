@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TournamentStatusBadge } from "@/components/dashboard/organizer/badges";
 import { archiveTournament, duplicateTournament, setTournamentPublished } from "@/app/account/organizer/dashboard/actions";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { STAGE_FORMAT_OPTIONS, GRAND_FINALS_OPTIONS } from "@/lib/validations/tournament-wizard";
 import type { Tournament, TournamentStatus } from "@/lib/types/database";
@@ -172,6 +172,52 @@ export function TournamentManagementPanel({ tournaments }: { tournaments: Tourna
     })();
   }
 
+  // Shared between the mobile card list and the desktop table's action
+  // column — same buttons either way.
+  function rowActions(t: Tournament) {
+    return (
+      <>
+        <Button variant="outline" size="icon" asChild tooltip="Open the tournament management workspace">
+          <Link href={`/account/organizer/tournament/${t.slug}`} aria-label="Manage">
+            <LayoutDashboard className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          tooltip="Duplicate this tournament's setup into a new draft"
+          aria-label="Duplicate"
+          disabled={duplicatingId === t.id}
+          onClick={() => duplicate(t)}
+        >
+          <Copy className="h-3.5 w-3.5" />
+        </Button>
+        {t.status === "draft" || t.status === "published" ? (
+          <Button
+            variant="outline"
+            size="icon"
+            tooltip={t.status === "draft" ? "Publish this tournament" : "Move this tournament back to draft"}
+            aria-label={t.status === "draft" ? "Publish" : "Unpublish"}
+            disabled={isPending}
+            onClick={() => togglePublished(t)}
+          >
+            {t.status === "draft" ? <Send className="h-3.5 w-3.5" /> : <Undo2 className="h-3.5 w-3.5" />}
+          </Button>
+        ) : null}
+        <Button
+          variant="outline"
+          size="icon"
+          tooltip={t.is_archived ? "Restore this tournament from the archive" : "Move this tournament to the archive"}
+          aria-label={t.is_archived ? "Unarchive" : "Archive"}
+          disabled={isPending}
+          onClick={() => toggleArchive(t)}
+        >
+          {t.is_archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+        </Button>
+      </>
+    );
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -198,88 +244,74 @@ export function TournamentManagementPanel({ tournaments }: { tournaments: Tourna
       ) : null}
 
       {visible.length > 0 ? (
-        <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[860px] text-left text-sm">
-            <thead>
-              <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                <SortableHeader label="Title" active={sortKey === "title"} dir={sortDir} onClick={() => toggleSort("title")} />
-                <SortableHeader label="Status" active={sortKey === "status"} dir={sortDir} onClick={() => toggleSort("status")} />
-                <SortableHeader
-                  label="Format"
-                  active={sortKey === "format"}
-                  dir={sortDir}
-                  onClick={() => toggleSort("format")}
-                  className="w-[180px]"
-                />
-                <SortableHeader label="Start" active={sortKey === "start"} dir={sortDir} onClick={() => toggleSort("start")} />
-                <th className="p-4" scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((t) => (
-                <tr key={t.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
-                  <td className="p-4 font-medium text-on-surface">
-                    <Link href={`/account/organizer/tournament/${t.slug}`} className="hover:text-primary hover:underline">
-                      {t.title}
-                    </Link>
-                  </td>
-                  <td className="p-4">
-                    <TournamentStatusBadge status={t.status} />
-                  </td>
-                  <td className="p-4 text-on-surface/60">
-                    <div className="max-w-[180px] truncate" title={summarizeFormatSettings(t)}>
-                      {summarizeFormatSettings(t)}
-                    </div>
-                  </td>
-                  <td className="p-4 text-on-surface/60">{formatDate(t.starts_at)}</td>
-                  <td className="p-4">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="icon" asChild tooltip="Open the tournament management workspace">
-                        <Link href={`/account/organizer/tournament/${t.slug}`} aria-label="Manage">
-                          <LayoutDashboard className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        tooltip="Duplicate this tournament's setup into a new draft"
-                        aria-label="Duplicate"
-                        disabled={duplicatingId === t.id}
-                        onClick={() => duplicate(t)}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                      {t.status === "draft" || t.status === "published" ? (
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          tooltip={t.status === "draft" ? "Publish this tournament" : "Move this tournament back to draft"}
-                          aria-label={t.status === "draft" ? "Publish" : "Unpublish"}
-                          disabled={isPending}
-                          onClick={() => togglePublished(t)}
-                        >
-                          {t.status === "draft" ? <Send className="h-3.5 w-3.5" /> : <Undo2 className="h-3.5 w-3.5" />}
-                        </Button>
-                      ) : null}
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        tooltip={t.is_archived ? "Restore this tournament from the archive" : "Move this tournament to the archive"}
-                        aria-label={t.is_archived ? "Unarchive" : "Archive"}
-                        disabled={isPending}
-                        onClick={() => toggleArchive(t)}
-                      >
-                        {t.is_archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
-                      </Button>
-                    </div>
-                  </td>
+        <>
+          {/* Below lg: one row per tournament. */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {sorted.map((t) => (
+              <article key={t.id} className="border border-outline-variant/25 bg-surface-container-low p-4">
+                <Link href={`/account/organizer/tournament/${t.slug}`} className="font-medium text-on-surface hover:text-primary hover:underline">
+                  {t.title}
+                </Link>
+                <p className="mt-1 truncate text-sm text-on-surface/60" title={summarizeFormatSettings(t)}>
+                  {summarizeFormatSettings(t)}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-on-surface/60">
+                  <span>
+                    Date and Time: {formatDate(t.starts_at)} &middot; {formatTime(t.starts_at)}
+                  </span>
+                  <TournamentStatusBadge status={t.status} />
+                </div>
+                <div className="mt-3 flex gap-2">{rowActions(t)}</div>
+              </article>
+            ))}
+          </div>
+
+          {/* lg and up: the full table. */}
+          <div className="hidden overflow-x-auto border border-outline-variant/25 lg:block">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead>
+                <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
+                  <SortableHeader label="Title" active={sortKey === "title"} dir={sortDir} onClick={() => toggleSort("title")} />
+                  <SortableHeader label="Status" active={sortKey === "status"} dir={sortDir} onClick={() => toggleSort("status")} />
+                  <SortableHeader
+                    label="Format"
+                    active={sortKey === "format"}
+                    dir={sortDir}
+                    onClick={() => toggleSort("format")}
+                    className="w-[180px]"
+                  />
+                  <SortableHeader label="Start" active={sortKey === "start"} dir={sortDir} onClick={() => toggleSort("start")} />
+                  <th className="p-4" scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sorted.map((t) => (
+                  <tr key={t.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                    <td className="p-4 font-medium text-on-surface">
+                      <Link href={`/account/organizer/tournament/${t.slug}`} className="hover:text-primary hover:underline">
+                        {t.title}
+                      </Link>
+                    </td>
+                    <td className="p-4">
+                      <TournamentStatusBadge status={t.status} />
+                    </td>
+                    <td className="p-4 text-on-surface/60">
+                      <div className="max-w-[180px] truncate" title={summarizeFormatSettings(t)}>
+                        {summarizeFormatSettings(t)}
+                      </div>
+                    </td>
+                    <td className="p-4 text-on-surface/60">{formatDate(t.starts_at)}</td>
+                    <td className="p-4">
+                      <div className="flex justify-end gap-2">{rowActions(t)}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : (
         <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
           {tab === "all" ? "You haven't created any tournaments yet." : `No tournaments in "${TABS.find((tb) => tb.key === tab)?.label}".`}

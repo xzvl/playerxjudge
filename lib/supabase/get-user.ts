@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Profile, ProfileRole } from "@/lib/types/database";
+import type { NavUser } from "@/components/layout/ProfileMenu";
 
 export async function getCurrentUser() {
   if (!isSupabaseConfigured) return null;
@@ -60,6 +61,43 @@ export async function getCurrentUserRoles(): Promise<ProfileRole[]> {
 export async function isCurrentUserStaff(): Promise<boolean> {
   const [profile, roles] = await Promise.all([getCurrentProfile(), getCurrentUserRoles()]);
   return isStaffProfile(profile, roles);
+}
+
+// Backs the mobile nav's "Community/Individual" line under the player's
+// name (Header.tsx) — profiles.community_id is the "main community" a
+// player picked in Account Settings (see app/account/settings/actions.ts),
+// distinct from profile_communities (their full, possibly-pending
+// membership list). No community picked at all reads as "Individual".
+export async function getCurrentUserCommunityName(): Promise<string | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase.from("profiles").select("communities(name)").eq("id", user.id).single();
+  return (data as unknown as { communities: { name: string } | null } | null)?.communities?.name ?? null;
+}
+
+// Assembles the NavUser object every header (the global Header, and now
+// every /account layout's own standalone DashboardShell header) needs —
+// pulled out so the same displayName/avatar fallback logic doesn't drift
+// across call sites. Takes the auth user and roles as params rather than
+// fetching them itself since callers (RootLayout, the /account layouts)
+// already need both for other reasons and would otherwise re-fetch them.
+export function buildNavUser(
+  authUser: { email?: string | null; user_metadata?: Record<string, unknown> | null },
+  roles: readonly ProfileRole[],
+  communityName: string | null
+): NavUser {
+  return {
+    email: authUser.email ?? null,
+    displayName:
+      (authUser.user_metadata?.display_name as string | undefined) ??
+      authUser.email?.split("@")[0] ??
+      "Player",
+    avatarUrl: (authUser.user_metadata?.avatar_url as string | undefined) ?? null,
+    isOrganizer: roles.some((r) => r.role === "organizer" && r.status === "approved"),
+    communityName,
+  };
 }
 
 // Backs the header bell's badge count — see components/layout/Header.tsx

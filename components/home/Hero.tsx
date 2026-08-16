@@ -24,11 +24,17 @@ export async function Hero() {
             rankings, and communities — all in one platform built for players, judges, and
             organizers.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg" tooltip="See all tournaments">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button asChild size="lg" className="w-full sm:w-auto" tooltip="See all tournaments">
               <Link href="/tournaments">Browse Tournaments</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" tooltip="Apply to run tournaments as an organizer">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto"
+              tooltip="Apply to run tournaments as an organizer"
+            >
               <Link href="/become/organizer">Register Community</Link>
             </Button>
           </div>

@@ -68,6 +68,7 @@ export interface PlayerMatch {
   battleType: BattleType;
   opponent: string;
   result: "won" | "lost" | "draw";
+  matchNumber: number;
   round: number;
   stage: string;
   // The last recorded battle's finish type — the one that decided the
@@ -86,6 +87,7 @@ interface RawMatchRow {
   id: string;
   tournament_id: string;
   round: number;
+  match_number: number;
   group_id: string | null;
   bracket_id: string | null;
   participant_a_id: string | null;
@@ -98,7 +100,7 @@ interface RawMatchRow {
 }
 
 const MATCH_COLUMNS =
-  "id, tournament_id, round, group_id, bracket_id, participant_a_id, participant_b_id, winner_id, score, completed_at, tournaments(title, battle_type), tournament_groups(label)";
+  "id, tournament_id, round, match_number, group_id, bracket_id, participant_a_id, participant_b_id, winner_id, score, completed_at, tournaments(title, battle_type), tournament_groups(label)";
 
 // Stage is simplified to three buckets — a group's own round-robin/Swiss
 // schedule, a placement bracket (3rd Place Match, 5th-8th Place Bracket,
@@ -163,6 +165,7 @@ export async function fetchPlayerMatches(supabase: SupabaseClient, linked: Linke
         battleType: m.tournaments?.battle_type ?? "solo",
         opponent: opponentId ? (nameById.get(opponentId) ?? "Unknown") : "Bye",
         result: !m.winner_id ? "draw" : m.winner_id === myId ? "won" : "lost",
+        matchNumber: m.match_number,
         round: m.round,
         stage: stageOf(m),
         finishType: battles.length > 0 ? battles[battles.length - 1].finishType : null,
