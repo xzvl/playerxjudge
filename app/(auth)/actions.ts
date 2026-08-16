@@ -58,10 +58,22 @@ export async function signInWithPassword(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
     return { status: "error", message: "Invalid email or password." };
+  }
+
+  // Banned accounts (see /backend/players) never get a session past this
+  // point — magic-link/Google sign-in can't be intercepted here the same
+  // way, but middleware.ts catches those on their first protected-route
+  // request instead.
+  if (data.user) {
+    const { data: profile } = await supabase.from("profiles").select("is_banned").eq("id", data.user.id).maybeSingle();
+    if (profile?.is_banned) {
+      await supabase.auth.signOut();
+      return { status: "error", message: "Your account has been suspended." };
+    }
   }
 
   redirect("/");

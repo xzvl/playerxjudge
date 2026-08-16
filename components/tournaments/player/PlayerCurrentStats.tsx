@@ -1,6 +1,7 @@
 import { Radio, UserRound } from "lucide-react";
 
 import { PlayerNamePicker, type PlayerOption } from "@/components/tournaments/player/PlayerNamePicker";
+import { LinkPlayerControls, type MyParticipantLink } from "@/components/tournaments/player/LinkPlayerControls";
 import { finalRankLabel } from "@/lib/final-stage-placeholder";
 import type { StandingsRow } from "@/lib/swiss";
 import type { TieBreakMetric } from "@/lib/validations/tournament-wizard";
@@ -31,6 +32,9 @@ export function PlayerCurrentStats({
   tieBreakMetrics,
   tieBreakOptions,
   currentStationName,
+  tournamentId,
+  slug,
+  myLink,
 }: {
   statusLabel: string;
   isOngoing: boolean;
@@ -48,6 +52,11 @@ export function PlayerCurrentStats({
   // startMatchAtStation in JudgeConsole.tsx), null the moment it's
   // reported or cleared.
   currentStationName?: string | null;
+  // "Link Me" — only rendered for a signed-in viewer (tournamentId set is
+  // the signal; see TournamentPlayerPage). See LinkPlayerControls.
+  tournamentId?: string;
+  slug?: string;
+  myLink?: MyParticipantLink | null;
 }) {
   return (
     <section id="player" className="scroll-mt-20">
@@ -65,8 +74,13 @@ export function PlayerCurrentStats({
         ) : null}
       </div>
 
-      <div className="mt-6">
-        <PlayerNamePicker options={options} selectedId={selectedId} />
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <PlayerNamePicker options={options} selectedId={selectedId} />
+        </div>
+        {tournamentId && slug && selectedId ? (
+          <LinkPlayerControls tournamentId={tournamentId} slug={slug} participantId={selectedId} myLink={myLink ?? null} />
+        ) : null}
       </div>
 
       {selectedId ? (

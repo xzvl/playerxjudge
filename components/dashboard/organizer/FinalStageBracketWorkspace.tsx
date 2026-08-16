@@ -2,12 +2,48 @@
 
 import { useState, useTransition } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WorkspaceBracket } from "@/components/dashboard/organizer/WorkspaceBracket";
 import { ClearResultDialog, MatchDetailsDialog, ReportMatchDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
-import { clearMatchResult, startMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import { clearMatchResult, clearRoundResults, startMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import { advanceWinners, applyRealMatches, populateSectionFromFeeder, type PlacementSection } from "@/lib/final-stage-placeholder";
 import type { WorkspaceBracketRound, WorkspaceMatch } from "@/lib/mock/tournament-workspace";
 import type { Bracket, Match } from "@/lib/types/database";
+
+// The Clear-Round confirmation — offered next to a round's title once it
+// has at least one result (see WorkspaceBracket's onClearRound gate).
+function ClearRoundDialog({
+  round,
+  onOpenChange,
+  pending,
+  onConfirm,
+}: {
+  round: WorkspaceBracketRound | null;
+  onOpenChange: (open: boolean) => void;
+  pending: boolean;
+  onConfirm: () => void;
+}) {
+  if (!round) return null;
+  return (
+    <Dialog open={round !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Clear {round.label}?</DialogTitle>
+          <DialogDescription>
+            This permanently clears every reported result in {round.label} — scores, winners, battle history, and
+            screenshots — back to unplayed. This can&apos;t be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="p-6 pt-0">
+          <Button type="button" variant="destructive" tooltip="Permanently clear this round's results" disabled={pending} onClick={onConfirm}>
+            {pending ? "Clearing..." : "Clear Round"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // Wraps the read-only WorkspaceBracket with the same Start/Report/Edit/Details
 // icon actions the group stage's MatchesTab has. Rounds (main bracket and
@@ -45,6 +81,7 @@ export function FinalStageBracketWorkspace({
   const [reportingId, setReportingId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [clearingId, setClearingId] = useState<string | null>(null);
+  const [clearingRound, setClearingRound] = useState<WorkspaceBracketRound | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -125,6 +162,24 @@ export function FinalStageBracketWorkspace({
     });
   }
 
+  function handleClearRoundConfirm() {
+    if (!clearingRound) return;
+    const matchIds = clearingRound.matches.map((m) => m.id).filter((id) => matchesById.has(id));
+    setError(null);
+    startTransition(async () => {
+      const result = await clearRoundResults(matchIds, slug);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      if (result.matches) {
+        const updated = new Map(result.matches.map((m) => [m.id, m]));
+        setMatches((prev) => prev.map((m) => updated.get(m.id) ?? m));
+      }
+      setClearingRound(null);
+    });
+  }
+
   const sharedActions = {
     isInteractive: (m: WorkspaceMatch) => matchesById.has(m.id),
     pending,
@@ -134,6 +189,9 @@ export function FinalStageBracketWorkspace({
     onClear: (m: WorkspaceMatch) => setClearingId(m.id),
     locked,
   };
+  // Once the tournament has ended, results are locked — same as the
+  // per-match Clear icon disappearing, the round-level one goes away too.
+  const onClearRound = locked ? undefined : (round: WorkspaceBracketRound) => setClearingRound(round);
 
   return (
     <div className="space-y-10">
@@ -143,7 +201,7 @@ export function FinalStageBracketWorkspace({
         </p>
       ) : null}
 
-      <WorkspaceBracket rounds={mainRounds} actions={sharedActions} />
+      <WorkspaceBracket rounds={mainRounds} actions={sharedActions} onClearRound={onClearRound} />
 
       {placementSections.map((section) => (
         <section key={section.key}>
@@ -152,6 +210,7 @@ export function FinalStageBracketWorkspace({
             rounds={sectionRoundsByKey.get(section.key) ?? section.rounds}
             actions={sharedActions}
             hideRoundLabels
+            onClearRound={onClearRound}
           />
         </section>
       ))}
@@ -177,6 +236,12 @@ export function FinalStageBracketWorkspace({
         participantsById={participantsById}
         pending={pending}
         onConfirm={handleClearConfirm}
+      />
+      <ClearRoundDialog
+        round={clearingRound}
+        onOpenChange={(open) => !open && setClearingRound(null)}
+        pending={pending}
+        onConfirm={handleClearRoundConfirm}
       />
     </div>
   );

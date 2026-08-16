@@ -2,25 +2,33 @@
 
 import { useMemo, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { formatDate, formatTime } from "@/lib/format";
-import { FINISH_TYPE_LABELS, MOCK_MATCHES, type FinishType } from "@/lib/mock/player-dashboard";
+import { FINISH_TYPE_LABELS } from "@/lib/player/stats";
+import type { PlayerMatch } from "@/lib/player/linked-participants";
+import type { FinishType } from "@/lib/types/database";
 
 const ALL = "all";
 
-export function MatchHistoryPanel() {
+const RESULT_BADGE_VARIANT: Record<PlayerMatch["result"], BadgeProps["variant"]> = {
+  won: "success",
+  lost: "destructive",
+  draw: "outline",
+};
+
+export function MatchHistoryPanel({ matches }: { matches: PlayerMatch[] }) {
   const [result, setResult] = useState<string>(ALL);
   const [finishType, setFinishType] = useState<string>(ALL);
 
   const filtered = useMemo(
     () =>
-      MOCK_MATCHES.filter((m) => {
+      matches.filter((m) => {
         if (result !== ALL && m.result !== result) return false;
         if (finishType !== ALL && m.finishType !== finishType) return false;
         return true;
-      }).sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()),
-    [result, finishType]
+      }),
+    [matches, result, finishType]
   );
 
   return (
@@ -34,6 +42,7 @@ export function MatchHistoryPanel() {
             { value: ALL, label: "All Results" },
             { value: "won", label: "Won" },
             { value: "lost", label: "Lost" },
+            { value: "draw", label: "Draw" },
           ]}
         />
         <Combobox
@@ -68,13 +77,15 @@ export function MatchHistoryPanel() {
                 <tr key={m.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
                   <td className="p-4 font-medium text-on-surface">{m.tournamentTitle}</td>
                   <td className="p-4 text-on-surface/60">{m.opponent}</td>
-                  <td className="p-4 text-on-surface/60">{m.round}</td>
-                  <td className="p-4">
-                    <Badge variant={m.result === "won" ? "success" : "destructive"}>{m.result}</Badge>
-                  </td>
-                  <td className="p-4 text-on-surface/60">{FINISH_TYPE_LABELS[m.finishType]}</td>
                   <td className="p-4 text-on-surface/60">
-                    {formatDate(m.playedAt)} &middot; {formatTime(m.playedAt)}
+                    {m.stage} · Round {m.round}
+                  </td>
+                  <td className="p-4">
+                    <Badge variant={RESULT_BADGE_VARIANT[m.result]}>{m.result}</Badge>
+                  </td>
+                  <td className="p-4 text-on-surface/60">{m.finishType ? FINISH_TYPE_LABELS[m.finishType] : "—"}</td>
+                  <td className="p-4 text-on-surface/60">
+                    {m.playedAt ? `${formatDate(m.playedAt)} · ${formatTime(m.playedAt)}` : "—"}
                   </td>
                 </tr>
               ))}
@@ -83,7 +94,7 @@ export function MatchHistoryPanel() {
         </div>
       ) : (
         <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-          No matches match your filters.
+          {matches.length === 0 ? "No matches yet — link yourself to a tournament roster to start tracking history." : "No matches match your filters."}
         </p>
       )}
     </div>

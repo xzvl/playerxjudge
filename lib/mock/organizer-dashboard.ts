@@ -1,11 +1,11 @@
 import type { BattleType, TournamentStatus, TournamentType } from "@/lib/types/database";
 
-// Mirrors the mock-data convention in `lib/mock/tournaments.ts` and
-// `lib/mock/player-dashboard.ts`. The public tournament listing
-// (`components/tournaments/TournamentListings.tsx`) still reads from mock
-// data too, so wiring organizer tournament management to the live DB tables
-// (which do exist — see supabase/migrations) wouldn't be visible anywhere
-// else in the app yet. This stays mock/demo until that pipeline is rebuilt.
+// Mirrors the mock-data convention in `lib/mock/tournaments.ts`. The public
+// tournament listing (`components/tournaments/TournamentListings.tsx`)
+// still reads from mock data too, so wiring organizer tournament
+// management to the live DB tables (which do exist — see
+// supabase/migrations) wouldn't be visible anywhere else in the app yet.
+// This stays mock/demo until that pipeline is rebuilt.
 
 export interface MockOrganizedTournament {
   id: string;

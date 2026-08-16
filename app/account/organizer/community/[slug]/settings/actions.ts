@@ -12,7 +12,7 @@ import type { RoleActionState } from "@/lib/validations/roles";
 // CommunityLogoSection uploads/reassigns those immediately via
 // shared-actions.ts once this page has a real community id to work with.
 // Deliberately never writes `approval_status` — that's admin-only (see
-// app/account/admin/communities), regardless of what a tampered request
+// app/backend/communities), regardless of what a tampered request
 // might try to send here; the form itself doesn't even have a field for it.
 export async function updateCommunity(
   communityId: string,

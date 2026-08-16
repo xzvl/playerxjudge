@@ -85,6 +85,23 @@ export default async function TournamentPlayerPage({
     );
   }
 
+  // "Link Me" state (see LinkPlayerControls) — only meaningful in the real
+  // Swiss branch, where `participants` are actual `tournament_participants`
+  // rows; the preview branch above returns mock-derived ids that don't
+  // exist in that table at all. At most one row per (profile, tournament),
+  // enforced by participant_links' own unique constraint.
+  let myLink: { id: string; participantId: string; status: "pending" | "approved" } | null = null;
+  if (authUser) {
+    const supabase = await createClient();
+    const { data: linkRow } = await supabase
+      .from("participant_links")
+      .select("id, participant_id, status")
+      .eq("tournament_id", tournament.id)
+      .eq("profile_id", authUser.id)
+      .maybeSingle();
+    if (linkRow) myLink = { id: linkRow.id, participantId: linkRow.participant_id, status: linkRow.status };
+  }
+
   const tieBreakMetrics: [typeof TIE_BREAK_OPTIONS[number]["value"], typeof TIE_BREAK_OPTIONS[number]["value"], typeof TIE_BREAK_OPTIONS[number]["value"]] = [
     settings.groupTieBreaks.tieBreak1,
     settings.groupTieBreaks.tieBreak2,
@@ -129,10 +146,12 @@ export default async function TournamentPlayerPage({
     : [];
 
   const options = participants.map((p) => ({ id: p.id, displayName: p.team_name ?? p.name }));
+  const myLinkedParticipantId =
+    myLink && participants.some((p) => p.id === myLink.participantId) ? myLink.participantId : null;
   const selectedId =
     requestedParticipantId && participants.some((p) => p.id === requestedParticipantId)
       ? requestedParticipantId
-      : (participants[0]?.id ?? null);
+      : (myLinkedParticipantId ?? participants[0]?.id ?? null);
   const selectedParticipant = selectedId ? participants.find((p) => p.id === selectedId) ?? null : null;
   const groupRow = selectedId ? standingsByParticipantId.get(selectedId) ?? null : null;
 
@@ -199,6 +218,9 @@ export default async function TournamentPlayerPage({
             tieBreakMetrics={tieBreakMetrics}
             tieBreakOptions={TIE_BREAK_OPTIONS}
             currentStationName={currentStationName}
+            tournamentId={authUser ? tournament.id : undefined}
+            slug={slug}
+            myLink={myLink}
           />
 
           <PlayerStagesSection

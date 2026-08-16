@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   BarChart3,
   Bell,
   DollarSign,
@@ -16,6 +17,11 @@ import {
   Users,
   Users2,
 } from "lucide-react";
+
+// Sponsor "Tournament Sponsor" and Judge's own children below reuse
+// NavList's built-in behavior for a child with no `href` and no nested
+// `children` — it renders as a disabled "Soon" row, so a placeholder entry
+// needs nothing beyond an icon + label.
 
 import type { DashboardNavItem } from "@/components/dashboard/DashboardShell";
 import type { AppRole, ProfileRole } from "@/lib/types/database";
@@ -98,6 +104,30 @@ const ORGANIZER_DASHBOARD_SUB_ITEMS: DashboardNavItem[] = [
   },
 ];
 
+const JUDGE_DASHBOARD_SUB_ITEMS: DashboardNavItem[] = [
+  { label: "Overview", href: "/account/judge/dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
+  {
+    label: "Assigned Tournaments",
+    href: "/account/judge/assigned-tournaments",
+    icon: <ListChecks className="h-4 w-4 shrink-0" />,
+  },
+  {
+    label: "Match History",
+    href: "/account/judge/match-history",
+    icon: <History className="h-4 w-4 shrink-0" />,
+  },
+  {
+    label: "Judge Profile",
+    href: "/account/judge/profile",
+    icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
+  },
+];
+
+const SPONSOR_DASHBOARD_SUB_ITEMS: DashboardNavItem[] = [
+  { label: "Overview", href: "/account/sponsor/dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
+  { label: "Tournament Sponsor", icon: <Trophy className="h-4 w-4 shrink-0" /> },
+];
+
 const ROLE_NAV_ITEMS: { role: AppRole; item: DashboardNavItem }[] = [
   {
     role: "player",
@@ -109,7 +139,11 @@ const ROLE_NAV_ITEMS: { role: AppRole; item: DashboardNavItem }[] = [
   },
   {
     role: "judge",
-    item: { label: "Judge Dashboard", href: "/account/judge/dashboard", icon: <Gavel className="h-4 w-4 shrink-0" /> },
+    item: {
+      label: "Judge Dashboard",
+      icon: <Gavel className="h-4 w-4 shrink-0" />,
+      children: JUDGE_DASHBOARD_SUB_ITEMS,
+    },
   },
   {
     role: "organizer",
@@ -121,7 +155,11 @@ const ROLE_NAV_ITEMS: { role: AppRole; item: DashboardNavItem }[] = [
   },
   {
     role: "sponsor",
-    item: { label: "Sponsor Dashboard", href: "/account/sponsor/dashboard", icon: <Handshake className="h-4 w-4 shrink-0" /> },
+    item: {
+      label: "Sponsor Dashboard",
+      icon: <Handshake className="h-4 w-4 shrink-0" />,
+      children: SPONSOR_DASHBOARD_SUB_ITEMS,
+    },
   },
 ];
 

@@ -4,10 +4,9 @@ import { redirect } from "next/navigation";
 import { Handshake } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SponsorProfileForm } from "@/components/become/SponsorProfileForm";
+import { SponsorApplicationForm } from "@/components/become/SponsorApplicationForm";
 import { RoleStatusBadge } from "@/components/roles/RoleStatusBadge";
 import { getCurrentUser, getCurrentUserRoles } from "@/lib/supabase/get-user";
-import { applyForSponsor } from "@/app/become/sponsor/actions";
 
 export const metadata: Metadata = {
   title: "Become a Sponsor",
@@ -58,7 +57,7 @@ export default async function BecomeSponsorPage() {
           </Card>
         ) : (
           <div className="mt-12">
-            <SponsorProfileForm action={applyForSponsor} submitLabel="Submit Application" showDonationTier />
+            <SponsorApplicationForm />
           </div>
         )}
       </div>

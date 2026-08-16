@@ -5,22 +5,28 @@ import { MapPin } from "lucide-react";
 
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { TournamentDetailsModal } from "@/components/tournaments/TournamentDetailsModal";
-import { MOCK_TOURNAMENTS } from "@/lib/mock/tournaments";
+import type { MockTournament } from "@/lib/mock/tournaments";
 
-export function UpcomingTournamentsPanel({ province }: { province: string | null }) {
+export function UpcomingTournamentsPanel({
+  tournaments,
+  province,
+}: {
+  tournaments: MockTournament[];
+  province: string | null;
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { tournaments, personalized } = useMemo(() => {
-    const upcoming = MOCK_TOURNAMENTS.filter((t) => t.isUpcoming).sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
-    );
+  const { tournaments: shown, personalized } = useMemo(() => {
+    const upcoming = tournaments
+      .filter((t) => t.isUpcoming)
+      .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
     const nearby = province ? upcoming.filter((t) => t.province === province) : [];
     return nearby.length > 0
       ? { tournaments: nearby, personalized: true }
       : { tournaments: upcoming, personalized: false };
-  }, [province]);
+  }, [tournaments, province]);
 
-  const selectedTournament = MOCK_TOURNAMENTS.find((t) => t.id === selectedId) ?? null;
+  const selectedTournament = tournaments.find((t) => t.id === selectedId) ?? null;
 
   return (
     <div>
@@ -39,9 +45,9 @@ export function UpcomingTournamentsPanel({ province }: { province: string | null
         )}
       </div>
 
-      {tournaments.length > 0 ? (
+      {shown.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {tournaments.map((t) => (
+          {shown.map((t) => (
             <TournamentCard key={t.id} tournament={t} onOpenDetails={setSelectedId} />
           ))}
         </div>

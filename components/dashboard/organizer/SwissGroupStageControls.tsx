@@ -40,6 +40,7 @@ export function SwissGroupStageControls({
   phase,
   progressPercent,
   allGroupsFinished,
+  basePath = "/account/organizer/tournament",
 }: {
   tournamentId: string;
   slug: string;
@@ -47,6 +48,9 @@ export function SwissGroupStageControls({
   phase: "not-assigned" | "ready" | "started";
   progressPercent: number;
   allGroupsFinished: boolean;
+  // See TournamentSettingsPanel's own basePath — lets
+  // /backend/tournaments/[slug] reuse this unchanged.
+  basePath?: string;
 }) {
   const router = useRouter();
   const [rounds, setRounds] = useState(currentSwissRounds);
@@ -96,7 +100,7 @@ export function SwissGroupStageControls({
         setEndMessage({ type: "error", text: result.message ?? "Something went wrong." });
         return;
       }
-      router.push(`/account/organizer/tournament/${slug}/final-stage`);
+      router.push(`${basePath}/${slug}/final-stage`);
     });
   }
 

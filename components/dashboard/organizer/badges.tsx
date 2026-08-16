@@ -72,7 +72,7 @@ export function CommunityStatusBadge({ status }: { status: CommunityStatus }) {
 }
 
 // Mirrors supabase/migrations/20250101000033_community_status_fields.sql —
-// only an admin can flip this (see app/account/admin/communities); it's
+// only an admin can flip this (see app/backend/communities); it's
 // display-only everywhere else.
 const COMMUNITY_APPROVAL_STATUS_VARIANTS: Record<CommunityApprovalStatus, BadgeProps["variant"]> = {
   pending: "outline",

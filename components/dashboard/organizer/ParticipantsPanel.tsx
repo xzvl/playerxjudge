@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { Combobox } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
+import { LinkedAccountCell, ParticipantLinkActions, type ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +22,9 @@ export interface ParticipantRow {
   seed: number;
   groupLabel: string | null;
   registeredAt: string;
+  // Whoever's requested/been confirmed as this roster entry's real account
+  // — see app/account/organizer/participants/page.tsx.
+  link: ParticipantLinkInfo | null;
 }
 
 type SortKey = "player" | "team" | "tournament" | "seed" | "group" | "registered";
@@ -58,8 +63,8 @@ function SortableHeader({
 // `tournament_participants` row (see app/account/organizer/participants/page.tsx).
 // There's no per-participant registration status to filter by yet (that
 // workflow — pending/confirmed/checked-in — was never wired up to real
-// data; see the removed Check-in page), so Tournament is the only filter
-// here for now.
+// data; see the removed Check-in page), so Tournament and a player-name
+// search are the only filters.
 export function ParticipantsPanel({
   tournaments,
   participants,
@@ -67,15 +72,22 @@ export function ParticipantsPanel({
   tournaments: { id: string; title: string }[];
   participants: ParticipantRow[];
 }) {
+  const [rows, setRows] = useState(participants);
   const [tournamentId, setTournamentId] = useState(ALL);
+  const [playerQuery, setPlayerQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("registered");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = useMemo(
-    () => (tournamentId === ALL ? participants : participants.filter((p) => p.tournamentId === tournamentId)),
-    [participants, tournamentId]
-  );
+  const filtered = useMemo(() => {
+    const query = playerQuery.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (tournamentId !== ALL && r.tournamentId !== tournamentId) return false;
+      if (query && !r.playerName.toLowerCase().includes(query) && !(r.teamName ?? "").toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [rows, tournamentId, playerQuery]);
 
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -116,23 +128,51 @@ export function ParticipantsPanel({
     setPage(1);
   }
 
+  function handlePlayerQueryChange(value: string) {
+    setPlayerQuery(value);
+    setPage(1);
+  }
+
+  function handleLinkConfirmed(rowId: string) {
+    setRows((prev) => prev.map((r) => (r.id === rowId && r.link ? { ...r, link: { ...r.link, status: "approved" } } : r)));
+  }
+
+  function handleLinkDeclined(rowId: string) {
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, link: null } : r)));
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="max-w-xs flex-1">
-          <Combobox
-            label="Tournament"
-            value={tournamentId}
-            onValueChange={handleTournamentChange}
-            options={[{ value: ALL, label: "All Tournaments" }, ...tournaments.map((t) => ({ value: t.id, label: t.title }))]}
+        <div className="flex flex-wrap items-center gap-3">
+          <Input
+            className="w-full max-w-xs"
+            placeholder="Search by player or team name..."
+            aria-label="Search by player name"
+            value={playerQuery}
+            onChange={(e) => handlePlayerQueryChange(e.target.value)}
           />
+          <div className="max-w-xs flex-1">
+            <Combobox
+              label="Tournament"
+              value={tournamentId}
+              onValueChange={handleTournamentChange}
+              options={[{ value: ALL, label: "All Tournaments" }, ...tournaments.map((t) => ({ value: t.id, label: t.title }))]}
+            />
+          </div>
         </div>
         <Pagination page={currentPage} lastPage={lastPage} onChange={setPage} />
       </div>
 
+      {error ? (
+        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
       {pageRows.length > 0 ? (
         <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead>
               <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
                 <SortableHeader label="Player" active={sortKey === "player"} dir={sortDir} onClick={() => toggleSort("player")} />
@@ -141,6 +181,8 @@ export function ParticipantsPanel({
                 <SortableHeader label="Seed" active={sortKey === "seed"} dir={sortDir} onClick={() => toggleSort("seed")} />
                 <SortableHeader label="Group" active={sortKey === "group"} dir={sortDir} onClick={() => toggleSort("group")} />
                 <SortableHeader label="Registered" active={sortKey === "registered"} dir={sortDir} onClick={() => toggleSort("registered")} />
+                <th className="p-4" scope="col">Linked Account</th>
+                <th className="p-4" scope="col">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -152,6 +194,24 @@ export function ParticipantsPanel({
                   <td className="p-4 text-on-surface/60">{r.seed}</td>
                   <td className="p-4 text-on-surface/60">{r.groupLabel ? `Group ${r.groupLabel}` : "—"}</td>
                   <td className="p-4 text-on-surface/60">{formatDate(r.registeredAt)}</td>
+                  <td className="p-4">
+                    <LinkedAccountCell link={r.link} />
+                  </td>
+                  <td className="p-4">
+                    {r.link?.status === "pending" ? (
+                      <div className="flex gap-1">
+                        <ParticipantLinkActions
+                          participantLabel={r.teamName ?? r.playerName}
+                          link={r.link}
+                          onConfirmed={() => handleLinkConfirmed(r.id)}
+                          onDeclined={() => handleLinkDeclined(r.id)}
+                          onError={setError}
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-on-surface/30">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

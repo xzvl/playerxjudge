@@ -397,6 +397,7 @@ function MatchRow({
   participantsById,
   pending,
   locked,
+  canSwap,
   onStart,
   onReport,
   onDetails,
@@ -407,6 +408,10 @@ function MatchRow({
   participantsById: Map<string, RosterLite>;
   pending: boolean;
   locked: boolean;
+  // Drag-and-drop re-pairing is admin/super_admin only — an organizer
+  // running their own tournament no longer gets it (see
+  // GroupStageWorkspace's own doc comment for why).
+  canSwap: boolean;
   onStart: () => void;
   onReport: () => void;
   onDetails: () => void;
@@ -420,8 +425,8 @@ function MatchRow({
   const aWins = score !== null && match.winner_id === match.participant_a_id;
   const bWins = score !== null && match.winner_id === match.participant_b_id;
   // Only an unplayed, unlocked match's names can be dragged or dropped onto
-  // — matches swapMatchParticipants' own check.
-  const swappable = !locked && match.status === "scheduled";
+  // — matches swapMatchParticipants' own check — and only for staff.
+  const swappable = !locked && match.status === "scheduled" && canSwap;
 
   return (
     <div
@@ -484,6 +489,7 @@ function RoundColumn({
   participantsById,
   pending,
   locked,
+  canSwap,
   isGenerated,
   canGenerate,
   generating,
@@ -499,6 +505,7 @@ function RoundColumn({
   participantsById: Map<string, RosterLite>;
   pending: boolean;
   locked: boolean;
+  canSwap: boolean;
   isGenerated: boolean;
   canGenerate: boolean;
   generating: boolean;
@@ -521,6 +528,7 @@ function RoundColumn({
               participantsById={participantsById}
               pending={pending}
               locked={locked}
+              canSwap={canSwap}
               onStart={() => onStart(m.id)}
               onReport={() => onReport(m)}
               onDetails={() => onDetails(m)}
@@ -544,7 +552,7 @@ function RoundColumn({
   );
 }
 
-function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMatches, swissRoundsCap, locked }: { groupId: string; tournamentId: string; slug: string; participants: TournamentParticipant[]; matches: Match[]; setMatches: (updater: (prev: Match[]) => Match[]) => void; swissRoundsCap: number; locked: boolean }) {
+function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMatches, swissRoundsCap, locked, canSwap }: { groupId: string; tournamentId: string; slug: string; participants: TournamentParticipant[]; matches: Match[]; setMatches: (updater: (prev: Match[]) => Match[]) => void; swissRoundsCap: number; locked: boolean; canSwap: boolean }) {
   const router = useRouter();
   const scrollRef = useDragScroll<HTMLDivElement>();
   const participantsById = new Map(participants.map((p) => [p.id, { seed: p.seed, name: p.name, teamName: p.team_name }]));
@@ -664,6 +672,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
             participantsById={participantsById}
             pending={pending}
             locked={locked}
+            canSwap={canSwap}
             isGenerated={r <= latestRound}
             canGenerate={r === latestRound + 1 && latestComplete}
             generating={generating}
@@ -797,7 +806,11 @@ export function GroupStandingsTable({
   );
 }
 
-export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, advancePerGroup, locked = false }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; advancePerGroup: number; locked?: boolean }) {
+// `canSwapParticipants` gates the Matches tab's drag-and-drop re-pairing
+// (see MatchParticipantSlot) to admin/super_admin only — an organizer
+// running their own tournament can still Start/Report/Clear/Generate, just
+// not drag one player's name onto another match to swap them.
+export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, advancePerGroup, locked = false, canSwapParticipants = false }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; advancePerGroup: number; locked?: boolean; canSwapParticipants?: boolean }) {
   const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<"standings" | "matches">("matches");
   const [matches, setMatches] = useState<Match[]>(initialMatches);
@@ -933,6 +946,7 @@ export function GroupStageWorkspace({ tournamentId, slug, groups, participants, 
           setMatches={setGroupMatches}
           swissRoundsCap={swissRoundsCap}
           locked={locked}
+          canSwap={canSwapParticipants}
         />
       )}
     </div>

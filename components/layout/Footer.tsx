@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SponsorMarquee } from "@/components/marquee/SponsorMarquee";
 import { isTournamentConsoleRoute } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import type { MarqueeSponsor } from "@/lib/sponsors/queries";
 
 const HOW_TO_STEPS = [
   {
@@ -37,6 +38,7 @@ const FOOTER_NAV = [
 const FOOTER_MORE = [
   { label: "Sponsors", href: "/sponsors" },
   { label: "FAQs", href: "/faqs" },
+  { label: "How to Use", href: "/how-to-use" },
 ];
 
 const SOCIALS = [
@@ -45,7 +47,7 @@ const SOCIALS = [
   { label: "YouTube", href: "https://youtube.com", Icon: Youtube },
 ];
 
-export function Footer() {
+export function Footer({ sponsors }: { sponsors: MarqueeSponsor[] }) {
   const pathname = usePathname();
   // The player view and judge console both have their own bottom nav that
   // already fills that space on mobile — hide the full marketing footer
@@ -101,7 +103,7 @@ export function Footer() {
         </div>
       </div>
 
-      <SponsorMarquee />
+      <SponsorMarquee sponsors={sponsors} />
 
       <div className="border-t border-outline-variant/25">
         <div className="mx-auto max-w-[1440px] px-4 py-12 md:px-16">

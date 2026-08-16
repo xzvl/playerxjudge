@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Eraser, Info, Pencil, Play, Swords } from "lucide-react";
+import { Eraser, Info, Pencil, Play, Swords, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useDragScroll } from "@/lib/hooks/use-drag-scroll";
@@ -167,11 +167,30 @@ function BracketMatchCard({
 // Header placeholder matching the round label's own height/spacing exactly,
 // so a connector column's line area lines up vertically with its neighbors'
 // match area (both start below an equal-height header row).
-function ColumnHeader({ children }: { children?: ReactNode }) {
+function ColumnHeader({ children, onClear }: { children?: ReactNode; onClear?: () => void }) {
+  if (!children) {
+    return (
+      <p className="label-mono sticky top-0 select-none bg-surface py-1 text-center text-on-surface/40" aria-hidden="true">
+        {String.fromCharCode(160)}
+      </p>
+    );
+  }
+
   return (
-    <p className="label-mono sticky top-0 select-none bg-surface py-1 text-center text-on-surface/40" aria-hidden={children ? undefined : true}>
-      {children ?? " "}
-    </p>
+    <div className="sticky top-0 flex items-center justify-center gap-1.5 bg-surface py-1">
+      <p className="label-mono select-none text-center text-on-surface/40">{children}</p>
+      {onClear ? (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label="Clear all results for this round"
+          title="Clear all results for this round"
+          className="text-on-surface/30 transition-colors hover:text-destructive"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -210,6 +229,7 @@ export function WorkspaceBracket({
   actions,
   hideRoundLabels,
   highlightParticipantId,
+  onClearRound,
 }: {
   rounds: WorkspaceBracketRound[];
   actions?: BracketActions;
@@ -221,6 +241,11 @@ export function WorkspaceBracket({
   // player view to call out the selected participant's own matches amid
   // the full bracket (see PlayerFinalStageView).
   highlightParticipantId?: string | null;
+  // The round header's Clear icon — wipes every match in that round back to
+  // unplayed (see clearRoundResults). Only offered alongside a visible
+  // round label (so it never shows when hideRoundLabels is set), and only
+  // when the round actually has a result to clear.
+  onClearRound?: (round: WorkspaceBracketRound) => void;
 }) {
   const scrollRef = useDragScroll<HTMLDivElement>();
 
@@ -238,7 +263,15 @@ export function WorkspaceBracket({
         <div key={round.label} className="flex shrink-0">
           {r > 0 ? <RoundConnector matchCount={rounds[r - 1].matches.length} /> : null}
           <div className="flex w-64 shrink-0 flex-col gap-3">
-            <ColumnHeader>{hideRoundLabels ? undefined : round.label}</ColumnHeader>
+            <ColumnHeader
+              onClear={
+                !hideRoundLabels && onClearRound && round.matches.some((m) => m.scoreA !== null || m.scoreB !== null)
+                  ? () => onClearRound(round)
+                  : undefined
+              }
+            >
+              {hideRoundLabels ? undefined : round.label}
+            </ColumnHeader>
             <div className="flex flex-1 flex-col justify-around gap-3">
               {round.matches.map((match, i) => (
                 <BracketMatchCard

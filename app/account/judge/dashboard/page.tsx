@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Settings } from "lucide-react";
+import Link from "next/link";
+import { BadgeCheck, ListChecks, Settings } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,20 @@ import type { CommunityJudge } from "@/lib/types/database";
 
 export const metadata: Metadata = { title: "Judge Dashboard", robots: { index: false, follow: false } };
 
-const OTHER_FEATURES = ["Assigned Tournaments", "Scoring Interface", "Match History", "Performance", "Leaderboard"];
+const TOOLS = [
+  {
+    label: "Assigned Tournaments",
+    description: "Tournaments you've been invited to judge, confirmed and pending.",
+    href: "/account/judge/assigned-tournaments",
+    icon: ListChecks,
+  },
+  {
+    label: "Judge Profile",
+    description: "Upload your BeyZ ID and check your Certified Judge status.",
+    href: "/account/judge/profile",
+    icon: BadgeCheck,
+  },
+];
 
 export default async function JudgeDashboardPage() {
   let communities: { id: string; name: string }[] = [];
@@ -86,13 +100,17 @@ export default async function JudgeDashboardPage() {
       <section>
         <h2 className="label-mono mb-4 text-on-surface/40">More Tools</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {OTHER_FEATURES.map((feature) => (
-            <Card key={feature}>
-              <CardHeader>
-                <CardTitle className="text-base">{feature}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs text-on-surface/50">Coming in the next build phase.</CardContent>
-            </Card>
+          {TOOLS.map((tool) => (
+            <Link key={tool.href} href={tool.href} className="block">
+              <Card className="h-full transition-colors hover:border-primary/40">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <tool.icon className="h-4 w-4 text-primary" aria-hidden="true" /> {tool.label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-on-surface/50">{tool.description}</CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>

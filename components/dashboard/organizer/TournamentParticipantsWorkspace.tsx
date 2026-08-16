@@ -21,6 +21,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LinkedAccountCell, ParticipantLinkActions, type ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
 import {
   Dialog,
   DialogContent,
@@ -142,6 +143,7 @@ function ManageParticipantsTab({
   isTeam,
   pending,
   tournamentStarted,
+  links,
   onAdd,
   onEdit,
   onSubstitute,
@@ -149,11 +151,15 @@ function ManageParticipantsTab({
   onShuffle,
   onClear,
   onBulkAdd,
+  onLinkConfirmed,
+  onLinkDeclined,
+  onLinkError,
 }: {
   roster: RosterEntry[];
   isTeam: boolean;
   pending: boolean;
   tournamentStarted: boolean;
+  links: Map<string, ParticipantLinkInfo>;
   onAdd: (name: string, teamName: string | null) => void;
   onEdit: (id: string, name: string, teamName: string | null) => void;
   onSubstitute: (id: string, name: string, teamName: string | null) => void;
@@ -161,6 +167,9 @@ function ManageParticipantsTab({
   onShuffle: () => void;
   onClear: () => void;
   onBulkAdd: (names: string[]) => void;
+  onLinkConfirmed: (participantId: string) => void;
+  onLinkDeclined: (participantId: string) => void;
+  onLinkError: (message: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [bulkText, setBulkText] = useState("");
@@ -283,50 +292,66 @@ function ManageParticipantsTab({
 
       {visible.length > 0 ? (
         <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[520px] text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
                 <th className="p-4" scope="col">Seed</th>
                 <th className="p-4" scope="col">Participant</th>
+                <th className="p-4" scope="col">Linked Account</th>
                 <th className="p-4" scope="col">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => (
-                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
-                  <td className="p-4 py-1 font-mono text-on-surface/60">{r.seed}</td>
-                  <td className="p-4 py-1 font-medium text-on-surface">{r.teamName ?? r.name}</td>
-                  <td className="p-4 py-1">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" disabled={pending} aria-label={`Edit ${r.name}`} onClick={() => setEditing(r)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={pending}
-                        aria-label={`Substitute ${r.name}`}
-                        tooltip="Replace this participant with someone new"
-                        onClick={() => setSubstituting(r)}
-                      >
-                        <Repeat className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={pending || tournamentStarted}
-                        aria-label={`Remove ${r.name}`}
-                        tooltip={tournamentStarted ? "Can't remove once the tournament has started" : "Remove this participant"}
-                        onClick={() => onRemove(r.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {visible.map((r) => {
+                const link = links.get(r.id) ?? null;
+                return (
+                  <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                    <td className="p-4 py-1 font-mono text-on-surface/60">{r.seed}</td>
+                    <td className="p-4 py-1 font-medium text-on-surface">{r.teamName ?? r.name}</td>
+                    <td className="p-4 py-1">
+                      <LinkedAccountCell link={link} />
+                    </td>
+                    <td className="p-4 py-1">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="flex gap-1">
+                          <ParticipantLinkActions
+                            participantLabel={r.teamName ?? r.name}
+                            link={link}
+                            onConfirmed={() => onLinkConfirmed(r.id)}
+                            onDeclined={() => onLinkDeclined(r.id)}
+                            onError={onLinkError}
+                          />
+                          <Button variant="ghost" size="icon" disabled={pending} aria-label={`Edit ${r.name}`} onClick={() => setEditing(r)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={pending}
+                            aria-label={`Substitute ${r.name}`}
+                            tooltip="Replace this participant with someone new"
+                            onClick={() => setSubstituting(r)}
+                          >
+                            <Repeat className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={pending || tournamentStarted}
+                            aria-label={`Remove ${r.name}`}
+                            tooltip={tournamentStarted ? "Can't remove once the tournament has started" : "Remove this participant"}
+                            onClick={() => onRemove(r.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -767,6 +792,7 @@ export function TournamentParticipantsWorkspace({
   slug,
   initialParticipants,
   initialGroups,
+  initialLinks,
   isTwoStage,
   isTeam,
   participantsPerGroup,
@@ -776,6 +802,7 @@ export function TournamentParticipantsWorkspace({
   slug: string;
   initialParticipants: TournamentParticipant[];
   initialGroups: TournamentGroup[];
+  initialLinks: { participantId: string; link: ParticipantLinkInfo }[];
   isTwoStage: boolean;
   isTeam: boolean;
   participantsPerGroup: number;
@@ -786,8 +813,30 @@ export function TournamentParticipantsWorkspace({
 
   const [roster, setRoster] = useState<RosterEntry[]>(initialParticipants.map(toRosterEntry));
   const [groups, setGroups] = useState<Group[]>(buildGroups(initialGroups, initialParticipants));
+  const [links, setLinks] = useState<Map<string, ParticipantLinkInfo>>(
+    new Map(initialLinks.map((l) => [l.participantId, l.link]))
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function handleLinkConfirmed(participantId: string) {
+    setLinks((prev) => {
+      const current = prev.get(participantId);
+      if (!current) return prev;
+      const next = new Map(prev);
+      next.set(participantId, { ...current, status: "approved" });
+      return next;
+    });
+  }
+
+  function handleLinkDeclined(participantId: string) {
+    setLinks((prev) => {
+      if (!prev.has(participantId)) return prev;
+      const next = new Map(prev);
+      next.delete(participantId);
+      return next;
+    });
+  }
 
   function run<T>(action: () => Promise<RoleActionState & T>, onSuccess: (result: RoleActionState & T) => void) {
     setError(null);
@@ -964,6 +1013,7 @@ export function TournamentParticipantsWorkspace({
             isTeam={isTeam}
             pending={pending}
             tournamentStarted={tournamentStarted}
+            links={links}
             onAdd={handleAdd}
             onEdit={handleEdit}
             onSubstitute={handleEdit}
@@ -971,6 +1021,9 @@ export function TournamentParticipantsWorkspace({
             onShuffle={handleShuffle}
             onClear={handleClear}
             onBulkAdd={handleBulkAdd}
+            onLinkConfirmed={handleLinkConfirmed}
+            onLinkDeclined={handleLinkDeclined}
+            onLinkError={setError}
           />
         </TabsContent>
 

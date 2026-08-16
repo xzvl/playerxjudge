@@ -43,9 +43,15 @@ export type MatchStatus = "scheduled" | "ongoing" | "completed" | "disputed";
 // — a profile's own single platform-level role, distinct from `AppRole`
 // below (which backs `profile_roles`, the apply-and-get-approved system for
 // player/judge/organizer/sponsor). `is_admin()` in Postgres checks this
-// same column (`role in ('admin', 'super_admin')`); the admin approval page
-// (app/account/admin) mirrors that check in the app layer.
+// same column (`role in ('admin', 'super_admin')`); the admin console
+// (app/backend) mirrors that check in the app layer.
 export type PlatformRole = "guest" | "player" | "judge" | "organizer" | "sponsor" | "admin" | "super_admin";
+
+// Mirrors supabase/migrations/20250101000035_judge_beyz_id.sql — null until
+// a judge uploads their BeyZ ID; 'pending' from upload until an admin
+// reviews it; 'approved' is what makes them a "Certified Judge" (see
+// components/dashboard/judge/badges.tsx).
+export type BeyzIdStatus = "pending" | "approved" | "declined";
 
 export type Profile = {
   id: string;
@@ -65,6 +71,11 @@ export type Profile = {
   main_photo_url: string | null;
   full_body_photo_url: string | null;
   half_body_photo_url: string | null;
+  beyz_id_url: string | null;
+  beyz_id_status: BeyzIdStatus | null;
+  // Mirrors supabase/migrations/20250101000037_backend_admin.sql — Player
+  // "remove" (see /backend/players) is ban/suspend, not account deletion.
+  is_banned: boolean;
   subscription_plan: SubscriptionPlan;
   role: PlatformRole;
   created_at: string;
@@ -105,15 +116,29 @@ export type CommunityJudge = {
   decided_by: string | null;
 };
 
+// Mirrors supabase/migrations/20250101000034_sponsor_listings.sql — a
+// profile can now own several sponsor listings (one row each), same
+// shape as `communities`. `package_id`/`tier`/`verified` predate that
+// migration and aren't wired to anything in the app yet.
+export type SponsorApprovalStatus = "pending" | "approved" | "declined";
+
+export type SponsorDonationTier = "1_month" | "6_months" | "1_year";
+
 export type Sponsor = {
   id: string;
   profile_id: string;
   company_name: string;
   logo_url: string | null;
   website_url: string | null;
+  facebook_url: string | null;
+  phone: string | null;
   package_id: string | null;
   tier: "bronze" | "silver" | "gold";
   verified: boolean;
+  donation_tier: SponsorDonationTier | null;
+  tier_requested_at: string | null;
+  tier_expires_at: string | null;
+  approval_status: SponsorApprovalStatus;
   created_at: string;
   updated_at: string;
 };
@@ -259,6 +284,24 @@ export type TournamentParticipant = {
   team_name: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type ParticipantLinkStatus = "pending" | "approved";
+
+// Mirrors supabase/migrations/20250101000036_participant_links.sql — a
+// self-serve, organizer-confirmed claim connecting a real account to a
+// `tournament_participants` roster entry. See its migration comment for
+// the uniqueness rules (one claim per participant, one per profile per
+// tournament) and why there's no 'declined' status.
+export type ParticipantLink = {
+  id: string;
+  participant_id: string;
+  tournament_id: string;
+  profile_id: string;
+  status: ParticipantLinkStatus;
+  requested_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
 };
 
 // Mirrors supabase/migrations/20250101000012_prizes_location_enums.sql.
@@ -509,6 +552,54 @@ export type Organizer = {
   created_at: string;
 };
 
+export type RegistrationStatus = "pending" | "confirmed" | "checked_in" | "withdrawn" | "disqualified";
+
+// Mirrors supabase/migrations/20250101000003_tournament_tables.sql's
+// `registrations` table — an account-bound "I'm registering for this
+// tournament" record, distinct from `tournament_participants` (the
+// free-typed roster a bracket's matches actually reference, with no link
+// back to `profiles` at all — see 20250101000013_group_stage_matches.sql).
+// Nothing writes to this yet (the real registration flow, `/tournaments/
+// [slug]/register`, isn't built), so player-facing reads of it are live but
+// will be empty until that ships.
+export type Registration = {
+  id: string;
+  tournament_id: string;
+  player_id: string;
+  team_name: string | null;
+  status: RegistrationStatus;
+  checked_in_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// Mirrors supabase/migrations/20250101000004_social_commerce_tables.sql —
+// backs both the public /faqs page (published only) and its /backend CRUD.
+export type Faq = {
+  id: string;
+  question: string;
+  answer: string;
+  category: string | null;
+  sort_order: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StaticPageSlug = "privacy-policy" | "terms-of-service" | "how-to-use";
+
+// Mirrors supabase/migrations/20250101000037_backend_admin.sql — CMS
+// content for the Privacy Policy / Terms / How to Use pages, edited from
+// /backend and rendered on their matching public route.
+export type StaticPage = {
+  id: string;
+  slug: StaticPageSlug;
+  title: string;
+  body: string;
+  updated_at: string;
+  updated_by: string | null;
+};
+
 type TableDef<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 
 // Minimal Supabase Database type shape so `@supabase/ssr` generics compile
@@ -526,8 +617,10 @@ export interface Database {
       organizers: TableDef<Organizer>;
       provinces: TableDef<Province>;
       tournaments: TableDef<Tournament>;
+      registrations: TableDef<Registration>;
       tournament_groups: TableDef<TournamentGroup>;
       tournament_participants: TableDef<TournamentParticipant>;
+      participant_links: TableDef<ParticipantLink>;
       tournament_prizes: TableDef<TournamentPrize>;
       matches: TableDef<Match>;
       brackets: TableDef<Bracket>;
@@ -537,6 +630,8 @@ export interface Database {
       tournament_reports: TableDef<TournamentReport>;
       tournament_log_entries: TableDef<TournamentLogEntry>;
       tournament_preregistrations: TableDef<TournamentPreregistration>;
+      faqs: TableDef<Faq>;
+      static_pages: TableDef<StaticPage>;
     };
     Views: {
       public_preregistrations: TableDef<PublicPreregistration>;

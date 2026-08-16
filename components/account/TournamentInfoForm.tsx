@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 
+const NO_COMMUNITY = "__none__";
+
 export function TournamentInfoForm({
   communities,
   defaultBladerNames,
@@ -46,6 +48,18 @@ export function TournamentInfoForm({
     if (!id || communityIds.includes(id)) return;
     setCommunityIds((ids) => [...ids, id]);
     setMainCommunityId((current) => current ?? id);
+  }
+
+  // Explicitly declares "I'm not part of any community" — clears whatever
+  // was selected rather than being just another chip alongside real ones.
+  function selectNoCommunity() {
+    setCommunityIds([]);
+    setMainCommunityId(null);
+  }
+
+  function handleCommunityPick(id: string) {
+    if (id === NO_COMMUNITY) selectNoCommunity();
+    else addCommunity(id);
   }
 
   function removeCommunity(id: string) {
@@ -128,9 +142,12 @@ export function TournamentInfoForm({
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-on-surface">Communities</label>
-        {availableCommunities.length > 0 ? (
-          <Combobox label="Add community" value="" onValueChange={addCommunity} options={availableCommunities} />
-        ) : null}
+        <Combobox
+          label="Add community"
+          value=""
+          onValueChange={handleCommunityPick}
+          options={[{ value: NO_COMMUNITY, label: "No Community" }, ...availableCommunities]}
+        />
         {communityIds.length > 0 ? (
           <div className="space-y-2">
             {communityIds.map((id) => (
@@ -165,7 +182,7 @@ export function TournamentInfoForm({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-on-surface/50">No communities selected yet.</p>
+          <p className="text-sm text-on-surface/50">No Community.</p>
         )}
         {errors.communityIds ? <p className="text-xs font-medium text-destructive">{errors.communityIds}</p> : null}
         {errors.mainCommunityId ? (

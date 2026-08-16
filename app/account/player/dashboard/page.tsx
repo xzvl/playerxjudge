@@ -1,43 +1,47 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, Bell, CalendarDays, Heart, ListChecks, MapPin, Star, Swords } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BattleTypeBadge } from "@/components/tournaments/badges";
 import { formatDate, formatTime } from "@/lib/format";
-import { MOCK_TOURNAMENTS } from "@/lib/mock/tournaments";
-import {
-  ACHIEVEMENTS,
-  MOCK_COMMUNITY_MEMBERSHIPS,
-  MOCK_MATCHES,
-  MOCK_NOTIFICATIONS,
-  MOCK_REGISTRATIONS,
-  PLAYER_STATS,
-} from "@/lib/mock/player-dashboard";
-import { getCurrentProfile } from "@/lib/supabase/get-user";
+import { getCurrentProfile, getCurrentUser, getUnreadNotificationCount } from "@/lib/supabase/get-user";
+import { createClient } from "@/lib/supabase/server";
+import { getPublicTournamentListings } from "@/lib/tournaments/public-listings";
+import { fetchLinkedTournaments, fetchPlayerMatches } from "@/lib/player/linked-participants";
+import { computePlayerStats } from "@/lib/player/stats";
+import { ACHIEVEMENT_DEFS, computeAchievements } from "@/lib/player/achievements";
 
 export const metadata: Metadata = { title: "Player Dashboard", robots: { index: false, follow: false } };
 
-export default async function PlayerDashboardPage() {
-  const profile = await getCurrentProfile();
-  const province = profile?.province ?? null;
+const RESULT_BADGE_VARIANT = { won: "success", lost: "destructive", draw: "outline" } as const;
 
-  const upcoming = MOCK_TOURNAMENTS.filter((t) => t.isUpcoming).sort(
-    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
-  );
+export default async function PlayerDashboardPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?redirectTo=/account/player/dashboard");
+
+  const supabase = await createClient();
+  const [profile, tournaments, activeNotifications, { count: currentCommunities }, linked] = await Promise.all([
+    getCurrentProfile(),
+    getPublicTournamentListings(),
+    getUnreadNotificationCount(),
+    supabase.from("profile_communities").select("id", { count: "exact", head: true }).eq("profile_id", user.id).eq("status", "approved"),
+    fetchLinkedTournaments(supabase, user.id),
+  ]);
+  const matches = await fetchPlayerMatches(supabase, linked);
+  const stats = computePlayerStats(matches);
+  const achievements = computeAchievements(matches, linked);
+  const unlockedAchievements = achievements.filter((a) => a.achieved).length;
+
+  const province = profile?.province ?? null;
+  const upcoming = tournaments.filter((t) => t.isUpcoming).sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const nextTournament = (province ? upcoming.find((t) => t.province === province) : null) ?? upcoming[0] ?? null;
 
-  const currentRegistrations = MOCK_REGISTRATIONS.filter((r) => {
-    const t = MOCK_TOURNAMENTS.find((t) => t.id === r.tournamentId);
-    return t?.isUpcoming;
-  }).length;
-
-  const unlockedAchievements = ACHIEVEMENTS.filter((a) => a.achieved).length;
-  const currentCommunities = MOCK_COMMUNITY_MEMBERSHIPS.filter((c) => c.endedAt === null).length;
-  const activeNotifications = MOCK_NOTIFICATIONS.filter((n) => n.status === "active").length;
-  const winningPercentage =
-    PLAYER_STATS.totalMatches > 0 ? Math.round((PLAYER_STATS.totalWins / PLAYER_STATS.totalMatches) * 100) : 0;
+  const upcomingIds = new Set(upcoming.map((t) => t.id));
+  const currentRegistrations = linked.filter((l) => upcomingIds.has(l.tournamentId)).length;
+  const winningPercentage = stats.totalMatches > 0 ? Math.round((stats.totalWins / stats.totalMatches) * 100) : 0;
 
   return (
     <div>
@@ -100,7 +104,7 @@ export default async function PlayerDashboardPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-on-surface">{activeNotifications}</p>
-              <p className="text-xs text-on-surface/50">Active notification{activeNotifications === 1 ? "" : "s"}</p>
+              <p className="text-xs text-on-surface/50">Unread notification{activeNotifications === 1 ? "" : "s"}</p>
             </div>
           </CardContent>
         </Card>
@@ -113,7 +117,7 @@ export default async function PlayerDashboardPage() {
               <p className="label-mono text-on-surface/40">Winning %</p>
               <p className="mt-2 font-mono text-2xl font-bold text-primary">{winningPercentage}%</p>
               <p className="mt-1 text-xs text-on-surface/50">
-                {PLAYER_STATS.totalWins}W &ndash; {PLAYER_STATS.totalLosses}L ({PLAYER_STATS.totalMatches} matches)
+                {stats.totalWins}W &ndash; {stats.totalLosses}L ({stats.totalMatches} matches)
               </p>
             </CardContent>
           </Card>
@@ -140,7 +144,7 @@ export default async function PlayerDashboardPage() {
                 <p className="label-mono">Achievements</p>
               </div>
               <p className="mt-2 font-mono text-2xl font-bold text-on-surface">
-                {unlockedAchievements}/{ACHIEVEMENTS.length}
+                {unlockedAchievements}/{ACHIEVEMENT_DEFS.length}
               </p>
               <p className="mt-1 text-xs text-on-surface/50">Unlocked</p>
             </CardContent>
@@ -154,7 +158,7 @@ export default async function PlayerDashboardPage() {
                 <Heart className="h-4 w-4" aria-hidden="true" />
                 <p className="label-mono">Communities</p>
               </div>
-              <p className="mt-2 font-mono text-2xl font-bold text-on-surface">{currentCommunities}</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-on-surface">{currentCommunities ?? 0}</p>
               <p className="mt-1 text-xs text-on-surface/50">Currently a member of</p>
             </CardContent>
           </Card>
@@ -174,18 +178,24 @@ export default async function PlayerDashboardPage() {
           </Link>
         </CardHeader>
         <CardContent className="space-y-2">
-          {MOCK_MATCHES.slice(0, 4).map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between gap-4 border-b border-outline-variant/15 py-2 text-sm last:border-0"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-on-surface">{m.tournamentTitle}</p>
-                <p className="text-xs text-on-surface/50">vs {m.opponent}</p>
+          {matches.length > 0 ? (
+            matches.slice(0, 4).map((m) => (
+              <div
+                key={m.id}
+                className="flex items-center justify-between gap-4 border-b border-outline-variant/15 py-2 text-sm last:border-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-on-surface">{m.tournamentTitle}</p>
+                  <p className="text-xs text-on-surface/50">vs {m.opponent}</p>
+                </div>
+                <Badge variant={RESULT_BADGE_VARIANT[m.result]}>{m.result}</Badge>
               </div>
-              <Badge variant={m.result === "won" ? "success" : "destructive"}>{m.result}</Badge>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-sm text-on-surface/50">
+              No matches yet — link yourself to a tournament roster to start tracking history.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

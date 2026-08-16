@@ -18,13 +18,24 @@ export function ThumbnailUploadField({
   initialUrl,
   disabled,
   onFileReady,
+  preserveAspectRatio = false,
 }: {
   label: string;
+  // Sizes the empty "No image" placeholder box always, and (when
+  // preserveAspectRatio is unset) also the cropped preview box once an
+  // image is chosen.
   aspectClassName: string;
   maxDimension: number;
   initialUrl: string | null;
   disabled?: boolean;
   onFileReady: (file: File) => Promise<void> | void;
+  // Sponsor logos and BeyZ IDs (unlike community/tournament thumbnails,
+  // which are meant to crop to a fixed square/banner shape) need the whole
+  // image visible — this switches the preview, once a real image exists,
+  // to its own natural aspect ratio (object-contain, capped at
+  // maxDimension) instead of aspectClassName's fixed shape via
+  // object-cover.
+  preserveAspectRatio?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialUrl);
@@ -63,14 +74,23 @@ export function ThumbnailUploadField({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium text-on-surface">{label}</p>
-      <div className={`flex items-center justify-center overflow-hidden border border-outline-variant/40 bg-surface-container-low ${aspectClassName}`}>
-        {previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+      {previewUrl ? (
+        preserveAspectRatio ? (
+          <div className="flex items-center justify-center overflow-hidden border border-outline-variant/40 bg-surface-container-low p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="" className="max-h-72 w-auto max-w-full object-contain" />
+          </div>
         ) : (
+          <div className={`flex items-center justify-center overflow-hidden border border-outline-variant/40 bg-surface-container-low ${aspectClassName}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+          </div>
+        )
+      ) : (
+        <div className={`flex items-center justify-center overflow-hidden border border-outline-variant/40 bg-surface-container-low ${aspectClassName}`}>
           <span className="text-xs text-on-surface/40">No image</span>
-        )}
-      </div>
+        </div>
+      )}
       <input
         ref={inputRef}
         type="file"

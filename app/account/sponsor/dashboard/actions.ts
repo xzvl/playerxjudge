@@ -3,41 +3,43 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getCurrentUser } from "@/lib/supabase/get-user";
-import {
-  sponsorApplicationSchema,
-  type SponsorApplicationInput,
-  type RoleActionState,
-} from "@/lib/validations/roles";
+import type { RoleActionState } from "@/lib/validations/roles";
+import type { SponsorDonationTier } from "@/lib/types/database";
 
-export async function updateSponsorProfile(input: SponsorApplicationInput): Promise<RoleActionState> {
-  if (!isSupabaseConfigured) {
-    return { status: "error", message: "Supabase isn't configured yet." };
-  }
-
+// Owner-only (see "sponsors_delete_own_or_admin",
+// 20250101000034_sponsor_listings.sql).
+export async function deleteSponsorListing(sponsorId: string): Promise<RoleActionState> {
   const user = await getCurrentUser();
-  if (!user) return { status: "error", message: "You must be signed in." };
+  if (!user) return { status: "error", message: "You need to be signed in." };
 
-  const parsed = sponsorApplicationSchema.safeParse(input);
-  if (!parsed.success) {
-    return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
-  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("sponsors").delete().eq("id", sponsorId).eq("profile_id", user.id);
+  if (error) return { status: "error", message: error.message };
+
+  revalidatePath("/account/sponsor/dashboard");
+  return { status: "success" };
+}
+
+// Resubmits a listing's tier for admin review — same manual "email your
+// receipt" verification as a brand-new listing (see SponsorListingForm),
+// so this resets `approval_status` back to pending rather than extending
+// `tier_expires_at` itself. An admin sets the new expiry once they've
+// confirmed the payment (see the migration's comment on why that's a
+// Supabase Studio step for now, not an in-app one).
+export async function renewSponsorListing(sponsorId: string, tier: SponsorDonationTier): Promise<RoleActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("sponsors")
-    .update({
-      company_name: parsed.data.companyName,
-      website_url: parsed.data.websiteUrl || null,
-      logo_url: parsed.data.logoUrl || null,
-    })
+    .update({ donation_tier: tier, tier_requested_at: new Date().toISOString(), approval_status: "pending" })
+    .eq("id", sponsorId)
     .eq("profile_id", user.id);
 
-  if (error) {
-    return { status: "error", message: error.message };
-  }
+  if (error) return { status: "error", message: error.message };
 
   revalidatePath("/account/sponsor/dashboard");
-  return { status: "success", message: "Sponsor profile updated." };
+  return { status: "success", message: "Renewal submitted — we'll activate it once your donation is confirmed." };
 }

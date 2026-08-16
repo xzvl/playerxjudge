@@ -18,3 +18,17 @@ export const getManagedTournament = cache(async (organizerId: string, slug: stri
   if (!data) notFound();
   return data as Tournament;
 });
+
+// The /backend/tournaments/[slug] counterpart — no `organizer_id` filter,
+// since staff need to reach any tournament, not just their own. Callers
+// are responsible for the `isCurrentUserStaff()` gate first (see
+// app/backend/tournaments/[slug]/layout.tsx); this then relies on RLS
+// ("tournaments_select_published_or_own", which already includes
+// `is_admin()`) for the actual read permission.
+export const getManagedTournamentForStaff = cache(async (slug: string): Promise<Tournament> => {
+  const supabase = await createClient();
+  const { data } = await supabase.from("tournaments").select("*").eq("slug", slug).maybeSingle();
+
+  if (!data) notFound();
+  return data as Tournament;
+});

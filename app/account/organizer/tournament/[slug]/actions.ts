@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/get-user";
+import { getCurrentUser, isCurrentUserStaff } from "@/lib/supabase/get-user";
 import { manilaLocalToUtcIso } from "@/lib/format";
 import {
   createTournamentSchema,
@@ -35,15 +35,17 @@ export async function updateTournamentDetails(
     return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors, message: "Check the highlighted fields." };
   }
   const data = parsed.data;
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
+  let existingQuery = supabase
+    .from("tournaments")
+    .select("status, slug, format_settings, registration_starts_at, registration_deadline, starts_at")
+    .eq("id", tournamentId);
+  if (!staff) existingQuery = existingQuery.eq("organizer_id", user.id);
+
   const [{ data: existing }, { count: matchCount }] = await Promise.all([
-    supabase
-      .from("tournaments")
-      .select("status, slug, format_settings, registration_starts_at, registration_deadline, starts_at")
-      .eq("id", tournamentId)
-      .eq("organizer_id", user.id)
-      .maybeSingle(),
+    existingQuery.maybeSingle(),
     supabase.from("matches").select("id", { count: "exact", head: true }).eq("tournament_id", tournamentId),
   ]);
 
@@ -70,7 +72,7 @@ export async function updateTournamentDetails(
     }
   }
 
-  const { data: updated, error } = await supabase
+  let updateQuery = supabase
     .from("tournaments")
     .update({
       community_id: data.hostCommunityId,
@@ -100,10 +102,10 @@ export async function updateTournamentDetails(
       registration_deadline: manilaLocalToUtcIso(data.registrationDeadlineLocal),
       starts_at: manilaLocalToUtcIso(data.startsAtLocal),
     })
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id)
-    .select("slug")
-    .single();
+    .eq("id", tournamentId);
+  if (!staff) updateQuery = updateQuery.eq("organizer_id", user.id);
+
+  const { data: updated, error } = await updateQuery.select("slug").single();
 
   if (error) {
     if (error.code === "23505") {
@@ -142,9 +144,12 @@ export async function updateTournamentDetails(
 export async function deleteTournament(tournamentId: string): Promise<RoleActionState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
-  const { error } = await supabase.from("tournaments").delete().eq("id", tournamentId).eq("organizer_id", user.id);
+  let query = supabase.from("tournaments").delete().eq("id", tournamentId);
+  if (!staff) query = query.eq("organizer_id", user.id);
+  const { error } = await query;
 
   if (error) return { status: "error", message: error.message };
 
@@ -162,18 +167,19 @@ export async function updateTournamentStatus(
 ): Promise<RoleActionState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("tournaments")
-    .update({ status })
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id);
+  let query = supabase.from("tournaments").update({ status }).eq("id", tournamentId);
+  if (!staff) query = query.eq("organizer_id", user.id);
+  const { error } = await query;
 
   if (error) return { status: "error", message: error.message };
 
   revalidatePath(`/account/organizer/tournament/${slug}`, "layout");
   revalidatePath("/account/organizer/tournament");
+  revalidatePath(`/backend/tournaments/${slug}`, "layout");
+  revalidatePath("/backend/tournaments");
   return { status: "success", message: "Status updated." };
 }
 
@@ -186,19 +192,17 @@ export async function updateSwissRounds(tournamentId: string, slug: string, swis
   if (!Number.isInteger(swissRounds) || swissRounds < 1 || swissRounds > 20) {
     return { status: "error", message: "Enter a number of rounds between 1 and 20." };
   }
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
-  const { data: existing, error: fetchError } = await supabase
-    .from("tournaments")
-    .select("format_settings")
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id)
-    .maybeSingle();
+  let fetchQuery = supabase.from("tournaments").select("format_settings").eq("id", tournamentId);
+  if (!staff) fetchQuery = fetchQuery.eq("organizer_id", user.id);
+  const { data: existing, error: fetchError } = await fetchQuery.maybeSingle();
 
   if (fetchError) return { status: "error", message: fetchError.message };
   if (!existing) return { status: "error", message: "Tournament not found." };
 
-  const { error } = await supabase
+  let updateQuery = supabase
     .from("tournaments")
     .update({
       format_settings: {
@@ -206,8 +210,9 @@ export async function updateSwissRounds(tournamentId: string, slug: string, swis
         groupStage: { ...existing.format_settings.groupStage, swissRounds },
       },
     })
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id);
+    .eq("id", tournamentId);
+  if (!staff) updateQuery = updateQuery.eq("organizer_id", user.id);
+  const { error } = await updateQuery;
 
   if (error) return { status: "error", message: error.message };
 

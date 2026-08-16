@@ -36,8 +36,15 @@ export function TournamentSettingsPanel({
   communities,
   prizes,
   groupStageStarted,
+  basePath = "/account/organizer/tournament",
 }: {
   tournament: Tournament;
+  // Lets /backend/tournaments/[slug]/settings reuse this component
+  // unchanged — where a save/delete/reset redirects to afterward differs
+  // by context (an admin managing someone else's tournament has no access
+  // to /account/organizer/tournament/[slug], which 404s for non-owners —
+  // see getManagedTournament).
+  basePath?: string;
   communities: { id: string; name: string }[];
   prizes: TournamentPrize[];
   // Whether the group stage (or single-stage bracket) has generated its
@@ -78,7 +85,7 @@ export function TournamentSettingsPanel({
       return;
     }
     if (result.slug && result.slug !== tournament.slug) {
-      router.push(`/account/organizer/tournament/${result.slug}/settings`);
+      router.push(`${basePath}/${result.slug}/settings`);
       return;
     }
     setDetailsMessage({ type: "success", text: result.message ?? "Saved." });
@@ -93,7 +100,7 @@ export function TournamentSettingsPanel({
         setDeleteError(result.message ?? "Something went wrong.");
         return;
       }
-      router.push("/account/organizer/tournament");
+      router.push(basePath);
     });
   }
 
@@ -106,7 +113,7 @@ export function TournamentSettingsPanel({
         return;
       }
       setResetOpen(false);
-      router.push(`/account/organizer/tournament/${tournament.slug}`);
+      router.push(`${basePath}/${tournament.slug}`);
     });
   }
 

@@ -7,6 +7,7 @@ import { Providers } from "@/app/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
+import { getActiveSponsors } from "@/lib/sponsors/queries";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
 const inter = Inter({
@@ -63,9 +64,10 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const authUser = await getCurrentUser();
-  const [roles, notificationCount] = authUser
-    ? await Promise.all([getCurrentUserRoles(), getUnreadNotificationCount()])
-    : ([[], 0] as const);
+  const [[roles, notificationCount], sponsors] = await Promise.all([
+    authUser ? Promise.all([getCurrentUserRoles(), getUnreadNotificationCount()]) : Promise.resolve([[], 0] as const),
+    getActiveSponsors(),
+  ]);
   const user: NavUser | null = authUser
     ? {
         email: authUser.email ?? null,
@@ -107,7 +109,7 @@ export default async function RootLayout({
           </a>
           <Header user={user} notificationCount={notificationCount} />
           <main id="main-content">{children}</main>
-          <Footer />
+          <Footer sponsors={sponsors} />
         </Providers>
         <Analytics />
       </body>

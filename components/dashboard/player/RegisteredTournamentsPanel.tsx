@@ -1,34 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { TournamentDetailsModal } from "@/components/tournaments/TournamentDetailsModal";
 import { formatDate } from "@/lib/format";
-import { MOCK_TOURNAMENTS, type MockTournament } from "@/lib/mock/tournaments";
-import { MOCK_REGISTRATIONS, type MockRegistration } from "@/lib/mock/player-dashboard";
+import type { MockTournament } from "@/lib/mock/tournaments";
 
-interface RegisteredEntry {
-  registration: MockRegistration;
+export interface RegisteredEntry {
+  registeredAt: string;
   tournament: MockTournament;
 }
 
-export function RegisteredTournamentsPanel() {
+export function RegisteredTournamentsPanel({ entries }: { entries: RegisteredEntry[] }) {
   const [view, setView] = useState<"current" | "past">("current");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const registered = useMemo(() => {
-    const entries: RegisteredEntry[] = [];
-    for (const registration of MOCK_REGISTRATIONS) {
-      const tournament = MOCK_TOURNAMENTS.find((t) => t.id === registration.tournamentId);
-      if (tournament) entries.push({ registration, tournament });
-    }
-    return entries;
-  }, []);
-
-  const filtered = registered.filter((r) => (view === "current" ? r.tournament.isUpcoming : !r.tournament.isUpcoming));
-  const selectedTournament = MOCK_TOURNAMENTS.find((t) => t.id === selectedId) ?? null;
+  const filtered = entries.filter((e) => (view === "current" ? e.tournament.isUpcoming : !e.tournament.isUpcoming));
+  const selectedTournament = entries.find((e) => e.tournament.id === selectedId)?.tournament ?? null;
 
   return (
     <div>
@@ -41,12 +31,10 @@ export function RegisteredTournamentsPanel() {
 
       {filtered.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ registration, tournament }) => (
+          {filtered.map(({ registeredAt, tournament }) => (
             <div key={tournament.id} className="flex flex-col gap-2">
               <TournamentCard tournament={tournament} onOpenDetails={setSelectedId} />
-              <p className="label-mono px-1 text-on-surface/40">
-                Registered {formatDate(registration.registeredAt)}
-              </p>
+              <p className="label-mono px-1 text-on-surface/40">Registered {formatDate(registeredAt)}</p>
             </div>
           ))}
         </div>

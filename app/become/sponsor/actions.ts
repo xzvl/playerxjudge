@@ -26,26 +26,29 @@ export async function applyForSponsor(input: SponsorApplicationInput): Promise<R
 
   const supabase = await createClient();
 
-  const { error: sponsorError } = await supabase.from("sponsors").upsert(
-    {
-      profile_id: user.id,
-      company_name: parsed.data.companyName,
-      website_url: parsed.data.websiteUrl || null,
-      logo_url: parsed.data.logoUrl || null,
-    },
-    { onConflict: "profile_id" }
-  );
-
-  if (sponsorError) {
-    return { status: "error", message: sponsorError.message };
-  }
-
   const { error: roleError } = await supabase
     .from("profile_roles")
     .insert({ profile_id: user.id, role: "sponsor", status: "pending" });
 
   if (roleError && roleError.code !== "23505") {
     return { status: "error", message: roleError.message };
+  }
+
+  // Only on a genuinely first-time application — a repeat submit (23505)
+  // shouldn't spawn another sponsors row for an account that already has
+  // one. This first row becomes their first (unfinished) listing, visible
+  // and completable from /account/sponsor/dashboard once approved.
+  if (!roleError) {
+    const { error: sponsorError } = await supabase.from("sponsors").insert({
+      profile_id: user.id,
+      company_name: parsed.data.companyName,
+      website_url: parsed.data.websiteUrl || null,
+      phone: parsed.data.phone,
+      approval_status: "pending",
+    });
+    if (sponsorError) {
+      return { status: "error", message: sponsorError.message };
+    }
   }
 
   return {

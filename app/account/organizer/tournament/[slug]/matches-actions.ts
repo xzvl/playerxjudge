@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/get-user";
+import { getCurrentUser, isCurrentUserStaff } from "@/lib/supabase/get-user";
 import { computeGroupStandings, generateInitialPairings, generateNextRoundPairings } from "@/lib/swiss";
 import { buildPlacementSections, buildRound1Pairings, qualifiedSlots } from "@/lib/final-stage-placeholder";
 import { logTournamentEvent } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
@@ -80,11 +80,15 @@ export async function generateNextRound(
 ): Promise<RoleActionState & { round?: number; matches?: Match[] }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
 
+  let tournamentQuery = supabase.from("tournaments").select("format_settings").eq("id", tournamentId);
+  if (!staff) tournamentQuery = tournamentQuery.eq("organizer_id", user.id);
+
   const [{ data: tournament }, { data: members }, { data: allMatches }] = await Promise.all([
-    supabase.from("tournaments").select("format_settings").eq("id", tournamentId).eq("organizer_id", user.id).maybeSingle(),
+    tournamentQuery.maybeSingle(),
     supabase.from("tournament_participants").select("*").eq("group_id", groupId).order("seed"),
     supabase.from("matches").select("*").eq("group_id", groupId),
   ]);
@@ -242,6 +246,42 @@ export async function clearMatchResult(matchId: string, slug: string): Promise<R
   revalidatePath(`/account/organizer/tournament/${slug}/log`);
 
   return { status: "success", match };
+}
+
+// Bulk version of clearMatchResult, for the Final Stage bracket's per-round
+// Clear icon (WorkspaceBracket's onClearRound / FinalStageBracketWorkspace)
+// — wipes every completed match a round has back to unplayed in one go.
+// Same "doesn't unwind downstream advancement" caveat as the single-match
+// version above. No owner filter needed (matches the rest of this file) —
+// RLS already covers organizer/judge/admin, and this is reachable from both
+// the organizer's own Final Stage page and /backend/tournaments/[slug].
+export async function clearRoundResults(matchIds: string[], slug: string): Promise<RoleActionState & { matches?: Match[] }> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+  if (matchIds.length === 0) return { status: "success", matches: [] };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("matches")
+    .update({ score: {}, winner_id: null, status: "scheduled", completed_at: null })
+    .in("id", matchIds)
+    .eq("status", "completed")
+    .select();
+  if (error) return { status: "error", message: error.message };
+
+  const matches = (data as Match[] | null) ?? [];
+  if (matches.length > 0) {
+    const staff = await isCurrentUserStaff();
+    await logTournamentEvent(matches[0].tournament_id, staff ? "Admin" : "Organizer", `cleared all results for Round ${matches[0].round}`);
+  }
+
+  revalidatePath(groupStagePath(slug), "layout");
+  revalidatePath(finalStagePath(slug), "layout");
+  revalidatePath(judgeViewPath(slug));
+  revalidatePath(`/account/organizer/tournament/${slug}/log`);
+  revalidatePath(`/backend/tournaments/${slug}`, "layout");
+
+  return { status: "success", matches };
 }
 
 export type MatchSlot = "a" | "b";
@@ -510,14 +550,12 @@ async function autoAdvanceFinalStage(
 export async function endGroupStage(tournamentId: string, slug: string): Promise<RoleActionState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
-  const { data: tournament, error: fetchError } = await supabase
-    .from("tournaments")
-    .select("format_settings")
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id)
-    .maybeSingle();
+  let fetchQuery = supabase.from("tournaments").select("format_settings").eq("id", tournamentId);
+  if (!staff) fetchQuery = fetchQuery.eq("organizer_id", user.id);
+  const { data: tournament, error: fetchError } = await fetchQuery.maybeSingle();
   if (fetchError) return { status: "error", message: fetchError.message };
   if (!tournament) return { status: "error", message: "Tournament not found." };
 
@@ -540,15 +578,16 @@ export async function endGroupStage(tournamentId: string, slug: string): Promise
     return { status: "error", message: "Every group needs to finish all of its rounds first." };
   }
 
-  const { error } = await supabase
+  let updateQuery = supabase
     .from("tournaments")
     .update({ format_settings: { ...tournament.format_settings, groupStageEnded: true } })
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id);
+    .eq("id", tournamentId);
+  if (!staff) updateQuery = updateQuery.eq("organizer_id", user.id);
+  const { error } = await updateQuery;
 
   if (error) return { status: "error", message: error.message };
 
-  await logTournamentEvent(tournamentId, "Organizer", "ended the group stage");
+  await logTournamentEvent(tournamentId, staff ? "Admin" : "Organizer", "ended the group stage");
   revalidatePath(groupStagePath(slug), "layout");
   return { status: "success" };
 }
@@ -561,14 +600,12 @@ export async function endGroupStage(tournamentId: string, slug: string): Promise
 export async function startFinalStage(tournamentId: string, slug: string): Promise<RoleActionState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
-  const { data: tournament, error: fetchError } = await supabase
-    .from("tournaments")
-    .select("format_settings")
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id)
-    .maybeSingle();
+  let fetchQuery = supabase.from("tournaments").select("format_settings").eq("id", tournamentId);
+  if (!staff) fetchQuery = fetchQuery.eq("organizer_id", user.id);
+  const { data: tournament, error: fetchError } = await fetchQuery.maybeSingle();
   if (fetchError) return { status: "error", message: fetchError.message };
   if (!tournament) return { status: "error", message: "Tournament not found." };
 
@@ -633,14 +670,12 @@ export async function startFinalStage(tournamentId: string, slug: string): Promi
     if (insertError) return { status: "error", message: insertError.message };
   }
 
-  const { error } = await supabase
-    .from("tournaments")
-    .update({ format_settings: { ...settings, finalStageStarted: true } })
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id);
+  let startFinalQuery = supabase.from("tournaments").update({ format_settings: { ...settings, finalStageStarted: true } }).eq("id", tournamentId);
+  if (!staff) startFinalQuery = startFinalQuery.eq("organizer_id", user.id);
+  const { error } = await startFinalQuery;
   if (error) return { status: "error", message: error.message };
 
-  await logTournamentEvent(tournamentId, "Organizer", "started the final stage");
+  await logTournamentEvent(tournamentId, staff ? "Admin" : "Organizer", "started the final stage");
   revalidatePath(finalStagePath(slug), "layout");
   return { status: "success" };
 }
@@ -861,6 +896,7 @@ export async function generatePlacementRound1(
 export async function endTournament(tournamentId: string, slug: string): Promise<RoleActionState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
   const { data: matches, error: matchesError } = await supabase
@@ -891,21 +927,22 @@ export async function endTournament(tournamentId: string, slug: string): Promise
     .eq("id", grandFinal.winner_id)
     .maybeSingle();
 
-  const { error } = await supabase
+  let endQuery = supabase
     .from("tournaments")
     .update({
       status: "completed",
       champion_name: champion ? champion.team_name ?? champion.name : null,
       ends_at: new Date().toISOString(),
     })
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id);
+    .eq("id", tournamentId);
+  if (!staff) endQuery = endQuery.eq("organizer_id", user.id);
+  const { error } = await endQuery;
   if (error) return { status: "error", message: error.message };
 
   const championName = champion ? champion.team_name ?? champion.name : null;
   await logTournamentEvent(
     tournamentId,
-    "Organizer",
+    staff ? "Admin" : "Organizer",
     championName ? `ended the tournament — ${championName} is the champion` : "ended the tournament"
   );
   revalidatePath(finalStagePath(slug), "layout");
@@ -923,21 +960,19 @@ export async function endTournament(tournamentId: string, slug: string): Promise
 export async function resetTournamentProgress(tournamentId: string, slug: string): Promise<RoleActionState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
+  const staff = await isCurrentUserStaff();
 
   const supabase = await createClient();
-  const { data: tournament, error: fetchError } = await supabase
-    .from("tournaments")
-    .select("format_settings, status")
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id)
-    .maybeSingle();
+  let fetchQuery = supabase.from("tournaments").select("format_settings, status").eq("id", tournamentId);
+  if (!staff) fetchQuery = fetchQuery.eq("organizer_id", user.id);
+  const { data: tournament, error: fetchError } = await fetchQuery.maybeSingle();
   if (fetchError) return { status: "error", message: fetchError.message };
   if (!tournament) return { status: "error", message: "Tournament not found." };
 
   const { error: deleteError } = await supabase.from("matches").delete().eq("tournament_id", tournamentId);
   if (deleteError) return { status: "error", message: deleteError.message };
 
-  const { error: updateError } = await supabase
+  let updateQuery = supabase
     .from("tournaments")
     .update({
       format_settings: { ...tournament.format_settings, groupStageEnded: false, finalStageStarted: false },
@@ -948,8 +983,9 @@ export async function resetTournamentProgress(tournamentId: string, slug: string
         ? { status: "registration_closed" as const, champion_name: null, ends_at: null }
         : {}),
     })
-    .eq("id", tournamentId)
-    .eq("organizer_id", user.id);
+    .eq("id", tournamentId);
+  if (!staff) updateQuery = updateQuery.eq("organizer_id", user.id);
+  const { error: updateError } = await updateQuery;
   if (updateError) return { status: "error", message: updateError.message };
 
   revalidatePath(groupStagePath(slug), "layout");

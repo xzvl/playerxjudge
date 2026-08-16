@@ -1,11 +1,11 @@
-import { ACHIEVEMENTS } from "@/lib/mock/player-dashboard";
+import type { Achievement } from "@/lib/player/achievements";
 
-export function AchievementsGrid() {
+export function AchievementsGrid({ achievements }: { achievements: Achievement[] }) {
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-      {ACHIEVEMENTS.map(({ id, label, description, icon: Icon, color, achieved }) => (
+      {achievements.map(({ code, label, description, icon: Icon, color, achieved }) => (
         <div
-          key={id}
+          key={code}
           className="flex flex-col items-center gap-3 border border-outline-variant/25 bg-surface-container-low p-5 text-center"
         >
           <div

@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 
 import { UpcomingTournamentsPanel } from "@/components/dashboard/player/UpcomingTournamentsPanel";
 import { getCurrentProfile } from "@/lib/supabase/get-user";
+import { getPublicTournamentListings } from "@/lib/tournaments/public-listings";
 
 export const metadata: Metadata = { title: "Upcoming Tournaments", robots: { index: false, follow: false } };
 
 export default async function UpcomingTournamentsPage() {
-  const profile = await getCurrentProfile();
+  const [profile, tournaments] = await Promise.all([getCurrentProfile(), getPublicTournamentListings()]);
 
   return (
     <div>
@@ -16,7 +17,7 @@ export default async function UpcomingTournamentsPage() {
         Tournaments happening near you, soonest first.
       </p>
       <div className="mt-8">
-        <UpcomingTournamentsPanel province={profile?.province ?? null} />
+        <UpcomingTournamentsPanel tournaments={tournaments} province={profile?.province ?? null} />
       </div>
     </div>
   );

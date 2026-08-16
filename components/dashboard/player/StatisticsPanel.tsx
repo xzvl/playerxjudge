@@ -1,4 +1,5 @@
-import { FINISH_TYPE_LABELS, PLAYER_STATS, type FinishType } from "@/lib/mock/player-dashboard";
+import { FINISH_TYPE_LABELS, type PlayerStats } from "@/lib/player/stats";
+import type { FinishType } from "@/lib/types/database";
 
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
@@ -13,8 +14,14 @@ function perMatch(count: number, totalMatches: number) {
   return totalMatches > 0 ? (count / totalMatches).toFixed(2) : "0.00";
 }
 
-export function StatisticsPanel({ fullBodyPhotoUrl }: { fullBodyPhotoUrl: string | null }) {
-  const { totalWins, totalLosses, totalMatches, finishCounts, totalTeamBattles, totalLikes } = PLAYER_STATS;
+export function StatisticsPanel({
+  fullBodyPhotoUrl,
+  stats,
+}: {
+  fullBodyPhotoUrl: string | null;
+  stats: PlayerStats;
+}) {
+  const { totalWins, totalLosses, totalDraws, totalMatches, finishCounts, totalTeamBattles } = stats;
   const winningPercentage = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
   const finishTypes = Object.keys(FINISH_TYPE_LABELS) as FinishType[];
 
@@ -43,6 +50,7 @@ export function StatisticsPanel({ fullBodyPhotoUrl }: { fullBodyPhotoUrl: string
         <dl>
           <StatRow label="Total Win" value={totalWins} />
           <StatRow label="Total Lost" value={totalLosses} />
+          <StatRow label="Total Draw" value={totalDraws} />
           <StatRow label="Total Matches" value={totalMatches} />
           {finishTypes.map((ft) => (
             <StatRow
@@ -59,7 +67,6 @@ export function StatisticsPanel({ fullBodyPhotoUrl }: { fullBodyPhotoUrl: string
             />
           ))}
           <StatRow label="Total Team Battle" value={totalTeamBattles} />
-          <StatRow label="Total Likes" value={totalLikes} />
         </dl>
       </div>
     </div>

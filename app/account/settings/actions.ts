@@ -79,7 +79,7 @@ export async function updateTournamentInfo(input: TournamentInfoInput): Promise<
 
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ blader_names: parsed.data.bladerNames, community_id: parsed.data.mainCommunityId })
+    .update({ blader_names: parsed.data.bladerNames, community_id: parsed.data.mainCommunityId || null })
     .eq("id", user.id);
 
   if (profileError) return { status: "error", message: profileError.message };

@@ -14,10 +14,12 @@ export const tournamentInfoSchema = z
     bladerNames: z
       .array(z.string().trim().min(1, "Blader name can't be empty").max(40, "Too long"))
       .min(1, "Add at least one blader name"),
-    communityIds: z.array(z.string().uuid()).min(1, "Select at least one community"),
-    mainCommunityId: z.string().uuid("Pick a main community"),
+    // Empty is valid — "No Community" (see TournamentInfoForm) explicitly
+    // clears both, rather than communities being a forced choice.
+    communityIds: z.array(z.string().uuid()),
+    mainCommunityId: z.string().uuid().optional().or(z.literal("")),
   })
-  .refine((data) => data.communityIds.includes(data.mainCommunityId), {
+  .refine((data) => data.communityIds.length === 0 || (!!data.mainCommunityId && data.communityIds.includes(data.mainCommunityId)), {
     message: "Main community must be one of the selected communities",
     path: ["mainCommunityId"],
   });

@@ -11,7 +11,7 @@ import { GroupStageWorkspace } from "@/components/dashboard/organizer/GroupStage
 import { GroupStageRound1Preview } from "@/components/dashboard/organizer/GroupStageRound1Preview";
 import { STAGE_FORMAT_OPTIONS, GRAND_FINALS_OPTIONS } from "@/lib/validations/tournament-wizard";
 import { getTournamentWorkspace } from "@/lib/mock/tournament-workspace";
-import { getCurrentUser } from "@/lib/supabase/get-user";
+import { getCurrentUser, isCurrentUserStaff } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { Match, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
@@ -81,9 +81,10 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
     }
 
     const supabase = await createClient();
-    const [{ data: participants }, { data: groups }] = await Promise.all([
+    const [{ data: participants }, { data: groups }, staff] = await Promise.all([
       supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id).order("seed"),
       supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
+      isCurrentUserStaff(),
     ]);
 
     const realParticipants = (participants as TournamentParticipant[] | null) ?? [];
@@ -154,6 +155,7 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
             swissRoundsCap={settings.groupStage.swissRounds ?? 5}
             advancePerGroup={settings.groupStage.participantsAdvancePerGroup}
             locked={settings.finalStageStarted === true}
+            canSwapParticipants={staff}
           />
         )}
       </div>
