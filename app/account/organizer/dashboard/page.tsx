@@ -59,7 +59,10 @@ export default async function OrganizerDashboardPage() {
     if (communityIds.length > 0) {
       const { data } = await supabase
         .from("community_judges")
-        .select("id, status, communities(name), profiles(username, display_name)")
+        // profiles(...) alone is ambiguous — community_judges has two FKs to
+        // profiles (judge_id, decided_by); this list is about the judge, not
+        // whoever approved/removed them.
+        .select("id, status, communities(name), profiles!community_judges_judge_id_fkey(username, display_name)")
         .in("community_id", communityIds)
         .order("requested_at");
       assignments = (data as unknown as JudgeAssignmentRow[] | null) ?? [];

@@ -73,7 +73,14 @@ export async function getCurrentUserCommunityName(): Promise<string | null> {
   if (!user) return null;
 
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("communities(name)").eq("id", user.id).single();
+  // communities(...) alone is ambiguous — profiles has two FKs to
+  // communities (profiles.community_id for this "home community" lookup,
+  // and communities.owner_id); disambiguate to the former.
+  const { data } = await supabase
+    .from("profiles")
+    .select("communities!profiles_community_id_fkey(name)")
+    .eq("id", user.id)
+    .single();
   return (data as unknown as { communities: { name: string } | null } | null)?.communities?.name ?? null;
 }
 

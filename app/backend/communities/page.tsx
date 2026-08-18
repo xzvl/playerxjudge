@@ -16,7 +16,13 @@ function locationLine(community: CommunityRow): string {
 
 export default async function BackendCommunitiesPage() {
   const supabase = await createClient();
-  const { data } = await supabase.from("communities").select("*, profiles(display_name)").order("created_at", { ascending: false });
+  // profiles(...) alone is ambiguous — profiles has two FKs to communities
+  // (communities.owner_id, and profiles.community_id for a member's "home
+  // community"); this is about the community's owner.
+  const { data } = await supabase
+    .from("communities")
+    .select("*, profiles!communities_owner_id_fkey(display_name)")
+    .order("created_at", { ascending: false });
 
   const all = (data as unknown as CommunityWithOwnerRow[] | null) ?? [];
 
