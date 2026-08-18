@@ -37,11 +37,13 @@ insert into public.achievements (code, name, description, icon) values
   ('ten_wins', '10 Wins', 'Reach 10 official match wins.', 'star')
 on conflict (code) do nothing;
 
-insert into public.faqs (question, answer, category, sort_order) values
-  ('How do I register for a tournament?', 'Open the tournament details and click "Pre-register" or "Register Now" once registration opens.', 'Players', 1),
-  ('How much does Premium cost?', 'Premium is ₱100/month and unlocks unlimited tournaments, the Judge Dashboard, analytics, and priority listing.', 'Billing', 2),
-  ('What payment methods are supported?', 'GCash, Maya, and manual bank transfer are supported today; card payments are on the roadmap.', 'Billing', 3)
-on conflict do nothing;
+-- FAQ starter content (24 questions across 8 categories, plus the Privacy
+-- Policy / Terms & Conditions bodies) now ships in
+-- 20250101000047_faq_and_legal_content.sql, applied automatically by
+-- `supabase db push` like the rest of the migrations. It's not repeated here
+-- so re-running this file doesn't create duplicate FAQ rows (faqs.question
+-- has no unique constraint to dedupe against). Manage FAQs going forward
+-- from /backend/faqs.
 
 -- ============================================================
 -- Communities & tournaments (run after you have real accounts)

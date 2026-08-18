@@ -43,7 +43,8 @@ This applies everything in `supabase/migrations/` in order: extensions & enums, 
 (profiles/provinces/communities), tournament tables, social/commerce tables, stats tables,
 helper functions + **Row Level Security policies on every table**, and full-text search triggers.
 
-Then seed reference data (provinces, tournament types/categories, sponsor packages, achievements, FAQs):
+Then seed reference data (provinces, tournament types/categories, sponsor packages, achievements) —
+FAQs and the Privacy Policy/Terms & Conditions content ship in the migrations themselves:
 
 ```bash
 psql "$(supabase db url)" -f supabase/seed.sql

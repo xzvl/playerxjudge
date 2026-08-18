@@ -49,7 +49,11 @@ export function StaticPageEditor({
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-on-surface">Body</label>
         <Textarea rows={20} value={body} onChange={(e) => setBody(e.target.value)} className="font-mono text-sm" />
-        <p className="text-xs text-on-surface/40">Plain text — blank lines become paragraph breaks on the public page.</p>
+        <p className="text-xs text-on-surface/40">
+          Start a line with <code className="text-on-surface/60">## </code> to begin a new section (it becomes a
+          heading with a quick-link at the top of the page, styled like /rules). Start a line with{" "}
+          <code className="text-on-surface/60">- </code> for a bullet list. Blank lines become paragraph breaks.
+        </p>
       </div>
 
       {message ? (
