@@ -86,8 +86,13 @@ export const beybladeSchema = z.object({
   name: z.string().trim().min(1, "Required").max(120, "Too long"),
   shortName: z.string().trim().min(1, "Required").max(60, "Too long"),
   code: z.string().trim().min(1, "Required").max(40, "Too long"),
-  type: z.enum(["attack", "balance", "defense", "stamina"], { errorMap: () => ({ message: "Pick a type" }) }),
-  spinDirection: z.enum(["right", "left", "dual"], { errorMap: () => ({ message: "Pick a spin direction" }) }),
+  // "" is a real, valid value here — Lock Chips, Ratchets, and the other
+  // individual Custom Line components don't have a type or spin direction
+  // of their own (only a whole assembled "blade" does) — see toRow's
+  // typeOrNull/spinOrNull (app/backend/beyblades/actions.ts), which store
+  // "" as null.
+  type: z.enum(["", "attack", "balance", "defense", "stamina"]),
+  spinDirection: z.enum(["", "right", "left", "dual"]),
   attack: statField,
   defense: statField,
   stamina: statField,

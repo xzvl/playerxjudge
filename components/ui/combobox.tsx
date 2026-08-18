@@ -10,6 +10,10 @@ export interface ComboboxOption {
   label: string;
   disabled?: boolean;
   disabledReason?: string;
+  // Optional thumbnail shown before the label in the dropdown list (e.g.
+  // the combo form's Blade/Ratchet/Bit pickers). Left off, options render
+  // exactly as before.
+  imageUrl?: string | null;
 }
 
 export function Combobox({
@@ -153,6 +157,14 @@ export function Combobox({
                   )}
                 >
                   <Check className={cn("h-3.5 w-3.5 shrink-0", option.value === value ? "opacity-100" : "opacity-0")} />
+                  {option.imageUrl !== undefined ? (
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden border border-outline-variant/25 bg-white p-[1px]">
+                      {option.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={option.imageUrl} alt="" className="h-full w-full object-contain" />
+                      ) : null}
+                    </span>
+                  ) : null}
                   {option.label}
                   {option.disabled && option.disabledReason ? (
                     <span className="label-mono ml-auto text-[8px] text-on-surface/30">{option.disabledReason}</span>

@@ -5,11 +5,16 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Players", robots: { index: false, follow: false } };
 
-// Capped at the 200 most recently joined — same pragmatic client-side
-// search/paginate-over-a-fetched-page approach as the other backend list
-// pages (ParticipantsPanel and friends), rather than building out full
-// server-side search/pagination for one list.
-const PLAYER_FETCH_LIMIT = 200;
+// `profiles` is 1:1 with every Supabase auth user (see handle_new_user's
+// on_auth_user_created trigger, 20250101000002_core_tables.sql) — every
+// account on the platform, not a subset. Limited to a generous ceiling
+// rather than left fully unbounded (a naive `select *` with no limit can
+// still get capped by PostgREST's own max-rows setting anyway); raise this
+// if the platform ever actually approaches it. Same pragmatic
+// client-side search/paginate-over-a-fetched-page approach as the other
+// backend list pages (ParticipantsPanel and friends), rather than building
+// out full server-side search/pagination for one list.
+const PLAYER_FETCH_LIMIT = 10_000;
 
 export default async function PlayersPage() {
   const supabase = await createClient();

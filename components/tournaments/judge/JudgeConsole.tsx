@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { LogOut, RefreshCw, Trash2, Trophy } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { JudgePlayerPicker, type JudgePlayerOption } from "@/components/tournaments/judge/JudgePlayerPicker";
 import {
   PlayerScorePanel,
+  comboForNextBattle,
   emptyPlayerScoreState,
   committedPenalties,
   ownScore,
@@ -21,10 +22,10 @@ import { JudgeViewResultDialog } from "@/components/tournaments/judge/JudgeViewR
 import { JudgeStadiumPromptDialog } from "@/components/tournaments/judge/JudgeStadiumPromptDialog";
 import { startMatch, submitJudgedMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import { assignStationMatch } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
-import { signOutJudgeSession, setOwnStation, uploadMatchScreenshot } from "@/app/tournaments/[slug]/judge/actions";
+import { getParticipantComboSlots, signOutJudgeSession, setOwnStation, uploadMatchScreenshot } from "@/app/tournaments/[slug]/judge/actions";
 import { captureElementAsWebp } from "@/lib/images/screenshot";
 import { cn } from "@/lib/utils";
-import type { FinishType, MatchBattle } from "@/lib/types/database";
+import type { FinishType, MatchBattle, MatchBattleCombo } from "@/lib/types/database";
 
 export interface JudgeMatchLite {
   id: string;
@@ -133,12 +134,46 @@ export function JudgeConsole({
     if (forStationId) void assignStationMatch(forStationId, slug, matchId);
   }
 
+  // Fetches both sides' linked-account combo slots (see
+  // getParticipantComboSlots) and folds them into whichever state
+  // currently holds that participantId — a plain fetch rather than
+  // blocking picking a player on it, since it's purely informational (the
+  // "Using: ..." label, and incrementFinish's per-battle snapshot below)
+  // until Submit Result actually reads it. Matched by participantId (not
+  // "player1"/"player2" directly) so it still lands correctly even if
+  // Switch fires while this is in flight.
+  function refreshComboSlots(aId: string, bId: string) {
+    void (async () => {
+      const [aSlots, bSlots] = await Promise.all([getParticipantComboSlots(tournamentId, aId), getParticipantComboSlots(tournamentId, bId)]);
+      const applyTo = (prev: PlayerScoreState) =>
+        prev.participantId === aId ? { ...prev, comboSlots: aSlots } : prev.participantId === bId ? { ...prev, comboSlots: bSlots } : prev;
+      setPlayer1(applyTo);
+      setPlayer2(applyTo);
+    })();
+  }
+
+  // Keeps comboSlots from ever going stale for the rest of an active
+  // match — fires once immediately whenever the match changes (covering
+  // every way one gets picked, including `initialMatch`, set server-side
+  // when the judge/organizer's claimed station already has a match
+  // running — see page.tsx), then again every 10s for as long as it stays
+  // the current match, so a player rearranging their deck mid-match is
+  // reflected in time for whichever battle gets scored next (see
+  // incrementFinish) rather than only affecting the *next* match.
+  useEffect(() => {
+    if (!matchContext) return;
+    refreshComboSlots(matchContext.participantAId, matchContext.participantBId);
+    const intervalId = setInterval(() => refreshComboSlots(matchContext.participantAId, matchContext.participantBId), 10_000);
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchContext?.matchId]);
+
   // Picking a participant on either side looks up their one active
   // (non-completed) match and fills the *other* side with the real
   // opponent, plus the round/stage that match is actually part of.
   function selectPlayer(side: Side, participantId: string) {
     const match = matches.find((m) => m.participantAId === participantId || m.participantBId === participantId);
-    const picked: PlayerScoreState = { participantId, events: [], penaltyProgress: 0 };
+    const picked: PlayerScoreState = { participantId, events: [], penaltyProgress: 0, comboSlots: null };
 
     if (!match || !match.participantAId || !match.participantBId) {
       stateSetter(side)(picked);
@@ -148,7 +183,7 @@ export function JudgeConsole({
     }
 
     const opponentId = match.participantAId === participantId ? match.participantBId : match.participantAId;
-    const opponent: PlayerScoreState = { participantId: opponentId, events: [], penaltyProgress: 0 };
+    const opponent: PlayerScoreState = { participantId: opponentId, events: [], penaltyProgress: 0, comboSlots: null };
     stateSetter(side)(picked);
     stateSetter(side === "left" ? "right" : "left")(opponent);
     setMatchContext({
@@ -173,8 +208,8 @@ export function JudgeConsole({
     if (!currentMatchId) return;
     const stationMatch = matches.find((m) => m.id === currentMatchId);
     if (!stationMatch?.participantAId || !stationMatch?.participantBId) return;
-    setPlayer1({ participantId: stationMatch.participantAId, events: [], penaltyProgress: 0 });
-    setPlayer2({ participantId: stationMatch.participantBId, events: [], penaltyProgress: 0 });
+    setPlayer1({ participantId: stationMatch.participantAId, events: [], penaltyProgress: 0, comboSlots: null });
+    setPlayer2({ participantId: stationMatch.participantBId, events: [], penaltyProgress: 0, comboSlots: null });
     setMatchContext({
       matchId: stationMatch.id,
       round: stationMatch.round,
@@ -200,8 +235,25 @@ export function JudgeConsole({
     }
   }
 
+  // Resolves and freezes both sides' combo for this specific battle right
+  // now, from whatever comboSlots each side currently holds (kept fresh by
+  // the effect above) — not deferred to submit time, so a deck
+  // rearrangement made *after* this battle is scored can never rewrite
+  // what it recorded. The slot is the running total across both sides
+  // (this battle is the (battleCount + 1)th of the match), matching
+  // comboForNextBattle's rule for the live "Using: ..." preview.
+  function comboRef(combo: { id: string; name: string } | null | undefined): MatchBattleCombo | null {
+    return combo ? { id: combo.id, name: combo.name } : null;
+  }
+
   function incrementFinish(side: Side, kind: FinishType) {
-    stateSetter(side)((prev) => ({ ...prev, events: [...prev.events, { kind, seq: nextSeq() }] }));
+    const own = side === "left" ? player1 : player2;
+    const opponent = side === "left" ? player2 : player1;
+    const battleCount = own.events.filter((e) => e.kind !== "penalty").length + opponent.events.filter((e) => e.kind !== "penalty").length;
+    const slot = battleCount % 3;
+    const ownerCombo = comboRef(own.comboSlots?.[slot]);
+    const opponentCombo = comboRef(opponent.comboSlots?.[slot]);
+    stateSetter(side)((prev) => ({ ...prev, events: [...prev.events, { kind, seq: nextSeq(), ownerCombo, opponentCombo }] }));
   }
 
   function decrementFinish(side: Side, kind: FinishType) {
@@ -251,13 +303,26 @@ export function JudgeConsole({
     const aName = aState === player1 ? name1 : name2;
     const bName = aState === player1 ? name2 : name1;
 
-    const merged: (BoxEvent & { winnerId: string })[] = [
-      ...aState.events.map((e) => ({ ...e, winnerId: aState.participantId! })),
-      ...bState.events.map((e) => ({ ...e, winnerId: bState.participantId! })),
+    // Each event already carries both sides' combo, resolved and frozen
+    // the moment it was scored (see incrementFinish) — no recomputation
+    // from comboSlots needed here, and nothing here can retroactively
+    // change what an already-scored battle recorded even if the deck's
+    // been rearranged since. `ownerCombo`/`opponentCombo` are relative to
+    // whichever side actually recorded (won) the event, so they're
+    // remapped to participantA/participantB here based on which state
+    // each event came from.
+    const merged: (BoxEvent & { winnerId: string; aCombo: MatchBattleCombo | null; bCombo: MatchBattleCombo | null })[] = [
+      ...aState.events.map((e) => ({ ...e, winnerId: aState.participantId!, aCombo: e.ownerCombo ?? null, bCombo: e.opponentCombo ?? null })),
+      ...bState.events.map((e) => ({ ...e, winnerId: bState.participantId!, aCombo: e.opponentCombo ?? null, bCombo: e.ownerCombo ?? null })),
     ].sort((x, y) => x.seq - y.seq);
     const battles: MatchBattle[] = merged
       .filter((e) => e.kind !== "penalty")
-      .map((e) => ({ winnerId: e.winnerId, finishType: e.kind as FinishType }));
+      .map((e) => ({
+        winnerId: e.winnerId,
+        finishType: e.kind as FinishType,
+        participantACombo: e.aCombo,
+        participantBCombo: e.bCombo,
+      }));
 
     // Proof-of-result screenshot of the console itself (both scorecards,
     // header, everything in consoleRef) — deliberately not document.body,
@@ -308,6 +373,8 @@ export function JudgeConsole({
   const score2 = ownScore(player2) + committedPenalties(player1);
   const name1 = participants.find((p) => p.id === player1.participantId)?.displayName ?? "Player 1";
   const name2 = participants.find((p) => p.id === player2.participantId)?.displayName ?? "Player 2";
+  const combo1 = comboForNextBattle(player1, player2);
+  const combo2 = comboForNextBattle(player2, player1);
 
   return (
     <div ref={consoleRef} className="mx-auto flex max-w-[1440px]">
@@ -372,29 +439,35 @@ export function JudgeConsole({
             <ThemeToggle />
           </div>
           <div className="flex items-start justify-between gap-4">
-            <JudgePlayerPicker
-              label="Player 1"
-              sideLabel="[X Side]"
-              options={participants}
-              selectedId={player1.participantId}
-              onSelect={(id) => selectPlayer("left", id)}
-            />
+            <div className="min-w-0">
+              <JudgePlayerPicker
+                label="Player 1"
+                sideLabel="[X Side]"
+                options={participants}
+                selectedId={player1.participantId}
+                onSelect={(id) => selectPlayer("left", id)}
+              />
+              {combo1 ? <p className="mt-1 truncate text-xs text-on-surface/50">Using: <span className="text-on-surface/80">{combo1.name}</span></p> : null}
+            </div>
             <div className="shrink-0 pt-1 text-center">
               <p className="label-mono text-primary">{matchContext ? `Round ${matchContext.round}` : "—"}</p>
               <p className="label-mono text-[10px] text-on-surface/40">{matchContext?.stage ?? "No match"}</p>
             </div>
-            <JudgePlayerPicker
-              label="Player 2"
-              sideLabel="[B Side]"
-              options={participants}
-              selectedId={player2.participantId}
-              onSelect={(id) => selectPlayer("right", id)}
-              align="right"
-            />
+            <div className="min-w-0 text-right">
+              <JudgePlayerPicker
+                label="Player 2"
+                sideLabel="[B Side]"
+                options={participants}
+                selectedId={player2.participantId}
+                onSelect={(id) => selectPlayer("right", id)}
+                align="right"
+              />
+              {combo2 ? <p className="mt-1 truncate text-xs text-on-surface/50">Using: <span className="text-on-surface/80">{combo2.name}</span></p> : null}
+            </div>
           </div>
         </header>
 
-        <div className="grid gap-4 lg:gap-6 px-4 py-4 lg:py-8 lg:pb-24 md:px-8 grid-cols-[1fr_auto_1fr] lg:pb-8">
+        <div className="grid gap-4 lg:gap-6 px-4 py-4 lg:py-8 pb-24 md:px-8 grid-cols-[1fr_auto_1fr] lg:pb-8">
           <PlayerScorePanel
             state={player1}
             bonusPenalties={committedPenalties(player2)}

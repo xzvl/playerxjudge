@@ -2,6 +2,7 @@ import {
   BadgeCheck,
   BarChart3,
   Bell,
+  Disc3,
   DollarSign,
   Download,
   FileText,
@@ -9,10 +10,12 @@ import {
   Handshake,
   Heart,
   History,
+  Layers,
   LayoutDashboard,
   ListChecks,
   Settings,
   Star,
+  Swords,
   Trophy,
   Users,
   Users2,
@@ -128,6 +131,30 @@ const SPONSOR_DASHBOARD_SUB_ITEMS: DashboardNavItem[] = [
   { label: "Tournament Sponsor", icon: <Trophy className="h-4 w-4 shrink-0" /> },
 ];
 
+// Not gated by role like the four above — every signed-in account can save
+// combos/build a deck regardless of player/judge/organizer/sponsor status,
+// so this is appended unconditionally in getAccountNavItems below.
+const BEYBLADE_DASHBOARD_SUB_ITEMS: DashboardNavItem[] = [
+  { label: "Overview", href: "/account/beyblade/dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
+  { label: "Build Your Deck", href: "/account/beyblade/deck", icon: <Layers className="h-4 w-4 shrink-0" /> },
+  { label: "Beyblade Combo", href: "/account/beyblade/combos", icon: <Swords className="h-4 w-4 shrink-0" /> },
+];
+
+const BEYBLADE_DASHBOARD_NAV_ITEM: DashboardNavItem = {
+  label: "Beyblade Dashboard",
+  icon: <Disc3 className="h-4 w-4 shrink-0" />,
+  children: BEYBLADE_DASHBOARD_SUB_ITEMS,
+};
+
+// Shown only to accounts without an approved judge role (see
+// getAccountNavItems below) — links to the in-account BeyZ ID + apply flow
+// at /account/judge/apply, distinct from the public /become/judge page.
+const APPLY_JUDGE_NAV_ITEM: DashboardNavItem = {
+  label: "Apply Judge",
+  href: "/account/judge/apply",
+  icon: <Gavel className="h-4 w-4 shrink-0" />,
+};
+
 const ROLE_NAV_ITEMS: { role: AppRole; item: DashboardNavItem }[] = [
   {
     role: "player",
@@ -173,5 +200,17 @@ export function getAccountNavItems(roles: ProfileRole[]): DashboardNavItem[] {
   const approvedRoles = new Set(roles.filter((r) => r.status === "approved").map((r) => r.role));
   approvedRoles.add("player");
 
-  return ROLE_NAV_ITEMS.filter(({ role }) => approvedRoles.has(role)).map(({ item }) => item);
+  // Player Dashboard is always present (every account has "player" added
+  // above) and always first, since it's ROLE_NAV_ITEMS' first entry — so
+  // Beyblade Dashboard can always slot in as the 2nd item, directly under
+  // it, regardless of which other role dashboards (Judge/Organizer/
+  // Sponsor) also show up beneath.
+  const [playerItem, ...otherRoleItems] = ROLE_NAV_ITEMS.filter(({ role }) => approvedRoles.has(role)).map(({ item }) => item);
+  const items = [playerItem, BEYBLADE_DASHBOARD_NAV_ITEM, ...otherRoleItems];
+
+  // Not an approved judge yet — offer the apply link right under Beyblade
+  // Dashboard rather than making them find /become/judge.
+  if (!approvedRoles.has("judge")) items.splice(2, 0, APPLY_JUDGE_NAV_ITEM);
+
+  return items;
 }

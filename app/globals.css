@@ -206,7 +206,9 @@
     @apply font-mono uppercase tracking-[0.2em] text-[11px];
   }
 }
-
+.bg-color-white{
+  background-color: #ffffff;
+}
 .map-tiles-dark {
   background: #0e0e0e;
   z-index: 1;

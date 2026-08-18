@@ -378,9 +378,24 @@ export type TournamentLogEntry = {
 
 export type FinishType = "burst" | "spin" | "extreme" | "over";
 
+// Denormalized (name, not just a live reference) — snapshotted onto the
+// battle at submit time so a later deck edit or combo rename doesn't
+// retroactively change history, and so anywhere Match Details renders can
+// show it without an extra lookup. `id` still rides along for future
+// combo-level stats (e.g. a combo's own win rate) once something reads it
+// that way. See JudgeConsole's PlayerScoreState.comboSlots/mergeBattleLog.
+export interface MatchBattleCombo {
+  id: string;
+  name: string;
+}
+
 export type MatchBattle = {
   winnerId: string;
   finishType: FinishType;
+  // null when that side has no approved linked account, no active deck, or
+  // an empty slot for this battle's position in their 3-combo cycle.
+  participantACombo?: MatchBattleCombo | null;
+  participantBCombo?: MatchBattleCombo | null;
 };
 
 // Mirrors supabase/migrations/20250101000013_group_stage_matches.sql —
@@ -632,11 +647,16 @@ export type Beyblade = {
   code: string;
   name: string;
   short_name: string;
-  type: BeybladeType;
+  // Only meaningful for parts that spin as a whole blade on their own
+  // (category 'blade'/'ratchet_integrated_blade') — null for Lock Chips,
+  // Ratchets, and the other individual Custom Line components, which don't
+  // have an attack/defense/balance/stamina lean or spin handedness of
+  // their own. See 20250101000041_beyblades_type_spin_direction_optional.sql.
+  type: BeybladeType | null;
   series: BeybladeSeries;
   system_line: BeybladeSystemLine;
   category: BeybladeCategory;
-  spin_direction: BeybladeSpinDirection;
+  spin_direction: BeybladeSpinDirection | null;
   attack: number | null;
   defense: number | null;
   stamina: number | null;
@@ -654,6 +674,48 @@ export type Beyblade = {
   metal_blade_id: string | null;
   assist_blade_id: string | null;
   expand_blade: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+// Mirrors supabase/migrations/20250101000042_beyblade_combos_and_decks.sql —
+// a player's saved Blade+Ratchet+Bit loadouts and deck, behind
+// /account/beyblade/*. Fully private (RLS: owning profile only), unlike
+// the `beyblades` catalog itself.
+export type BeybladeCombo = {
+  id: string;
+  profile_id: string;
+  name: string;
+  // Exactly one of blade_id or lock_chip_id (i.e. the assembly columns
+  // below) is set per row — see
+  // 20250101000045_beyblade_combos_custom_assembly.sql.
+  blade_id: string | null;
+  // null when blade_id or bit_id is itself a Ratchet-Integrated part — see
+  // 20250101000044_beyblade_combos_ratchet_optional.sql.
+  ratchet_id: string | null;
+  bit_id: string;
+  // A self-assembled Blade, in place of blade_id — see the migration
+  // above. main_blade_id is used unless expand_blade, which uses
+  // over_blade_id + metal_blade_id instead (mirrors beyblades' own Blade
+  // Assembly columns, 20250101000038_beyblades.sql).
+  lock_chip_id: string | null;
+  main_blade_id: string | null;
+  over_blade_id: string | null;
+  metal_blade_id: string | null;
+  assist_blade_id: string | null;
+  expand_blade: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BeybladeDeck = {
+  id: string;
+  profile_id: string;
+  name: string;
+  is_active: boolean;
+  combo_1_id: string | null;
+  combo_2_id: string | null;
+  combo_3_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -691,6 +753,8 @@ export interface Database {
       faqs: TableDef<Faq>;
       static_pages: TableDef<StaticPage>;
       beyblades: TableDef<Beyblade>;
+      beyblade_combos: TableDef<BeybladeCombo>;
+      beyblade_decks: TableDef<BeybladeDeck>;
     };
     Views: {
       public_preregistrations: TableDef<PublicPreregistration>;

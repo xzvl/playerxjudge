@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createBeyblade, updateBeyblade, uploadBeybladeImage } from "@/app/backend/beyblades/actions";
-import type { BeybladePickerOptions } from "@/app/backend/beyblades/data";
+import type { BeybladePickerOption, BeybladePickerOptions } from "@/app/backend/beyblades/data";
+import { BeybladePartThumbnail } from "@/components/backend/beyblade-badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
 import { ThumbnailUploadField } from "@/components/tournaments/wizard/ThumbnailUploadField";
+import { computeComboStats } from "@/lib/beyblades/combo-stats";
 import {
   BEYBLADE_CATEGORY_OPTIONS,
   BEYBLADE_SERIES_OPTIONS,
@@ -30,14 +32,21 @@ import type { Beyblade } from "@/lib/types/database";
 
 const NONE_OPTION: ComboboxOption = { value: "", label: "— None —" };
 
+// Only a whole assembled "blade" (category 'blade'/'ratchet_integrated_blade')
+// has its own type/spin direction — Lock Chips, Ratchets, and the other
+// individual Custom Line components don't, so both segmented controls below
+// lead with an explicit "None" pill rather than forcing a pick.
+const TYPE_OPTIONS_WITH_NONE = [{ value: "", label: "— None —" }, ...BEYBLADE_TYPE_OPTIONS];
+const SPIN_DIRECTION_OPTIONS_WITH_NONE = [{ value: "", label: "— None —" }, ...BEYBLADE_SPIN_DIRECTION_OPTIONS];
+
 function beybladeToFormValues(beyblade: Beyblade): BeybladeInput {
   const stat = (v: number | null) => (v === null ? "" : String(v));
   return {
     name: beyblade.name,
     shortName: beyblade.short_name,
     code: beyblade.code,
-    type: beyblade.type,
-    spinDirection: beyblade.spin_direction,
+    type: beyblade.type ?? "",
+    spinDirection: beyblade.spin_direction ?? "",
     attack: stat(beyblade.attack),
     defense: stat(beyblade.defense),
     stamina: stat(beyblade.stamina),
@@ -87,6 +96,45 @@ export function BeybladeForm({
   // system line / category combination is a standalone piece.
   const showBladeAssembly = systemLine === "custom_line" && category === "blade";
 
+  const lockChipId = form.watch("lockChipId");
+  const mainBladeId = form.watch("mainBladeId");
+  const overBladeId = form.watch("overBladeId");
+  const metalBladeId = form.watch("metalBladeId");
+  const assistBladeId = form.watch("assistBladeId");
+
+  const findOption = (options: BeybladePickerOption[], id: string) => options.find((o) => o.id === id) ?? null;
+  const selectedLockChip = findOption(pickerOptions.lockChips, lockChipId);
+  const selectedMainBlade = findOption(pickerOptions.mainBlades, mainBladeId);
+  const selectedOverBlade = findOption(pickerOptions.overBlades, overBladeId);
+  const selectedMetalBlade = findOption(pickerOptions.metalBlades, metalBladeId);
+  const selectedAssistBlade = findOption(pickerOptions.assistBlades, assistBladeId);
+
+  // A Custom Line "Blade" doesn't have stats of its own — they're whatever
+  // its assembled parts add up to: Lock Chip + Assist Blade, plus either
+  // Main Blade or (if expanded) Over Blade + Metal Blade.
+  const assemblyStats = useMemo(
+    () =>
+      computeComboStats(
+        expandBlade
+          ? [selectedLockChip, selectedOverBlade, selectedMetalBlade, selectedAssistBlade]
+          : [selectedLockChip, selectedMainBlade, selectedAssistBlade]
+      ),
+    [expandBlade, selectedLockChip, selectedMainBlade, selectedOverBlade, selectedMetalBlade, selectedAssistBlade]
+  );
+
+  useEffect(() => {
+    if (!showBladeAssembly) return;
+    form.setValue("attack", String(assemblyStats.attack));
+    form.setValue("defense", String(assemblyStats.defense));
+    form.setValue("stamina", String(assemblyStats.stamina));
+    form.setValue("height", String(assemblyStats.height));
+    form.setValue("dash", String(assemblyStats.dash));
+    form.setValue("burstResistance", String(assemblyStats.burstResistance));
+    // form isn't in the deps — it's stable from useForm and including it
+    // would just re-run this for unrelated reasons.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBladeAssembly, assemblyStats]);
+
   async function handleImageReady(file: File) {
     if (!beyblade) {
       setImageFile(file);
@@ -126,11 +174,15 @@ export function BeybladeForm({
     router.refresh();
   }
 
-  const lockChipOptions = [NONE_OPTION, ...pickerOptions.lockChips.map((o) => ({ value: o.id, label: o.name }))];
-  const mainBladeOptions = [NONE_OPTION, ...pickerOptions.mainBlades.map((o) => ({ value: o.id, label: o.name }))];
-  const overBladeOptions = [NONE_OPTION, ...pickerOptions.overBlades.map((o) => ({ value: o.id, label: o.name }))];
-  const metalBladeOptions = [NONE_OPTION, ...pickerOptions.metalBlades.map((o) => ({ value: o.id, label: o.name }))];
-  const assistBladeOptions = [NONE_OPTION, ...pickerOptions.assistBlades.map((o) => ({ value: o.id, label: o.name }))];
+  const toAssemblyOptions = (options: BeybladePickerOption[]): ComboboxOption[] => [
+    NONE_OPTION,
+    ...options.map((o) => ({ value: o.id, label: o.name, imageUrl: o.imageUrl })),
+  ];
+  const lockChipOptions = toAssemblyOptions(pickerOptions.lockChips);
+  const mainBladeOptions = toAssemblyOptions(pickerOptions.mainBlades);
+  const overBladeOptions = toAssemblyOptions(pickerOptions.overBlades);
+  const metalBladeOptions = toAssemblyOptions(pickerOptions.metalBlades);
+  const assistBladeOptions = toAssemblyOptions(pickerOptions.assistBlades);
 
   return (
     <Form {...form}>
@@ -188,7 +240,7 @@ export function BeybladeForm({
                 <FormItem>
                   <FormLabel>Type</FormLabel>
                   <FormControl>
-                    <SegmentedControl value={field.value} onChange={field.onChange} options={BEYBLADE_TYPE_OPTIONS} />
+                    <SegmentedControl value={field.value} onChange={field.onChange} options={TYPE_OPTIONS_WITH_NONE} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -216,7 +268,7 @@ export function BeybladeForm({
                   <FormItem>
                     <FormLabel>Spin Direction</FormLabel>
                     <FormControl>
-                      <SegmentedControl value={field.value} onChange={field.onChange} options={BEYBLADE_SPIN_DIRECTION_OPTIONS} />
+                      <SegmentedControl value={field.value} onChange={field.onChange} options={SPIN_DIRECTION_OPTIONS_WITH_NONE} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -230,32 +282,37 @@ export function BeybladeForm({
           <CardHeader>
             <CardTitle>Stats</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-5 sm:grid-cols-3">
-            {(
-              [
-                ["attack", "Attack"],
-                ["defense", "Defense"],
-                ["stamina", "Stamina"],
-                ["height", "Height"],
-                ["dash", "Dash"],
-                ["burstResistance", "Burst Resistance"],
-              ] as const
-            ).map(([name, label]) => (
-              <FormField
-                key={name}
-                control={form.control}
-                name={name}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{label}</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.1" inputMode="decimal" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ))}
+          <CardContent className="space-y-2">
+            {showBladeAssembly ? (
+              <p className="text-xs text-on-surface/50">Auto-calculated from the Blade Assembly below — pick its parts to set these.</p>
+            ) : null}
+            <div className="grid gap-5 sm:grid-cols-3">
+              {(
+                [
+                  ["attack", "Attack"],
+                  ["defense", "Defense"],
+                  ["stamina", "Stamina"],
+                  ["height", "Height"],
+                  ["dash", "Dash"],
+                  ["burstResistance", "Burst Resistance"],
+                ] as const
+              ).map(([name, label]) => (
+                <FormField
+                  key={name}
+                  control={form.control}
+                  name={name}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{label}</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.1" inputMode="decimal" {...field} disabled={showBladeAssembly} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -354,6 +411,9 @@ export function BeybladeForm({
                 )}
               />
 
+              {/* Lock Chip always leads row 1, paired with Main Blade — or,
+                  expanded, Metal Blade. Assist Blade sits alone on row 2 —
+                  or, expanded, paired there with Over Blade instead. */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -362,42 +422,24 @@ export function BeybladeForm({
                     <FormItem>
                       <FormLabel>Select a Lock Chip</FormLabel>
                       <FormControl>
-                        <Combobox label="Lock Chip" hideLabel placeholder="— None —" value={field.value} onValueChange={field.onChange} options={lockChipOptions} />
+                        <div className="flex items-center gap-3">
+                          <Combobox
+                            className="flex-1"
+                            label="Lock Chip"
+                            hideLabel
+                            placeholder="— None —"
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            options={lockChipOptions}
+                          />
+                          {selectedLockChip ? <BeybladePartThumbnail name={selectedLockChip.name} imageUrl={selectedLockChip.imageUrl} /> : null}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="assistBladeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select a Assist Blade</FormLabel>
-                      <FormControl>
-                        <Combobox label="Assist Blade" hideLabel placeholder="— None —" value={field.value} onValueChange={field.onChange} options={assistBladeOptions} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {expandBlade ? (
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="overBladeId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Select a Over Blade</FormLabel>
-                        <FormControl>
-                          <Combobox label="Over Blade" hideLabel placeholder="— None —" value={field.value} onValueChange={field.onChange} options={overBladeOptions} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                {expandBlade ? (
                   <FormField
                     control={form.control}
                     name="metalBladeId"
@@ -405,28 +447,103 @@ export function BeybladeForm({
                       <FormItem>
                         <FormLabel>Select a Metal Blade</FormLabel>
                         <FormControl>
-                          <Combobox label="Metal Blade" hideLabel placeholder="— None —" value={field.value} onValueChange={field.onChange} options={metalBladeOptions} />
+                          <div className="flex items-center gap-3">
+                            <Combobox
+                              className="flex-1"
+                              label="Metal Blade"
+                              hideLabel
+                              placeholder="— None —"
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              options={metalBladeOptions}
+                            />
+                            {selectedMetalBlade ? <BeybladePartThumbnail name={selectedMetalBlade.name} imageUrl={selectedMetalBlade.imageUrl} /> : null}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-              ) : (
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="mainBladeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select a Main Blade</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-3">
+                            <Combobox
+                              className="flex-1"
+                              label="Main Blade"
+                              hideLabel
+                              placeholder="— None —"
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              options={mainBladeOptions}
+                            />
+                            {selectedMainBlade ? <BeybladePartThumbnail name={selectedMainBlade.name} imageUrl={selectedMainBlade.imageUrl} /> : null}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              <div className={expandBlade ? "grid gap-5 sm:grid-cols-2" : undefined}>
+                {expandBlade ? (
+                  <FormField
+                    control={form.control}
+                    name="overBladeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select a Over Blade</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-3">
+                            <Combobox
+                              className="flex-1"
+                              label="Over Blade"
+                              hideLabel
+                              placeholder="— None —"
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              options={overBladeOptions}
+                            />
+                            {selectedOverBlade ? <BeybladePartThumbnail name={selectedOverBlade.name} imageUrl={selectedOverBlade.imageUrl} /> : null}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
                 <FormField
                   control={form.control}
-                  name="mainBladeId"
+                  name="assistBladeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Select a Main Blade</FormLabel>
+                      <FormLabel>Select a Assist Blade</FormLabel>
                       <FormControl>
-                        <Combobox label="Main Blade" hideLabel placeholder="— None —" value={field.value} onValueChange={field.onChange} options={mainBladeOptions} />
+                        <div className="flex items-center gap-3">
+                          <Combobox
+                            className="flex-1"
+                            label="Assist Blade"
+                            hideLabel
+                            placeholder="— None —"
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            options={assistBladeOptions}
+                          />
+                          {selectedAssistBlade ? <BeybladePartThumbnail name={selectedAssistBlade.name} imageUrl={selectedAssistBlade.imageUrl} /> : null}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
+              </div>
             </CardContent>
           </Card>
         ) : null}

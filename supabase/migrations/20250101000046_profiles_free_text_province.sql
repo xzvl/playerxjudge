@@ -1,0 +1,11 @@
+-- `profiles.province` (free text) is already assumed to exist by the app
+-- layer — lib/types/database.ts's Profile type declares it, and it's read
+-- in a few places (e.g. app/account/player/dashboard/page.tsx, the
+-- /backend/players query) — but only `province_id` (a vestigial FK to the
+-- `provinces` reference table, same story as `communities`/`tournaments`,
+-- see 20250101000018_tournament_free_text_province.sql) ever actually got
+-- added to `profiles`. That mismatch made any query explicitly selecting
+-- `province` fail outright (PostgREST 42703), which is why /backend/players
+-- was showing zero rows regardless of the row-limit fix. `province_id` is
+-- left in place, same as elsewhere — just no longer what anything reads.
+alter table public.profiles add column if not exists province text;

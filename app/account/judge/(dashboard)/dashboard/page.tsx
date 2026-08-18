@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { RoleStatusBadge } from "@/components/roles/RoleStatusBadge";
-import { requestCommunityJudgeAssignment, withdrawCommunityJudgeRequest } from "@/app/account/judge/dashboard/actions";
+import { requestCommunityJudgeAssignment, withdrawCommunityJudgeRequest } from "@/app/account/judge/(dashboard)/dashboard/actions";
 import type { CommunityJudge } from "@/lib/types/database";
 
 export const metadata: Metadata = { title: "Judge Dashboard", robots: { index: false, follow: false } };

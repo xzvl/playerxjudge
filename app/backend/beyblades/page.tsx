@@ -16,6 +16,16 @@ export default async function BackendBeybladesPage() {
     type: b.type,
     systemLine: b.system_line,
     category: b.category,
+    spinDirection: b.spin_direction,
+    attack: b.attack,
+    defense: b.defense,
+    stamina: b.stamina,
+    height: b.height,
+    dash: b.dash,
+    burstResistance: b.burst_resistance,
+    description: b.description,
+    series: b.series,
+    imageUrl: b.image_url,
   }));
 
   return (

@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 
 import { PlayerViewShell } from "@/components/tournaments/player/PlayerViewShell";
 import { PlayerCurrentStats } from "@/components/tournaments/player/PlayerCurrentStats";
+import { CurrentDeckSection } from "@/components/tournaments/player/CurrentDeckSection";
 import { PlayerStagesSection } from "@/components/tournaments/player/PlayerStagesSection";
 import { PlayerMatchesSection } from "@/components/tournaments/player/PlayerMatchesSection";
 import { PlayerStatsSidebar } from "@/components/tournaments/player/PlayerStatsSidebar";
 import { PlayerPreviewView } from "@/components/tournaments/player/PlayerPreviewView";
 import { getPlayerViewData } from "@/app/tournaments/[slug]/player/data";
+import { getDeckCombos, listOrCreateUserDecks } from "@/app/account/beyblade/data";
 import { getTournamentWorkspace } from "@/lib/mock/tournament-workspace";
 import { computeGroupStandings, type StandingsRow } from "@/lib/swiss";
 import {
@@ -194,6 +196,22 @@ export default async function TournamentPlayerPage({
     ? sideRecords(selectedId, selectedMatches)
     : { xSide: { wins: 0, played: 0 }, bSide: { wins: 0, played: 0 } };
 
+  // Only for the viewer's own confirmed link, viewing themselves (not
+  // someone else via the participant picker) — a deck is personal, and a
+  // pending (not yet organizer-approved) link isn't confirmed to be them
+  // yet. This is the viewer's real active deck (see CurrentDeckSection's
+  // doc comment), fetched fresh here rather than passed down from
+  // anywhere else on the page.
+  let currentDeck: { id: string; name: string; combos: Awaited<ReturnType<typeof getDeckCombos>> } | null = null;
+  if (authUser && myLink?.status === "approved" && selectedId !== null && selectedId === myLinkedParticipantId) {
+    const decks = await listOrCreateUserDecks(authUser.id);
+    const activeDeck = decks.find((d) => d.is_active) ?? decks[0] ?? null;
+    if (activeDeck) {
+      const combos = await getDeckCombos(activeDeck, authUser.id);
+      currentDeck = { id: activeDeck.id, name: activeDeck.name, combos };
+    }
+  }
+
   return (
     <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
       <div className="grid items-start gap-8 lg:grid-cols-3">
@@ -215,6 +233,8 @@ export default async function TournamentPlayerPage({
             slug={slug}
             myLink={myLink}
           />
+
+          {currentDeck ? <CurrentDeckSection deckId={currentDeck.id} deckName={currentDeck.name} combos={currentDeck.combos} /> : null}
 
           <PlayerStagesSection
             hasGroupStage

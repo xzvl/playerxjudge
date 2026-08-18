@@ -66,8 +66,9 @@ export function JudgeViewResultDialog({
                 const points = FINISH_POINTS[entry.kind];
                 return (
                   <TimelineItem key={i} icon={FINISH_ICON[entry.kind]}>
-                    Battle {battleIndex}: {hi(entry.winnerName)} [Beyblade] wins by {hi(`${FINISH_LABEL[entry.kind]} Finish`)} against{" "}
-                    {strong(entry.loserName)} [Beyblade] and earns {hi(`${points} point${points === 1 ? "" : "s"}`)}.
+                    Battle {battleIndex}: {hi(entry.winnerName)} [{entry.winnerCombo ?? "Beyblade"}] wins by{" "}
+                    {hi(`${FINISH_LABEL[entry.kind]} Finish`)} against {strong(entry.loserName)} [{entry.loserCombo ?? "Beyblade"}] and earns{" "}
+                    {hi(`${points} point${points === 1 ? "" : "s"}`)}.
                   </TimelineItem>
                 );
               })}

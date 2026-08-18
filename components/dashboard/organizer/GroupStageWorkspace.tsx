@@ -213,13 +213,17 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
               {score.battles.map((battle, i) => {
                 const winner = participantsById.get(battle.winnerId);
                 const winnerBattleName = winner?.teamName ?? winner?.name ?? "—";
-                const loser = battle.winnerId === match.participant_a_id ? b : a;
+                const winnerIsA = battle.winnerId === match.participant_a_id;
+                const loser = winnerIsA ? b : a;
                 const loserBattleName = loser?.teamName ?? loser?.name ?? "—";
+                const winnerCombo = (winnerIsA ? battle.participantACombo : battle.participantBCombo)?.name;
+                const loserCombo = (winnerIsA ? battle.participantBCombo : battle.participantACombo)?.name;
                 const points = FINISH_POINTS[battle.finishType];
                 return (
                   <TimelineItem key={i} icon={FINISH_ICON[battle.finishType]}>
-                    Battle {i + 1}: {hi(winnerBattleName)} [Beyblade] wins by {hi(`${FINISH_LABEL[battle.finishType]} Finish`)} against{" "}
-                    {strong(loserBattleName)} [Beyblade] and earns {hi(`${points} point${points === 1 ? "" : "s"}`)}.
+                    Battle {i + 1}: {hi(winnerBattleName)} [{winnerCombo ?? "Beyblade"}] wins by{" "}
+                    {hi(`${FINISH_LABEL[battle.finishType]} Finish`)} against {strong(loserBattleName)} [{loserCombo ?? "Beyblade"}] and earns{" "}
+                    {hi(`${points} point${points === 1 ? "" : "s"}`)}.
                   </TimelineItem>
                 );
               })}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { uploadJudgeBeyzId } from "@/app/account/judge/profile/actions";
+import { uploadJudgeBeyzId } from "@/app/account/judge/(dashboard)/profile/actions";
 import { BeyzIdStatusBadge } from "@/components/dashboard/judge/badges";
 import { ThumbnailUploadField } from "@/components/tournaments/wizard/ThumbnailUploadField";
 import type { BeyzIdStatus } from "@/lib/types/database";
@@ -10,9 +10,14 @@ import type { BeyzIdStatus } from "@/lib/types/database";
 export function JudgeBeyzIdUploader({
   initialUrl,
   initialStatus,
+  onUploaded,
 }: {
   initialUrl: string | null;
   initialStatus: BeyzIdStatus | null;
+  // Fires after a successful upload — lets a caller (JudgeApplyForm) know
+  // a BeyZ ID is now actually attached to the profile, e.g. to unlock its
+  // own Apply button.
+  onUploaded?: () => void;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +32,7 @@ export function JudgeBeyzIdUploader({
     }
     setError(null);
     setStatus("pending");
+    onUploaded?.();
   }
 
   return (

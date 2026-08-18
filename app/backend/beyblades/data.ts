@@ -13,9 +13,20 @@ export async function getBeyblade(id: string): Promise<Beyblade | null> {
   return (data as Beyblade | null) ?? null;
 }
 
+// imageUrl (for the picker's dropdown/selection preview) and the 6 stat
+// fields (for auto-computing a Custom Line "Blade"'s stats from its
+// assembly — see BeybladeForm's assemblyStats) ride along with every
+// option now, not just id/name.
 export interface BeybladePickerOption {
   id: string;
   name: string;
+  imageUrl: string | null;
+  attack: number | null;
+  defense: number | null;
+  stamina: number | null;
+  height: number | null;
+  dash: number | null;
+  burstResistance: number | null;
 }
 
 export interface BeybladePickerOptions {
@@ -34,14 +45,25 @@ export async function getBeybladePickerOptions(excludeId?: string): Promise<Beyb
   const supabase = await createClient();
   let query = supabase
     .from("beyblades")
-    .select("id, name, category")
+    .select("*")
     .in("category", ["lock_chip", "main_blade", "over_blade", "metal_blade", "assist_blade"])
     .order("name");
   if (excludeId) query = query.neq("id", excludeId);
 
   const { data } = await query;
-  const rows = (data as { id: string; name: string; category: string }[] | null) ?? [];
-  const byCategory = (category: string) => rows.filter((r) => r.category === category).map((r) => ({ id: r.id, name: r.name }));
+  const rows = (data as Beyblade[] | null) ?? [];
+  const toOption = (r: Beyblade): BeybladePickerOption => ({
+    id: r.id,
+    name: r.name,
+    imageUrl: r.image_url,
+    attack: r.attack,
+    defense: r.defense,
+    stamina: r.stamina,
+    height: r.height,
+    dash: r.dash,
+    burstResistance: r.burst_resistance,
+  });
+  const byCategory = (category: string) => rows.filter((r) => r.category === category).map(toOption);
 
   return {
     lockChips: byCategory("lock_chip"),

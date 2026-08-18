@@ -3,7 +3,8 @@
 import { ArrowUpCircle, Flame, Minus, Plus, RotateCw, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { FinishType } from "@/lib/types/database";
+import type { FinishType, MatchBattleCombo } from "@/lib/types/database";
+import type { ComboWithParts } from "@/app/account/beyblade/data";
 
 // `seq` is a global (both-sides-shared) monotonic counter assigned by
 // JudgeConsole at commit time — Switch swaps these whole per-player states
@@ -11,7 +12,19 @@ import type { FinishType } from "@/lib/types/database";
 // is what lets the two sides' events be merged back into one true
 // chronological battle log at submit time regardless of which side either
 // event currently lives on.
-export type BoxEvent = { kind: FinishType | "penalty"; seq: number };
+export type BoxEvent = {
+  kind: FinishType | "penalty";
+  seq: number;
+  // Only meaningful for a battle (non-penalty) event — both sides' combo
+  // for that specific battle, resolved from each side's own comboSlots at
+  // the moment the battle was scored (see JudgeConsole's incrementFinish),
+  // not recomputed later from whatever comboSlots happens to be by submit
+  // time. That's what keeps a mid-match deck rearrangement from
+  // retroactively changing which combo an already-scored battle recorded:
+  // only battles scored *after* the rearrangement pick up the new order.
+  ownerCombo?: MatchBattleCombo | null;
+  opponentCombo?: MatchBattleCombo | null;
+};
 
 export interface PlayerScoreState {
   participantId: string | null;
@@ -23,10 +36,37 @@ export interface PlayerScoreState {
   // The penalty stepper's own uncommitted half: 0 or 1 presses in. A
   // second press commits (pushes a "penalty" event, resets this to 0).
   penaltyProgress: 0 | 1;
+  // This participant's linked account's active-deck combos, in slot order
+  // — null (not an array) means no approved linked account or no active
+  // deck, so no combo tracking applies to this side at all. Fetched once
+  // when they're picked (see JudgeConsole's refreshComboSlots) and held
+  // as-is for the rest of the match — a deck edit mid-match doesn't
+  // retroactively change which combo an already-scored battle recorded.
+  // Battle N (1-indexed, penalties don't count) uses slot ((N-1) % 3) —
+  // see comboForNextBattle/mergeBattleLog below, and JudgeConsole's
+  // handleBothConfirmed, which applies the identical rule at submit time.
+  comboSlots: (ComboWithParts | null)[] | null;
 }
 
 export function emptyPlayerScoreState(): PlayerScoreState {
-  return { participantId: null, events: [], penaltyProgress: 0 };
+  return { participantId: null, events: [], penaltyProgress: 0, comboSlots: null };
+}
+
+// The combo this side's *next* battle will be recorded under, for the
+// live "Using: ..." label — null if they're not tracked at all, or if the
+// slot their next battle lands on happens to be empty. A stepper click
+// only pushes an event onto the *winning* side's own `events` (see
+// BoxEvent's doc comment above), so the loser of battle 1 has an empty
+// `events` array even though a battle has clearly already happened — the
+// slot has to come from the match's total battle count (both sides
+// combined), same as mergeBattleLog/JudgeConsole's handleBothConfirmed
+// already do via the merged, seq-ordered event list, not from either
+// side's own win tally alone.
+export function comboForNextBattle(state: PlayerScoreState, opponent: PlayerScoreState): ComboWithParts | null {
+  if (!state.comboSlots) return null;
+  const battleCount =
+    state.events.filter((e) => e.kind !== "penalty").length + opponent.events.filter((e) => e.kind !== "penalty").length;
+  return state.comboSlots[battleCount % 3] ?? null;
 }
 
 // Official point values (app/rules/page.tsx's Scoring System table).
@@ -60,6 +100,12 @@ export interface MergedLogEntry {
   kind: FinishType | "penalty";
   winnerName: string;
   loserName: string;
+  // Combo names, not full objects — this is display-only (the View Result
+  // preview); the real submission builds its own MatchBattleCombo records
+  // in JudgeConsole's handleBothConfirmed. undefined for a penalty entry
+  // (not a battle) or an untracked/empty slot.
+  winnerCombo?: string;
+  loserCombo?: string;
 }
 
 export function mergeBattleLog(aState: PlayerScoreState, bState: PlayerScoreState, aName: string, bName: string): MergedLogEntry[] {
@@ -68,11 +114,18 @@ export function mergeBattleLog(aState: PlayerScoreState, bState: PlayerScoreStat
     ...bState.events.map((e) => ({ ...e, ownerName: bName, opponentName: aName })),
   ].sort((x, y) => x.seq - y.seq);
 
-  return withNames.map((e) =>
-    e.kind === "penalty"
-      ? { kind: e.kind, winnerName: e.opponentName, loserName: e.ownerName }
-      : { kind: e.kind, winnerName: e.ownerName, loserName: e.opponentName }
-  );
+  return withNames.map((e) => {
+    if (e.kind === "penalty") {
+      return { kind: e.kind, winnerName: e.opponentName, loserName: e.ownerName };
+    }
+    return {
+      kind: e.kind,
+      winnerName: e.ownerName,
+      loserName: e.opponentName,
+      winnerCombo: e.ownerCombo?.name,
+      loserCombo: e.opponentCombo?.name,
+    };
+  });
 }
 
 // A battle fills as many boxes as it's worth — a 1pt Spin fills one, a 3pt

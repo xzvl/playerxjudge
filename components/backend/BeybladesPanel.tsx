@@ -2,15 +2,16 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { BeybladeTypeBadge } from "@/components/backend/beyblade-badges";
-import { BulkAddBeybladesDialog } from "@/components/backend/BulkAddBeybladesDialog";
-import { deleteBeyblade } from "@/app/backend/beyblades/actions";
+import { ExportBeybladesButton } from "@/components/backend/ExportBeybladesButton";
+import { ImportBeybladesDialog } from "@/components/backend/ImportBeybladesDialog";
+import { deleteBeyblade, duplicateBeyblade } from "@/app/backend/beyblades/actions";
 import {
   BEYBLADE_CATEGORY_LABELS,
   BEYBLADE_CATEGORY_OPTIONS,
@@ -18,16 +19,32 @@ import {
   BEYBLADE_TYPE_OPTIONS,
 } from "@/lib/validations/beyblade";
 import { cn } from "@/lib/utils";
-import type { BeybladeCategory, BeybladeSystemLine, BeybladeType } from "@/lib/types/database";
+import type { BeybladeCategory, BeybladeSeries, BeybladeSpinDirection, BeybladeSystemLine, BeybladeType } from "@/lib/types/database";
 
+// The full per-row shape the table, filters, and CSV/XLSX export all share
+// — see beybladeToExportRow (lib/beyblades/import-export.ts), which reads
+// straight off this type.
 export interface BeybladeItem {
   id: string;
   code: string;
   name: string;
   shortName: string;
-  type: BeybladeType;
+  // null for parts that don't have a type/spin direction of their own —
+  // Lock Chips, Ratchets, and the other individual Custom Line components
+  // (only a whole assembled "blade" does).
+  type: BeybladeType | null;
   systemLine: BeybladeSystemLine;
   category: BeybladeCategory;
+  spinDirection: BeybladeSpinDirection | null;
+  attack: number | null;
+  defense: number | null;
+  stamina: number | null;
+  height: number | null;
+  dash: number | null;
+  burstResistance: number | null;
+  description: string | null;
+  series: BeybladeSeries;
+  imageUrl: string | null;
 }
 
 type SortKey = "code" | "name" | "shortName" | "type" | "systemLine" | "category";
@@ -64,6 +81,20 @@ function SortableHeader({
   );
 }
 
+function BeybladeThumbnail({ imageUrl, alt }: { imageUrl: string | null; alt: string }) {
+  if (!imageUrl) {
+    return (
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-outline-variant/25 bg-surface-container-low text-[9px] text-on-surface/30">
+        —
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={imageUrl} alt={alt} className="h-10 w-10 shrink-0 border border-outline-variant/25 bg-surface-container-low object-contain bg-color-white" />
+  );
+}
+
 export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
   const [rows, setRows] = useState(beyblades);
   const [query, setQuery] = useState("");
@@ -71,7 +102,7 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
   const [categories, setCategories] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [deleting, setDeleting] = useState<BeybladeItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -79,7 +110,7 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((b) => {
-      if (types.length > 0 && !types.includes(b.type)) return false;
+      if (types.length > 0 && (!b.type || !types.includes(b.type))) return false;
       if (categories.length > 0 && !categories.includes(b.category)) return false;
       if (q && !b.code.toLowerCase().includes(q) && !b.name.toLowerCase().includes(q) && !b.shortName.toLowerCase().includes(q)) return false;
       return true;
@@ -97,7 +128,7 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
         case "shortName":
           return a.shortName.localeCompare(b.shortName) * dir;
         case "type":
-          return a.type.localeCompare(b.type) * dir;
+          return (a.type ?? "").localeCompare(b.type ?? "") * dir;
         case "systemLine":
           return a.systemLine.localeCompare(b.systemLine) * dir;
         case "category":
@@ -129,8 +160,20 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
     });
   }
 
-  function handleBulkAdded(added: BeybladeItem[]) {
-    setRows((prev) => [...added, ...prev]);
+  function handleImported(imported: BeybladeItem[]) {
+    setRows((prev) => [...imported, ...prev]);
+  }
+
+  function handleDuplicate(b: BeybladeItem) {
+    setError(null);
+    startTransition(async () => {
+      const result = await duplicateBeyblade(b.id);
+      if (result.status === "error" || !result.item) {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      setRows((prev) => [result.item!, ...prev]);
+    });
   }
 
   function rowActions(b: BeybladeItem) {
@@ -140,6 +183,16 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
           <Link href={`/backend/beyblades/${b.id}`} aria-label={`Edit ${b.name}`}>
             <Pencil className="h-3.5 w-3.5" />
           </Link>
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          tooltip="Duplicate this beyblade"
+          aria-label={`Duplicate ${b.name}`}
+          disabled={pending}
+          onClick={() => handleDuplicate(b)}
+        >
+          <Copy className="h-3.5 w-3.5" />
         </Button>
         <Button
           variant="outline"
@@ -169,9 +222,10 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
           <MultiSelectFilter label="Types" options={BEYBLADE_TYPE_OPTIONS} selected={types} onChange={setTypes} />
           <MultiSelectFilter label="Categories" options={BEYBLADE_CATEGORY_OPTIONS} selected={categories} onChange={setCategories} />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-1.5" tooltip="Add several beyblades at once" onClick={() => setBulkAddOpen(true)}>
-            <Upload className="h-3.5 w-3.5" /> Bulk Add
+        <div className="flex flex-wrap gap-2">
+          <ExportBeybladesButton beyblades={rows} />
+          <Button variant="outline" className="gap-1.5" tooltip="Add beyblades from a CSV or XLSX file" onClick={() => setImportOpen(true)}>
+            <Upload className="h-3.5 w-3.5" /> Import
           </Button>
           <Button asChild className="gap-1.5" tooltip="Add a new beyblade">
             <Link href="/backend/beyblades/new">
@@ -194,10 +248,13 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
             {sorted.map((b) => (
               <article key={b.id} className="border border-outline-variant/25 bg-surface-container-low p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="label-mono text-[10px] text-on-surface/40">{b.code}</p>
-                    <p className="truncate font-medium text-on-surface">{b.name}</p>
-                    <p className="truncate text-sm text-on-surface/50">{b.shortName}</p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <BeybladeThumbnail imageUrl={b.imageUrl} alt="" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-on-surface">{b.name}</p>
+                      <p className="label-mono text-[10px] text-on-surface/40">{b.code}</p>
+                      <p className="truncate text-sm text-on-surface/50">{b.shortName}</p>
+                    </div>
                   </div>
                   <BeybladeTypeBadge type={b.type} />
                 </div>
@@ -212,11 +269,14 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
 
           {/* lg and up: the full table. */}
           <div className="hidden overflow-x-auto border border-outline-variant/25 lg:block">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead>
                 <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                  <SortableHeader label="Code" sortKey="code" active={sortKey === "code"} dir={sortDir} onClick={toggleSort} />
+                  <th className="p-4" scope="col">
+                    <span className="sr-only">Thumbnail</span>
+                  </th>
                   <SortableHeader label="Name" sortKey="name" active={sortKey === "name"} dir={sortDir} onClick={toggleSort} />
+                  <SortableHeader label="Code" sortKey="code" active={sortKey === "code"} dir={sortDir} onClick={toggleSort} />
                   <SortableHeader label="Short Name" sortKey="shortName" active={sortKey === "shortName"} dir={sortDir} onClick={toggleSort} />
                   <SortableHeader label="Type" sortKey="type" active={sortKey === "type"} dir={sortDir} onClick={toggleSort} />
                   <SortableHeader label="System Line" sortKey="systemLine" active={sortKey === "systemLine"} dir={sortDir} onClick={toggleSort} />
@@ -229,8 +289,11 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
               <tbody>
                 {sorted.map((b) => (
                   <tr key={b.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
-                    <td className="p-4 font-mono text-xs text-on-surface/60">{b.code}</td>
+                    <td className="p-4">
+                      <BeybladeThumbnail imageUrl={b.imageUrl} alt="" />
+                    </td>
                     <td className="p-4 font-medium text-on-surface">{b.name}</td>
+                    <td className="p-4 font-mono text-xs text-on-surface/60">{b.code}</td>
                     <td className="p-4 text-on-surface/60">{b.shortName}</td>
                     <td className="p-4">
                       <BeybladeTypeBadge type={b.type} />
@@ -252,7 +315,7 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
         </p>
       )}
 
-      <BulkAddBeybladesDialog open={bulkAddOpen} onOpenChange={setBulkAddOpen} onAdded={handleBulkAdded} />
+      <ImportBeybladesDialog open={importOpen} onOpenChange={setImportOpen} onImported={handleImported} />
 
       <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent className="max-w-sm">

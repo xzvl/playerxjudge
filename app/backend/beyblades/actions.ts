@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/get-user";
-import { beybladeSchema, DEFAULT_BEYBLADE_VALUES, MAX_BEYBLADE_IMAGE_UPLOAD_BYTES, type BeybladeInput } from "@/lib/validations/beyblade";
+import { beybladeSchema, MAX_BEYBLADE_IMAGE_UPLOAD_BYTES, type BeybladeInput } from "@/lib/validations/beyblade";
 import type { RoleActionState } from "@/lib/validations/roles";
+import type { Beyblade } from "@/lib/types/database";
+import type { BeybladeItem } from "@/components/backend/BeybladesPanel";
 
 function revalidateBeybladePaths() {
   revalidatePath("/backend/beyblades");
@@ -14,12 +16,16 @@ function revalidateBeybladePaths() {
 function toRow(input: BeybladeInput) {
   const num = (v: string) => (v.trim() === "" ? null : Number(v));
   const ref = (v: string) => (v.trim() === "" ? null : v);
+  // Keeps the literal union (vs. ref's plain `string | null`) so this still
+  // matches the `type`/`spin_direction` columns' narrow types.
+  const typeOrNull = (v: BeybladeInput["type"]) => (v === "" ? null : v);
+  const spinOrNull = (v: BeybladeInput["spinDirection"]) => (v === "" ? null : v);
   return {
     name: input.name.trim(),
     short_name: input.shortName.trim(),
     code: input.code.trim(),
-    type: input.type,
-    spin_direction: input.spinDirection,
+    type: typeOrNull(input.type),
+    spin_direction: spinOrNull(input.spinDirection),
     attack: num(input.attack),
     defense: num(input.defense),
     stamina: num(input.stamina),
@@ -39,10 +45,6 @@ function toRow(input: BeybladeInput) {
   };
 }
 
-function messageFor(error: { code?: string; message: string }): string {
-  return error.code === "23505" ? "That code is already in use." : error.message;
-}
-
 export interface BeybladeActionState extends RoleActionState {
   id?: string;
 }
@@ -56,7 +58,7 @@ export async function createBeyblade(input: BeybladeInput): Promise<BeybladeActi
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("beyblades").insert(toRow(parsed.data)).select("id").single();
-  if (error) return { status: "error", message: messageFor(error) };
+  if (error) return { status: "error", message: error.message };
 
   revalidateBeybladePaths();
   return { status: "success", id: (data as { id: string }).id };
@@ -71,7 +73,7 @@ export async function updateBeyblade(id: string, input: BeybladeInput): Promise<
 
   const supabase = await createClient();
   const { error } = await supabase.from("beyblades").update(toRow(parsed.data)).eq("id", id);
-  if (error) return { status: "error", message: messageFor(error) };
+  if (error) return { status: "error", message: error.message };
 
   revalidateBeybladePaths();
   return { status: "success", id };
@@ -108,6 +110,94 @@ export async function uploadBeybladeImage(id: string, formData: FormData): Promi
   return { status: "success", url };
 }
 
+export interface DuplicateBeybladeResult extends BeybladeActionState {
+  item?: BeybladeItem;
+}
+
+// Copies every field (stats, description, Blade-assembly references) plus
+// the image onto a new row — `code` isn't unique (20250101000040_...), so
+// it's copied as-is; `name` gets a "(Copy)" suffix so the duplicate is
+// distinguishable in the list until it's renamed.
+export async function duplicateBeyblade(id: string): Promise<DuplicateBeybladeResult> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const supabase = await createClient();
+  const { data: sourceData, error: fetchError } = await supabase.from("beyblades").select("*").eq("id", id).maybeSingle();
+  if (fetchError) return { status: "error", message: fetchError.message };
+  if (!sourceData) return { status: "error", message: "That beyblade no longer exists." };
+  const source = sourceData as Beyblade;
+
+  const name = `${source.name} (Copy)`;
+  const { data: inserted, error: insertError } = await supabase
+    .from("beyblades")
+    .insert({
+      name,
+      short_name: source.short_name,
+      code: source.code,
+      type: source.type,
+      spin_direction: source.spin_direction,
+      attack: source.attack,
+      defense: source.defense,
+      stamina: source.stamina,
+      height: source.height,
+      dash: source.dash,
+      burst_resistance: source.burst_resistance,
+      description: source.description,
+      series: source.series,
+      system_line: source.system_line,
+      category: source.category,
+      expand_blade: source.expand_blade,
+      lock_chip_id: source.lock_chip_id,
+      main_blade_id: source.main_blade_id,
+      over_blade_id: source.over_blade_id,
+      metal_blade_id: source.metal_blade_id,
+      assist_blade_id: source.assist_blade_id,
+    })
+    .select("id")
+    .single();
+  if (insertError) return { status: "error", message: insertError.message };
+  const newId = (inserted as { id: string }).id;
+
+  // The image copy isn't fatal if it fails — the duplicate still exists,
+  // just without an image, same as any beyblade nothing's been uploaded to
+  // yet (the admin can re-upload from the edit page).
+  let imageUrl: string | null = null;
+  if (source.image_url) {
+    const { error: copyError } = await supabase.storage.from("beyblade-images").copy(`${id}/image.webp`, `${newId}/image.webp`);
+    if (!copyError) {
+      const { data: publicUrlData } = supabase.storage.from("beyblade-images").getPublicUrl(`${newId}/image.webp`);
+      imageUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+      await supabase.from("beyblades").update({ image_url: imageUrl }).eq("id", newId);
+    }
+  }
+
+  revalidateBeybladePaths();
+  return {
+    status: "success",
+    id: newId,
+    item: {
+      id: newId,
+      code: source.code,
+      name,
+      shortName: source.short_name,
+      type: source.type,
+      systemLine: source.system_line,
+      category: source.category,
+      spinDirection: source.spin_direction,
+      attack: source.attack,
+      defense: source.defense,
+      stamina: source.stamina,
+      height: source.height,
+      dash: source.dash,
+      burstResistance: source.burst_resistance,
+      description: source.description,
+      series: source.series,
+      imageUrl,
+    },
+  };
+}
+
 export async function deleteBeyblade(id: string): Promise<RoleActionState> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
@@ -118,92 +208,4 @@ export async function deleteBeyblade(id: string): Promise<RoleActionState> {
 
   revalidateBeybladePaths();
   return { status: "success" };
-}
-
-export interface BulkAddedBeyblade {
-  id: string;
-  code: string;
-  name: string;
-  shortName: string;
-  type: BeybladeInput["type"];
-  systemLine: BeybladeInput["systemLine"];
-  category: BeybladeInput["category"];
-}
-
-export interface BulkAddResult extends RoleActionState {
-  added: BulkAddedBeyblade[];
-  failed: { line: number; reason: string }[];
-}
-
-const BULK_HEADER = ["code", "name", "short_name", "type", "series", "system_line", "category", "spin_direction"];
-
-// One beyblade per line, comma-separated in BULK_HEADER's order. A header
-// row (case-insensitive, matching BULK_HEADER) is optional and skipped if
-// present. Stats/description/the Blade-assembly pickers aren't supported
-// here — bulk add is for seeding a batch of catalog entries quickly; open
-// any of them from the list afterward to fill in the rest.
-export async function bulkAddBeyblades(csv: string): Promise<BulkAddResult> {
-  const user = await getCurrentUser();
-  if (!user) return { status: "error", message: "You need to be signed in.", added: [], failed: [] };
-
-  const lines = csv
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-  if (lines.length === 0) return { status: "error", message: "Paste at least one row.", added: [], failed: [] };
-
-  const firstCells = lines[0].split(",").map((c) => c.trim().toLowerCase());
-  const dataLines = firstCells.join(",") === BULK_HEADER.join(",") ? lines.slice(1) : lines;
-
-  const rows: ReturnType<typeof toRow>[] = [];
-  const failed: { line: number; reason: string }[] = [];
-
-  dataLines.forEach((line, i) => {
-    const [code, name, shortName, type, series, systemLine, category, spinDirection] = line.split(",").map((c) => c.trim());
-    const parsed = beybladeSchema.safeParse({
-      ...DEFAULT_BEYBLADE_VALUES,
-      code: code ?? "",
-      name: name ?? "",
-      shortName: shortName ?? "",
-      type: type ?? "",
-      series: series || "x_generation",
-      systemLine: systemLine ?? "",
-      category: category ?? "",
-      spinDirection: spinDirection ?? "",
-    });
-    if (!parsed.success) {
-      failed.push({ line: i + 1, reason: parsed.error.issues[0]?.message ?? "Invalid row" });
-      return;
-    }
-    rows.push(toRow(parsed.data));
-  });
-
-  if (rows.length === 0) return { status: "error", message: "No valid rows to add.", added: [], failed };
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("beyblades")
-    .insert(rows)
-    .select("id, code, name, short_name, type, system_line, category");
-  if (error) return { status: "error", message: messageFor(error), added: [], failed };
-
-  const added: BulkAddedBeyblade[] = (
-    (data as { id: string; code: string; name: string; short_name: string; type: string; system_line: string; category: string }[] | null) ?? []
-  ).map((r) => ({
-    id: r.id,
-    code: r.code,
-    name: r.name,
-    shortName: r.short_name,
-    type: r.type as BeybladeInput["type"],
-    systemLine: r.system_line as BeybladeInput["systemLine"],
-    category: r.category as BeybladeInput["category"],
-  }));
-
-  revalidateBeybladePaths();
-  return {
-    status: failed.length > 0 ? "error" : "success",
-    added,
-    failed,
-    message: failed.length > 0 ? `Added ${added.length}, ${failed.length} row(s) failed.` : undefined,
-  };
 }

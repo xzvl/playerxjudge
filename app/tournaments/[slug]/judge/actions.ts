@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/supabase/get-user";
+import { getActiveDeckReadOnly, getDeckCombos, type ComboWithParts } from "@/app/account/beyblade/data";
 import type { RoleActionState } from "@/lib/validations/roles";
 
 // The judge console's "Sign Out" nav item — ends the real auth session
@@ -103,4 +105,41 @@ export async function uploadMatchScreenshot(
 
   const { data: publicUrlData } = supabase.storage.from("match-screenshots").getPublicUrl(path);
   return { status: "success", url: `${publicUrlData.publicUrl}?v=${Date.now()}` };
+}
+
+// A participant's linked account's active-deck combos, in slot order —
+// null if they have no *approved* linked account or no active deck yet.
+// JudgeConsole fetches this once per side the moment a match is picked and
+// snapshots it into that side's PlayerScoreState.comboSlots, so a deck
+// edit mid-match doesn't retroactively change which combo an
+// already-scored battle recorded (see PlayerScorePanel's mergeBattleLog).
+//
+// A combo/deck is otherwise fully private (RLS: owning profile only — see
+// 20250101000042_beyblade_combos_and_decks.sql), but a judge/organizer
+// legitimately needs to read a linked participant's to record which combo
+// a battle was played with. That's the *only* reason this reaches for the
+// service-role client below — every other query here still goes through
+// the normal RLS-respecting one, and only after independently confirming
+// the caller is actually authorized to judge this specific tournament and
+// that the participant actually belongs to it (participant_links itself
+// is already publicly readable, so that lookup doesn't need elevating).
+export async function getParticipantComboSlots(tournamentId: string, participantId: string): Promise<(ComboWithParts | null)[] | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const [{ data: tournamentRow }, { data: judgeRow }, { data: participantRow }, { data: link }] = await Promise.all([
+    supabase.from("tournaments").select("organizer_id").eq("id", tournamentId).maybeSingle(),
+    supabase.from("judges").select("status").eq("tournament_id", tournamentId).eq("judge_id", user.id).maybeSingle(),
+    supabase.from("tournament_participants").select("id").eq("id", participantId).eq("tournament_id", tournamentId).maybeSingle(),
+    supabase.from("participant_links").select("profile_id").eq("participant_id", participantId).eq("status", "approved").maybeSingle(),
+  ]);
+
+  const isAuthorized = tournamentRow?.organizer_id === user.id || judgeRow?.status === "approved";
+  if (!isAuthorized || !participantRow || !link) return null;
+
+  const admin = createAdminClient();
+  const deck = await getActiveDeckReadOnly(link.profile_id, admin);
+  if (!deck) return null;
+  return getDeckCombos(deck, link.profile_id, admin);
 }
