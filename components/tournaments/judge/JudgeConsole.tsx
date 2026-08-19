@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { LogOut, RefreshCw, Trash2, Trophy } from "lucide-react";
+import { UserRound, RefreshCw, Trash2, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -22,7 +22,12 @@ import { JudgeViewResultDialog } from "@/components/tournaments/judge/JudgeViewR
 import { JudgeStadiumPromptDialog } from "@/components/tournaments/judge/JudgeStadiumPromptDialog";
 import { startMatch, submitJudgedMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import { assignStationMatch } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
-import { getParticipantComboSlots, signOutJudgeSession, setOwnStation, uploadMatchScreenshot } from "@/app/tournaments/[slug]/judge/actions";
+import {
+  getParticipantComboSlots,
+  notifySeatedParticipants,
+  setOwnStation,
+  uploadMatchScreenshot,
+} from "@/app/tournaments/[slug]/judge/actions";
 import { captureElementAsWebp } from "@/lib/images/screenshot";
 import { cn } from "@/lib/utils";
 import type { FinishType, MatchBattle, MatchBattleCombo } from "@/lib/types/database";
@@ -127,11 +132,17 @@ export function JudgeConsole({
   // makes) and, if the judge has a stadium claimed, assigns it there too —
   // so the organizer's Stations page and the player view's own live
   // "Station" status pick it up without anyone touching the Stations page
-  // by hand. Fire-and-forget, same as setOwnStation below: nothing here
-  // blocks the console's own UI on the round trip.
-  function startMatchAtStation(matchId: string, forStationId: string | null) {
+  // by hand. Also notifies each side's linked account, if any, that
+  // they've been picked up (see notifySeatedParticipants) — both
+  // participants are known any time this is called, since it only runs
+  // once a full match (not just one side) is set. Fire-and-forget, same as
+  // setOwnStation below: nothing here blocks the console's own UI on the
+  // round trip.
+  function startMatchAtStation(matchId: string, forStationId: string | null, aId: string, bId: string) {
     void startMatch(matchId, slug);
     if (forStationId) void assignStationMatch(forStationId, slug, matchId);
+    const stationName = forStationId ? stations.find((s) => s.id === forStationId)?.name ?? null : null;
+    void notifySeatedParticipants(tournamentId, slug, tournamentTitle, aId, bId, stationName, judgeName);
   }
 
   // Fetches both sides' linked-account combo slots (see
@@ -194,7 +205,7 @@ export function JudgeConsole({
       participantAId: match.participantAId,
       participantBId: match.participantBId,
     });
-    startMatchAtStation(match.id, stationId);
+    startMatchAtStation(match.id, stationId, match.participantAId, match.participantBId);
   }
 
   // Fills both sides from whatever match a stadium is currently running —
@@ -218,7 +229,7 @@ export function JudgeConsole({
       participantAId: stationMatch.participantAId,
       participantBId: stationMatch.participantBId,
     });
-    startMatchAtStation(stationMatch.id, forStationId);
+    startMatchAtStation(stationMatch.id, forStationId, stationMatch.participantAId, stationMatch.participantBId);
   }
 
   // Claims a stadium as the current session's own (persisted server-side —
@@ -401,7 +412,7 @@ export function JudgeConsole({
             >
               <Icon className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-on-surface">{label}</span>
+                <span className="block text-sm font-bold text-on-surface">{label}</span>
                 <span className="label-mono block text-[10px] text-on-surface/40">{sub}</span>
               </span>
             </button>
@@ -410,36 +421,33 @@ export function JudgeConsole({
             href={`/tournaments/${slug}/player`}
             className="flex w-full items-center gap-3 px-2 py-3 text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface"
           >
-            <Trophy className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
+            <UserRound className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-on-surface">Tournament</span>
-              <span className="label-mono block text-[10px] text-on-surface/40">Visit the tournament</span>
+              <span className="block text-sm font-bold text-on-surface">Player</span>
+              <span className="label-mono block text-[10px] text-on-surface/40">Player Dashboard</span>
             </span>
           </Link>
-          <form action={signOutJudgeSession.bind(null, slug)}>
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 px-2 py-3 text-left text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface"
-            >
-              <LogOut className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-on-surface">Sign Out</span>
-                <span className="label-mono block text-[10px] text-on-surface/40">Back to tournament details</span>
-              </span>
-            </button>
-          </form>
+          <Link
+            href={`/tournaments/${slug}`}
+            className="flex w-full items-center gap-3 px-2 py-3 text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <Trophy className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-on-surface">Tournament</span>
+              <span className="label-mono block text-[10px] text-on-surface/40">Tournament Details</span>
+            </span>
+          </Link>
         </nav>
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="border-b border-outline-variant/25 px-4 py-5 md:px-8">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div className="w-10" aria-hidden="true" />
+        <header className="relative border-b border-outline-variant/25 px-4 py-5 md:px-8 max-lg:landscape:rounded-lg max-lg:landscape:border-b-0 max-lg:landscape:py-2 max-lg:portrait:border-b-0 max-lg:portrait:py-2">
+          <ThemeToggle className="absolute top-0 right-0" />
+          <div className="mb-4 flex items-center justify-center gap-4 max-lg:landscape:mb-0">
             <p className="label-mono text-center text-on-surface/40">{tournamentTitle}</p>
-            <ThemeToggle />
           </div>
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
+          <div className="flex items-start justify-between gap-4 max-lg:landscape:grid max-lg:landscape:grid-cols-3 max-lg:landscape:items-center max-lg:landscape:gap-2">
+            <div className="min-w-0 max-lg:landscape:w-full max-lg:portrait:w-full">
               <JudgePlayerPicker
                 label="Player 1"
                 sideLabel="[X Side]"
@@ -449,11 +457,11 @@ export function JudgeConsole({
               />
               {combo1 ? <p className="mt-1 truncate text-xs text-on-surface/50">Using: <span className="text-on-surface/80">{combo1.name}</span></p> : null}
             </div>
-            <div className="shrink-0 pt-1 text-center">
+            <div className="shrink-0 pt-1 text-center max-lg:landscape:pt-0 max-lg:portrait:pt-0">
               <p className="label-mono text-primary">{matchContext ? `Round ${matchContext.round}` : "—"}</p>
               <p className="label-mono text-[10px] text-on-surface/40">{matchContext?.stage ?? "No match"}</p>
             </div>
-            <div className="min-w-0 text-right">
+            <div className="min-w-0 text-right max-lg:landscape:w-full max-lg:portrait:w-full">
               <JudgePlayerPicker
                 label="Player 2"
                 sideLabel="[B Side]"
@@ -467,10 +475,11 @@ export function JudgeConsole({
           </div>
         </header>
 
-        <div className="grid gap-4 lg:gap-6 px-4 py-4 lg:py-8 pb-24 md:px-8 grid-cols-[1fr_auto_1fr] lg:pb-8">
+        <div className="grid gap-4 lg:gap-6 px-4 lg:py-4 lg:py-8 pb-24 md:px-8 grid-cols-[1fr_1fr_1fr] lg:grid-cols-[1fr_auto_1fr] lg:pb-8">
           <PlayerScorePanel
             state={player1}
             bonusPenalties={committedPenalties(player2)}
+            side="left"
             onIncrementFinish={(kind) => incrementFinish("left", kind)}
             onDecrementFinish={(kind) => decrementFinish("left", kind)}
             onPenaltyPlus={() => penaltyPlus("left")}
@@ -523,6 +532,7 @@ export function JudgeConsole({
           <PlayerScorePanel
             state={player2}
             bonusPenalties={committedPenalties(player1)}
+            side="right"
             onIncrementFinish={(kind) => incrementFinish("right", kind)}
             onDecrementFinish={(kind) => decrementFinish("right", kind)}
             onPenaltyPlus={() => penaltyPlus("right")}
@@ -563,15 +573,16 @@ export function JudgeConsole({
           href={`/tournaments/${slug}/player`}
           className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
         >
+          <UserRound className="h-5 w-5" aria-hidden="true" />
+          <span className="label-mono !text-[8px]">Player</span>
+        </Link>
+        <Link
+          href={`/tournaments/${slug}/player`}
+          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary"
+        >
           <Trophy className="h-5 w-5" aria-hidden="true" />
           <span className="label-mono !text-[8px]">Tournament</span>
         </Link>
-        <form action={signOutJudgeSession.bind(null, slug)} className="flex flex-1">
-          <button type="submit" className="flex flex-1 flex-col items-center gap-1 py-2.5 text-on-surface/60 transition-colors hover:text-primary">
-            <LogOut className="h-5 w-5" aria-hidden="true" />
-            <span className="label-mono !text-[8px]">Sign Out</span>
-          </button>
-        </form>
       </nav>
 
       <ConfirmResultDialog

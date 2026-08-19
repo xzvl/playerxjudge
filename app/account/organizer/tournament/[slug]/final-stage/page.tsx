@@ -11,6 +11,7 @@ import { STAGE_FORMAT_OPTIONS, GRAND_FINALS_OPTIONS } from "@/lib/validations/to
 import { getTournamentWorkspace } from "@/lib/mock/tournament-workspace";
 import { buildPlacementSections, buildSeededBracket, placeholderSlots, qualifiedSlots } from "@/lib/final-stage-placeholder";
 import { computeGroupStandings } from "@/lib/swiss";
+import { getJudgeParticipantIds } from "@/lib/tournaments/judge-participant-highlight";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
@@ -71,11 +72,12 @@ export default async function FinalStagePage({ params }: { params: Promise<{ slu
   }
 
   const supabase = await createClient();
-  const [{ data: groups }, { data: participants }, { data: matches }, { data: brackets }] = await Promise.all([
+  const [{ data: groups }, { data: participants }, { data: matches }, { data: brackets }, highlightParticipantIds] = await Promise.all([
     supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
     supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id).order("seed"),
     supabase.from("matches").select("*").eq("tournament_id", tournament.id),
     supabase.from("brackets").select("*").eq("tournament_id", tournament.id),
+    getJudgeParticipantIds(supabase, tournament.id),
   ]);
 
   const realGroups = (groups as TournamentGroup[] | null) ?? [];
@@ -159,15 +161,17 @@ export default async function FinalStagePage({ params }: { params: Promise<{ slu
         {finalStageStarted ? (
           <FinalStageBracketWorkspace
             slug={tournament.slug}
+            tournamentId={tournament.id}
             baseRounds={bracketRounds}
             initialMatches={finalMatches}
             initialBrackets={realBrackets}
             placementSections={placementSections}
             participantsById={participantsById}
             locked={tournamentCompleted}
+            highlightParticipantIds={highlightParticipantIds}
           />
         ) : (
-          <WorkspaceBracket rounds={bracketRounds} />
+          <WorkspaceBracket rounds={bracketRounds} highlightParticipantIds={highlightParticipantIds} />
         )}
       </div>
     </div>

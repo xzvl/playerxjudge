@@ -69,7 +69,7 @@ export function UpcomingMatchCard({
         <Avatar>
           <AvatarFallback>{initials(opponentName)}</AvatarFallback>
         </Avatar>
-        <span className="min-w-0 truncate font-medium text-on-surface">{opponentName}</span>
+        <span className="font-inter font-bold text-[13px] truncate underline-offset-2 transition-colors leading-tight">{opponentName}</span>
       </div>
       <FinishTags counts={opponentFinishes} />
       <div className="border-t border-outline-variant/15 pt-3">
@@ -143,7 +143,7 @@ export function PreviousMatchCard({
         <Avatar>
           <AvatarFallback>{initials(opponentName)}</AvatarFallback>
         </Avatar>
-        <span className="min-w-0 truncate font-medium text-on-surface">{opponentName}</span>
+        <span className="font-inter font-bold text-[13px] truncate underline-offset-2 transition-colors leading-tight">{opponentName}</span>
       </div>
       <FinishTags counts={playerFinishes} compact />
       <div className="flex items-center justify-between border-t border-outline-variant/15 pt-3">

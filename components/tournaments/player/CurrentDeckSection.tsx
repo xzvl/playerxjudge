@@ -113,7 +113,31 @@ export function CurrentDeckSection({
               <CardContent className="p-5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="label-mono text-primary">{POSITION_LABELS[i]}</span>
-                  <GripVertical className="h-4 w-4 text-on-surface/30" aria-hidden="true" />
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="outline"
+                      className="h-4 w-4 border-0"
+                      size="icon"
+                      tooltip={`Move ${POSITION_LABELS[i]} up`}
+                      aria-label={`Move ${POSITION_LABELS[i]} up`}
+                      disabled={pending || slot === 1}
+                      onClick={() => swap(slot, (slot - 1) as Slot)}
+                    >
+                      <ArrowUp className="h-2 w-2" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-4 w-4 border-0"
+                      size="icon"
+                      tooltip={`Move ${POSITION_LABELS[i]} down`}
+                      aria-label={`Move ${POSITION_LABELS[i]} down`}
+                      disabled={pending || slot === 3}
+                      onClick={() => swap(slot, (slot + 1) as Slot)}
+                    >
+                      <ArrowDown className="h-2 w-2" />
+                    </Button>
+                    <GripVertical className="h-4 w-4 text-on-surface/30" aria-hidden="true" />
+                  </div>
                 </div>
                 {combo ? (
                   <>
@@ -126,28 +150,6 @@ export function CurrentDeckSection({
                 ) : (
                   <p className="mt-4 text-sm text-on-surface/30">— Empty —</p>
                 )}
-                <div className="mt-3 flex justify-end gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    tooltip={`Move ${POSITION_LABELS[i]} up`}
-                    aria-label={`Move ${POSITION_LABELS[i]} up`}
-                    disabled={pending || slot === 1}
-                    onClick={() => swap(slot, (slot - 1) as Slot)}
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    tooltip={`Move ${POSITION_LABELS[i]} down`}
-                    aria-label={`Move ${POSITION_LABELS[i]} down`}
-                    disabled={pending || slot === 3}
-                    onClick={() => swap(slot, (slot + 1) as Slot)}
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           );

@@ -18,13 +18,13 @@ function isScore(value: Match["score"]): value is MatchScore {
   return typeof value === "object" && value !== null && "a" in value && "b" in value;
 }
 
-function ParticipantLine({ participant, isBye }: { participant: RosterLite | null; isBye?: boolean }) {
+function ParticipantLine({ participant, isBye, highlight }: { participant: RosterLite | null; isBye?: boolean; highlight?: boolean }) {
   if (isBye) return <span className="text-sm italic text-on-surface/40">Bye</span>;
   if (!participant) return <span className="text-sm text-on-surface/40">TBD</span>;
   return (
     <span className="flex min-w-0 items-center gap-2 text-sm">
       <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
-      <span className="truncate text-xs text-on-surface">{participant.teamName ?? participant.name}</span>
+      <span className={cn("truncate text-xs text-on-surface", highlight && "bg-yellow-400/30 px-1")}>{participant.teamName ?? participant.name}</span>
     </span>
   );
 }
@@ -48,11 +48,13 @@ function MatchRow({
   participantsById,
   onDetails,
   selectedParticipantId,
+  highlightParticipantIds,
 }: {
   match: Match;
   participantsById: Map<string, RosterLite>;
   onDetails: () => void;
   selectedParticipantId?: string | null;
+  highlightParticipantIds?: Set<string>;
 }) {
   const a = match.participant_a_id ? participantsById.get(match.participant_a_id) ?? null : null;
   const isBye = match.participant_b_id === null;
@@ -76,11 +78,15 @@ function MatchRow({
         <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{match.match_number}</span>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
-            <ParticipantLine participant={a} />
+            <ParticipantLine participant={a} highlight={!!match.participant_a_id && highlightParticipantIds?.has(match.participant_a_id)} />
             {score ? <ScoreChip value={score.a} isWinner={aWins} isLoser={bWins} /> : null}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <ParticipantLine participant={b} isBye={isBye} />
+            <ParticipantLine
+              participant={b}
+              isBye={isBye}
+              highlight={!!match.participant_b_id && highlightParticipantIds?.has(match.participant_b_id)}
+            />
             {score && !isBye ? <ScoreChip value={score.b} isWinner={bWins} isLoser={aWins} /> : null}
           </div>
         </div>
@@ -105,12 +111,14 @@ function RoundColumn({
   participantsById,
   onDetails,
   selectedParticipantId,
+  highlightParticipantIds,
 }: {
   round: number;
   matches: Match[];
   participantsById: Map<string, RosterLite>;
   onDetails: (m: Match) => void;
   selectedParticipantId?: string | null;
+  highlightParticipantIds?: Set<string>;
 }) {
   return (
     <div className="flex w-64 shrink-0 flex-col gap-3">
@@ -124,6 +132,7 @@ function RoundColumn({
               participantsById={participantsById}
               onDetails={() => onDetails(m)}
               selectedParticipantId={selectedParticipantId}
+              highlightParticipantIds={highlightParticipantIds}
             />
           ))}
         </div>
@@ -140,10 +149,15 @@ export function ReadOnlyGroupMatches({
   matches,
   participantsById,
   selectedParticipantId,
+  highlightParticipantIds,
 }: {
   matches: Match[];
   participantsById: Map<string, RosterLite>;
   selectedParticipantId?: string | null;
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
 }) {
   const scrollRef = useDragScroll<HTMLDivElement>();
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
@@ -169,6 +183,7 @@ export function ReadOnlyGroupMatches({
             participantsById={participantsById}
             onDetails={setDetailsMatch}
             selectedParticipantId={selectedParticipantId}
+            highlightParticipantIds={highlightParticipantIds}
           />
         ))}
       </div>

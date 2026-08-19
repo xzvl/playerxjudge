@@ -202,6 +202,7 @@ function Stepper({ label, points, value, onPlus, onMinus }: { label: string; poi
 export function PlayerScorePanel({
   state,
   bonusPenalties,
+  side,
   onIncrementFinish,
   onDecrementFinish,
   onPenaltyPlus,
@@ -210,6 +211,13 @@ export function PlayerScorePanel({
   state: PlayerScoreState;
   // The opponent's own committedPenalties count — see expandToBoxFills.
   bonusPenalties: number;
+  // Which side of the console this panel is on — purely a landscape-layout
+  // concern (see the tablet/mobile-landscape grid below): the left player's
+  // two blocks read [finishes, boxes] there, the right player's the mirror
+  // [boxes, finishes], while portrait/desktop stay in the same top-to-bottom
+  // order for both. Optional since callers outside the console (if any)
+  // that never hit that breakpoint don't need to care.
+  side?: "left" | "right";
   onIncrementFinish: (kind: FinishType) => void;
   onDecrementFinish: (kind: FinishType) => void;
   onPenaltyPlus: () => void;
@@ -219,8 +227,8 @@ export function PlayerScorePanel({
   let cursor = 0;
 
   return (
-    <div className="space-y-2 lg:space-y-5">
-      <div className="w-full space-y-1.5">
+    <div className="space-y-2 lg:space-y-5 max-lg:landscape:grid max-lg:landscape:grid-cols-2 max-lg:landscape:items-start max-lg:landscape:gap-3 max-lg:landscape:space-y-0">
+      <div className={cn("w-full space-y-1.5", side === "left" && "max-lg:landscape:order-2")}>
         {BOX_ROWS.map((count, rowIndex) => {
           const cells = Array.from({ length: count }, () => boxed[cursor++]);
           return (
@@ -233,7 +241,7 @@ export function PlayerScorePanel({
         })}
       </div>
 
-      <div className="space-y-1 lg:space-y-2">
+      <div className={cn("space-y-1 lg:space-y-2", side === "left" && "max-lg:landscape:order-1")}>
         {FINISH_ORDER.map((kind) => (
           <Stepper
             key={kind}

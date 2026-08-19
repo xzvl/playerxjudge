@@ -161,7 +161,7 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
                   <button type="button" onClick={() => handleTitleClick(n)} className="block w-full text-left">
                     <span className="flex items-center gap-2">
                       {!n.is_read ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /> : null}
-                      <span className={cn("min-w-0 flex-1 truncate", n.is_read ? "text-on-surface/70" : "font-medium text-on-surface")}>
+                      <span className={cn("font-inter font-bold text-[13px] truncate block hover:text-primary hover:underline underline-offset-2 transition-colors", n.is_read ? "text-on-surface/70" : "text-on-surface")}>
                         {n.title}
                       </span>
                     </span>

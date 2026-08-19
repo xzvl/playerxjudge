@@ -51,7 +51,7 @@ export function PlayerMatchesSection({
       {upcoming.length > 0 ? (
         <div>
           <h3 className="heading mb-4 text-lg">Upcoming Matches</h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             {upcoming.map((m) => {
               const opponentId = opponentIdFor(selectedParticipantId, m);
               const opponent = opponentId ? participantsById.get(opponentId) : null;
@@ -75,7 +75,7 @@ export function PlayerMatchesSection({
       {previous.length > 0 ? (
         <div>
           <h3 className="heading mb-4 text-lg">Previous Matches</h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             {previous.map((m) => {
               const opponentId = opponentIdFor(selectedParticipantId, m);
               const opponent = opponentId ? participantsById.get(opponentId) : null;

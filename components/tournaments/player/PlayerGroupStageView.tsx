@@ -22,6 +22,7 @@ export function PlayerGroupStageView({
   advanceCount,
   swissRoundsCap,
   selectedParticipantId,
+  highlightParticipantIds,
 }: {
   groups: TournamentGroup[];
   participants: TournamentParticipant[];
@@ -31,6 +32,10 @@ export function PlayerGroupStageView({
   advanceCount: number;
   swissRoundsCap: number;
   selectedParticipantId?: string | null;
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
 }) {
   const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<"standings" | "matches">("matches");
@@ -117,9 +122,15 @@ export function PlayerGroupStageView({
           tieBreakMetrics={tieBreakMetrics}
           advanceCount={advanceCount}
           swissRoundsCap={swissRoundsCap}
+          highlightParticipantIds={highlightParticipantIds}
         />
       ) : (
-        <ReadOnlyGroupMatches matches={groupMatches} participantsById={participantsById} selectedParticipantId={selectedParticipantId} />
+        <ReadOnlyGroupMatches
+          matches={groupMatches}
+          participantsById={participantsById}
+          selectedParticipantId={selectedParticipantId}
+          highlightParticipantIds={highlightParticipantIds}
+        />
       )}
     </div>
   );

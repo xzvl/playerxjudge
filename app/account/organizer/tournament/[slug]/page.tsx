@@ -11,6 +11,7 @@ import { GroupStageWorkspace } from "@/components/dashboard/organizer/GroupStage
 import { GroupStageRound1Preview } from "@/components/dashboard/organizer/GroupStageRound1Preview";
 import { STAGE_FORMAT_OPTIONS, GRAND_FINALS_OPTIONS } from "@/lib/validations/tournament-wizard";
 import { getTournamentWorkspace } from "@/lib/mock/tournament-workspace";
+import { getJudgeParticipantIds } from "@/lib/tournaments/judge-participant-highlight";
 import { getCurrentUser, isCurrentUserStaff } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
@@ -81,10 +82,11 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
     }
 
     const supabase = await createClient();
-    const [{ data: participants }, { data: groups }, staff] = await Promise.all([
+    const [{ data: participants }, { data: groups }, staff, highlightParticipantIds] = await Promise.all([
       supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id).order("seed"),
       supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
       isCurrentUserStaff(),
+      getJudgeParticipantIds(supabase, tournament.id),
     ]);
 
     const realParticipants = (participants as TournamentParticipant[] | null) ?? [];
@@ -142,7 +144,7 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
         {!assignmentComplete ? (
           <GroupAssignmentRequiredNotice slug={tournament.slug} />
         ) : matches.length === 0 ? (
-          <GroupStageRound1Preview groups={realGroups} participants={realParticipants} />
+          <GroupStageRound1Preview groups={realGroups} participants={realParticipants} highlightParticipantIds={highlightParticipantIds} />
         ) : (
           <GroupStageWorkspace
             tournamentId={tournament.id}
@@ -156,6 +158,7 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
             advancePerGroup={settings.groupStage.participantsAdvancePerGroup}
             locked={settings.finalStageStarted === true}
             canSwapParticipants={staff}
+            highlightParticipantIds={highlightParticipantIds}
           />
         )}
       </div>

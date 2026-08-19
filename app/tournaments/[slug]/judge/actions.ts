@@ -1,6 +1,4 @@
 "use server";
-
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
@@ -8,16 +6,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { getActiveDeckReadOnly, getDeckCombos, type ComboWithParts } from "@/app/account/beyblade/data";
 import type { RoleActionState } from "@/lib/validations/roles";
-
-// The judge console's "Sign Out" nav item — ends the real auth session
-// (same call DashboardShell's own Sign Out uses) and lands back on the
-// tournament's public details page rather than /login, since that's what
-// "exiting" this console means for someone who was just here to judge.
-export async function signOutJudgeSession(slug: string) {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect(`/tournaments/${slug}`);
-}
 
 // The console's own "stadium" picker (the header field, and the popup
 // shown when nothing's picked yet) — lets whoever's running the console
@@ -105,6 +93,65 @@ export async function uploadMatchScreenshot(
 
   const { data: publicUrlData } = supabase.storage.from("match-screenshots").getPublicUrl(path);
   return { status: "success", url: `${publicUrlData.publicUrl}?v=${Date.now()}` };
+}
+
+// Notifies each side's linked account (if their `tournament_participants`
+// row has an *approved* `participant_links` claim) that a judge has just
+// picked up their match — called once both sides of a match are actually
+// set (see JudgeConsole's startMatchAtStation), not on every single picker
+// selection, so it fires once per match rather than once per click. Carries
+// enough to walk straight to the right spot: which stadium, which judge,
+// and which tournament.
+//
+// `notifications` RLS has no policy for "judge notifies a linked player" —
+// only "notifications_insert_tournament_judge_link" (judge <-> organizer,
+// for invites/responses). Same posture as getParticipantComboSlots below:
+// independently confirm the caller is actually authorized to judge this
+// tournament and that both participants belong to it, *then* reach for the
+// service-role client to do the insert RLS itself doesn't cover.
+export async function notifySeatedParticipants(
+  tournamentId: string,
+  slug: string,
+  tournamentTitle: string,
+  participantAId: string,
+  participantBId: string,
+  stationName: string | null,
+  judgeName: string
+): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  const supabase = await createClient();
+  const [{ data: tournamentRow }, { data: judgeRow }, { data: participantRows }] = await Promise.all([
+    supabase.from("tournaments").select("organizer_id").eq("id", tournamentId).maybeSingle(),
+    supabase.from("judges").select("status").eq("tournament_id", tournamentId).eq("judge_id", user.id).maybeSingle(),
+    supabase.from("tournament_participants").select("id").eq("tournament_id", tournamentId).in("id", [participantAId, participantBId]),
+  ]);
+  const isAuthorized = tournamentRow?.organizer_id === user.id || judgeRow?.status === "approved";
+  if (!isAuthorized || (participantRows?.length ?? 0) < 2) return;
+
+  const admin = createAdminClient();
+  const { data: links } = await admin
+    .from("participant_links")
+    .select("profile_id")
+    .eq("tournament_id", tournamentId)
+    .eq("status", "approved")
+    .in("participant_id", [participantAId, participantBId]);
+  if (!links || links.length === 0) return;
+
+  const body = stationName
+    ? `You're up at ${stationName} for "${tournamentTitle}", judged by ${judgeName}.`
+    : `Your match for "${tournamentTitle}" is starting, judged by ${judgeName}.`;
+
+  await admin.from("notifications").insert(
+    links.map((link) => ({
+      profile_id: link.profile_id,
+      type: "match_result" as const,
+      title: "You're up!",
+      body,
+      link: `/tournaments/${slug}/player`,
+    }))
+  );
 }
 
 // A participant's linked account's active-deck combos, in slot order —

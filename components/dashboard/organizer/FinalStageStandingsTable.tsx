@@ -5,7 +5,16 @@ import type { FinalStandingRow } from "@/lib/final-stage-placeholder";
 // History — the elimination bracket doesn't have the W-L-T/score/tie-break
 // columns a Swiss group does (see FinalStandingRow's doc comment for why
 // "rank" is approximate until later rounds are real).
-export function FinalStageStandingsTable({ rows }: { rows: FinalStandingRow[] }) {
+export function FinalStageStandingsTable({
+  rows,
+  highlightParticipantIds,
+}: {
+  rows: FinalStandingRow[];
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
+}) {
   if (rows.length === 0) {
     return (
       <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
@@ -28,7 +37,9 @@ export function FinalStageStandingsTable({ rows }: { rows: FinalStandingRow[] })
           {rows.map((r, i) => (
             <tr key={r.participantId} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
               <td className="p-4 font-mono text-on-surface/60">{i + 1}</td>
-              <td className="p-4 font-medium text-on-surface">{r.teamName ?? r.name}</td>
+              <td className="p-4 font-medium text-on-surface">
+                <span className={cn(highlightParticipantIds?.has(r.participantId) && "bg-yellow-400/30 px-1")}>{r.teamName ?? r.name}</span>
+              </td>
               <td className="p-4">
                 <div className="flex gap-1">
                   {r.matchHistory.map((m, idx) => (

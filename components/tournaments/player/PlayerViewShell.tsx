@@ -58,7 +58,7 @@ export function PlayerViewShell({
             >
               <Icon className="h-5 w-5 shrink-0 text-on-surface/40" aria-hidden="true" />
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-on-surface">{label}</span>
+                <span className="block text-sm font-bold text-on-surface">{label}</span>
                 <span className="label-mono block text-[10px] text-on-surface/40">{sub}</span>
               </span>
             </a>

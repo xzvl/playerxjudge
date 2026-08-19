@@ -19,6 +19,7 @@ export function PlayerFinalStageView({
   placementSections,
   participantsById,
   selectedParticipantId,
+  highlightParticipantIds,
 }: {
   baseRounds: WorkspaceBracketRound[];
   matches: Match[];
@@ -26,6 +27,10 @@ export function PlayerFinalStageView({
   placementSections: PlacementSection[];
   participantsById: Map<string, RosterLite>;
   selectedParticipantId?: string | null;
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
 }) {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const matchesById = new Map(matches.map((m) => [m.id, m]));
@@ -60,7 +65,12 @@ export function PlayerFinalStageView({
 
   return (
     <div className="space-y-10">
-      <WorkspaceBracket rounds={mainRounds} actions={actions} highlightParticipantId={selectedParticipantId} />
+      <WorkspaceBracket
+        rounds={mainRounds}
+        actions={actions}
+        highlightParticipantId={selectedParticipantId}
+        highlightParticipantIds={highlightParticipantIds}
+      />
 
       {placementSections.map((section) => (
         <section key={section.key}>
@@ -70,6 +80,7 @@ export function PlayerFinalStageView({
             actions={actions}
             hideRoundLabels
             highlightParticipantId={selectedParticipantId}
+            highlightParticipantIds={highlightParticipantIds}
           />
         </section>
       ))}

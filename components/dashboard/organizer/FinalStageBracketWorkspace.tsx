@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WorkspaceBracket } from "@/components/dashboard/organizer/WorkspaceBracket";
 import { ClearResultDialog, MatchDetailsDialog, ReportMatchDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
+import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
 import { clearMatchResult, clearRoundResults, startMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import { advanceWinners, applyRealMatches, populateSectionFromFeeder, type PlacementSection } from "@/lib/final-stage-placeholder";
 import type { WorkspaceBracketRound, WorkspaceMatch } from "@/lib/mock/tournament-workspace";
@@ -53,14 +54,17 @@ function ClearRoundDialog({
 // to click to generate them.
 export function FinalStageBracketWorkspace({
   slug,
+  tournamentId,
   baseRounds,
   initialMatches,
   initialBrackets,
   placementSections,
   participantsById,
   locked = false,
+  highlightParticipantIds,
 }: {
   slug: string;
+  tournamentId: string;
   baseRounds: WorkspaceBracketRound[];
   initialMatches: Match[];
   initialBrackets: Bracket[];
@@ -69,8 +73,19 @@ export function FinalStageBracketWorkspace({
   // The tournament has already ended — Start/Report/Edit go away everywhere,
   // Match Details stays.
   locked?: boolean;
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
 }) {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
+  // Keeps `matches` live the same way GroupStageWorkspace does — scoped to
+  // just the final-stage rows (group_id null) since that's all this state
+  // ever held; a group-stage result reported elsewhere shouldn't leak in
+  // here (group_id is what tells them apart, not bracket_id — every
+  // placement-section match also has bracket_id set, but so does nothing
+  // about group-stage matches, so group_id is the only reliable filter).
+  useRealtimeMatches(tournamentId, setMatches, (m) => m.group_id === null);
   const [sectionBracketIds, setSectionBracketIds] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       initialBrackets
@@ -201,7 +216,12 @@ export function FinalStageBracketWorkspace({
         </p>
       ) : null}
 
-      <WorkspaceBracket rounds={mainRounds} actions={sharedActions} onClearRound={onClearRound} />
+      <WorkspaceBracket
+        rounds={mainRounds}
+        actions={sharedActions}
+        onClearRound={onClearRound}
+        highlightParticipantIds={highlightParticipantIds}
+      />
 
       {placementSections.map((section) => (
         <section key={section.key}>
@@ -211,6 +231,7 @@ export function FinalStageBracketWorkspace({
             actions={sharedActions}
             hideRoundLabels
             onClearRound={onClearRound}
+            highlightParticipantIds={highlightParticipantIds}
           />
         </section>
       ))}

@@ -68,7 +68,7 @@ export function JudgePlayerPicker({
 
   return (
     <div className={cn("min-w-0", align === "right" && "text-right")}>
-      <p className={cn("label-mono flex items-center gap-1.5 text-on-surface/40", align === "right" && "justify-end")}>
+      <p className={cn("label-mono flex items-center gap-1.5 text-on-surface/40 max-lg:landscape:hidden", align === "right" && "justify-end")}>
         {align === "right" ? (
           <>
             <span>{sideLabel}</span>
@@ -89,11 +89,25 @@ export function JudgePlayerPicker({
           aria-controls={listboxId}
           onClick={() => setOpen((o) => !o)}
           className={cn(
-            "flex w-full items-center gap-2 border-b-2 border-outline-variant/30 py-1.5 text-left transition-colors hover:border-primary/60",
+            "flex w-full items-center gap-2 border-b-2 border-outline-variant/30 py-1.5 text-left transition-colors hover:border-primary/60 max-lg:portrait:py-0",
             align === "right" && "flex-row-reverse text-right"
           )}
         >
-          <span className={cn("min-w-0 flex-1 truncate font-semibold", !selected && "text-on-surface/30")}>
+          {/* Landscape tablet/mobile only — the sideLabel ([X Side]/[B Side])
+              moves off the label row above (hidden there at this breakpoint,
+              see the <p> above) and into the button itself instead, right
+              next to the name. It's first in DOM order same as the name
+              span, so `flex-row-reverse` on the right-aligned side (see
+              below) flips it to the visual right for free — X Side stays
+              pinned left, B Side pinned right, no separate alignment logic
+              needed here. */}
+          <span className="label-mono hidden shrink-0 text-on-surface/40 max-lg:landscape:inline">{sideLabel}</span>
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate font-semibold max-lg:landscape:text-[0.7rem] max-lg:portrait:text-[0.7rem]",
+              !selected && "text-on-surface/30"
+            )}
+          >
             {selected?.displayName ?? "Blader Name"}
           </span>
           <ChevronDown className={cn("h-4 w-4 shrink-0 text-on-surface/40 transition-transform", open && "rotate-180")} aria-hidden="true" />

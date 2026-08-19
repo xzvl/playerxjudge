@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { useDragScroll } from "@/lib/hooks/use-drag-scroll";
+import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
 import { cn } from "@/lib/utils";
 import { computeGroupStandings } from "@/lib/swiss";
 import { TIE_BREAK_OPTIONS, type SwissPoints, type TieBreakMetric } from "@/lib/validations/tournament-wizard";
@@ -107,6 +108,7 @@ function MatchParticipantSlot({
   slot,
   eligible,
   onSwap,
+  highlight,
 }: {
   participant: RosterLite | null;
   isBye?: boolean;
@@ -114,6 +116,10 @@ function MatchParticipantSlot({
   slot: MatchSlot;
   eligible: boolean;
   onSwap: (from: DragPayload, to: DragPayload) => void;
+  // See GroupStandingsTable's highlightParticipantIds doc comment — same
+  // yellow "also a judge" callout, resolved by the caller to a plain
+  // boolean since this slot only ever renders one participant.
+  highlight?: boolean;
 }) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -161,7 +167,7 @@ function MatchParticipantSlot({
       )}
     >
       <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
-      <span className="truncate text-xs text-on-surface">{name}</span>
+      <span className={cn("truncate text-xs text-on-surface", highlight && "bg-yellow-400/30 px-1")}>{name}</span>
     </span>
   );
 }
@@ -407,6 +413,7 @@ function MatchRow({
   onDetails,
   onClear,
   onSwap,
+  highlightParticipantIds,
 }: {
   match: Match;
   participantsById: Map<string, RosterLite>;
@@ -421,6 +428,7 @@ function MatchRow({
   onDetails: () => void;
   onClear: () => void;
   onSwap: (from: DragPayload, to: DragPayload) => void;
+  highlightParticipantIds?: Set<string>;
 }) {
   const a = match.participant_a_id ? participantsById.get(match.participant_a_id) ?? null : null;
   const isBye = match.participant_b_id === null;
@@ -443,11 +451,26 @@ function MatchRow({
         <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{match.match_number}</span>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
-            <MatchParticipantSlot participant={a} matchId={match.id} slot="a" eligible={swappable && a !== null} onSwap={onSwap} />
+            <MatchParticipantSlot
+              participant={a}
+              matchId={match.id}
+              slot="a"
+              eligible={swappable && a !== null}
+              onSwap={onSwap}
+              highlight={!!match.participant_a_id && highlightParticipantIds?.has(match.participant_a_id)}
+            />
             {score ? <ScoreChip value={score.a} isWinner={aWins} isLoser={bWins} /> : null}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <MatchParticipantSlot participant={b} isBye={isBye} matchId={match.id} slot="b" eligible={swappable && b !== null} onSwap={onSwap} />
+            <MatchParticipantSlot
+              participant={b}
+              isBye={isBye}
+              matchId={match.id}
+              slot="b"
+              eligible={swappable && b !== null}
+              onSwap={onSwap}
+              highlight={!!match.participant_b_id && highlightParticipantIds?.has(match.participant_b_id)}
+            />
             {score && !isBye ? <ScoreChip value={score.b} isWinner={bWins} isLoser={aWins} /> : null}
           </div>
         </div>
@@ -503,6 +526,7 @@ function RoundColumn({
   onDetails,
   onClear,
   onSwap,
+  highlightParticipantIds,
 }: {
   round: number;
   matches: Match[];
@@ -519,6 +543,7 @@ function RoundColumn({
   onDetails: (m: Match) => void;
   onClear: (m: Match) => void;
   onSwap: (from: DragPayload, to: DragPayload) => void;
+  highlightParticipantIds?: Set<string>;
 }) {
   return (
     <div className="flex w-64 shrink-0 flex-col gap-3">
@@ -538,6 +563,7 @@ function RoundColumn({
               onDetails={() => onDetails(m)}
               onClear={() => onClear(m)}
               onSwap={onSwap}
+              highlightParticipantIds={highlightParticipantIds}
             />
           ))}
         </div>
@@ -556,7 +582,7 @@ function RoundColumn({
   );
 }
 
-function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMatches, swissRoundsCap, locked, canSwap }: { groupId: string; tournamentId: string; slug: string; participants: TournamentParticipant[]; matches: Match[]; setMatches: (updater: (prev: Match[]) => Match[]) => void; swissRoundsCap: number; locked: boolean; canSwap: boolean }) {
+function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMatches, swissRoundsCap, locked, canSwap, highlightParticipantIds }: { groupId: string; tournamentId: string; slug: string; participants: TournamentParticipant[]; matches: Match[]; setMatches: (updater: (prev: Match[]) => Match[]) => void; swissRoundsCap: number; locked: boolean; canSwap: boolean; highlightParticipantIds?: Set<string> }) {
   const router = useRouter();
   const scrollRef = useDragScroll<HTMLDivElement>();
   const participantsById = new Map(participants.map((p) => [p.id, { seed: p.seed, name: p.name, teamName: p.team_name }]));
@@ -686,6 +712,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
             onDetails={setDetailsMatch}
             onClear={setClearingMatch}
             onSwap={handleSwap}
+            highlightParticipantIds={highlightParticipantIds}
           />
         ))}
       </div>
@@ -723,6 +750,7 @@ export function GroupStandingsTable({
   tieBreakMetrics,
   advanceCount,
   swissRoundsCap,
+  highlightParticipantIds,
 }: {
   participants: TournamentParticipant[];
   matches: Match[];
@@ -735,6 +763,10 @@ export function GroupStandingsTable({
   // lib/final-stage-placeholder.ts).
   advanceCount?: number;
   swissRoundsCap?: number;
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
 }) {
   const rows = computeGroupStandings(participants, matches, swissPoints, tieBreakMetrics);
   const finalRoundMatches = swissRoundsCap != null ? matches.filter((m) => m.round === swissRoundsCap) : [];
@@ -773,7 +805,9 @@ export function GroupStandingsTable({
                 {showAdvanceTags && i < advanceCount! ? (
                   <span className="label-mono mr-2 inline-block bg-error px-1.5 py-0.5 text-[10px] text-on-error">ADV</span>
                 ) : null}
-                {r.teamName ?? r.name}
+                <span className={cn(highlightParticipantIds?.has(r.participantId) && "bg-yellow-400/30 px-1")}>
+                  {r.teamName ?? r.name}
+                </span>
               </td>
               <td className="px-3 py-2 text-sm text-on-surface/60">
                 {r.wins}-{r.losses}-{r.ties}
@@ -814,10 +848,17 @@ export function GroupStandingsTable({
 // (see MatchParticipantSlot) to admin/super_admin only — an organizer
 // running their own tournament can still Start/Report/Clear/Generate, just
 // not drag one player's name onto another match to swap them.
-export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, advancePerGroup, locked = false, canSwapParticipants = false }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; advancePerGroup: number; locked?: boolean; canSwapParticipants?: boolean }) {
+export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, advancePerGroup, locked = false, canSwapParticipants = false, highlightParticipantIds }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; advancePerGroup: number; locked?: boolean; canSwapParticipants?: boolean; highlightParticipantIds?: Set<string> }) {
   const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<"standings" | "matches">("matches");
   const [matches, setMatches] = useState<Match[]>(initialMatches);
+  // Keeps `matches` live for every open tab watching this tournament — a
+  // result reported from the judge console, another organizer's browser,
+  // or backend staff shows up here the moment it's written, same as it
+  // does for whoever actually submitted it. See useRealtimeMatches's own
+  // doc comment for why nothing downstream (GroupStandingsTable, the
+  // Matches tab) needs its own subscription.
+  useRealtimeMatches(tournamentId, setMatches);
   const [fullscreen, setFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -939,6 +980,7 @@ export function GroupStageWorkspace({ tournamentId, slug, groups, participants, 
           tieBreakMetrics={tieBreakMetrics}
           advanceCount={advancePerGroup}
           swissRoundsCap={swissRoundsCap}
+          highlightParticipantIds={highlightParticipantIds}
         />
       ) : (
         <MatchesTab
@@ -951,6 +993,7 @@ export function GroupStageWorkspace({ tournamentId, slug, groups, participants, 
           swissRoundsCap={swissRoundsCap}
           locked={locked}
           canSwap={canSwapParticipants}
+          highlightParticipantIds={highlightParticipantIds}
         />
       )}
     </div>

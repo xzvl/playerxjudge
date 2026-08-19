@@ -27,12 +27,12 @@ export interface BracketActions {
   locked?: boolean;
 }
 
-function ParticipantLine({ participant }: { participant: WorkspaceParticipant | null }) {
+function ParticipantLine({ participant, highlight }: { participant: WorkspaceParticipant | null; highlight?: boolean }) {
   if (!participant) return <span className="text-sm text-on-surface/40">TBD</span>;
   return (
     <span className="flex min-w-0 items-center gap-2 text-sm">
       <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
-      <span className="truncate text-xs text-on-surface">{participant.teamName ?? participant.name}</span>
+      <span className={cn("truncate text-xs text-on-surface", highlight && "bg-yellow-400/30 px-1")}>{participant.teamName ?? participant.name}</span>
     </span>
   );
 }
@@ -56,11 +56,16 @@ function BracketMatchCard({
   index,
   actions,
   highlightParticipantId,
+  highlightParticipantIds,
 }: {
   match: WorkspaceMatch;
   index: number;
   actions?: BracketActions;
   highlightParticipantId?: string | null;
+  // See ParticipantLine's `highlight` — participants whose linked account
+  // is also an approved judge on this tournament, resolved to a plain
+  // per-side boolean below since a match card only ever shows two names.
+  highlightParticipantIds?: Set<string>;
 }) {
   const hasScore = match.scoreA !== null && match.scoreB !== null;
   const aWins = hasScore && match.winnerId !== null && match.a?.id === match.winnerId;
@@ -81,11 +86,11 @@ function BracketMatchCard({
         <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{index + 1}</span>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
-            <ParticipantLine participant={match.a} />
+            <ParticipantLine participant={match.a} highlight={!!match.a && highlightParticipantIds?.has(match.a.id)} />
             {hasScore ? <ScoreChip value={match.scoreA!} isWinner={aWins} isLoser={bWins} /> : null}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <ParticipantLine participant={match.b} />
+            <ParticipantLine participant={match.b} highlight={!!match.b && highlightParticipantIds?.has(match.b.id)} />
             {hasScore ? <ScoreChip value={match.scoreB!} isWinner={bWins} isLoser={aWins} /> : null}
           </div>
         </div>
@@ -229,6 +234,7 @@ export function WorkspaceBracket({
   actions,
   hideRoundLabels,
   highlightParticipantId,
+  highlightParticipantIds,
   onClearRound,
 }: {
   rounds: WorkspaceBracketRound[];
@@ -241,6 +247,10 @@ export function WorkspaceBracket({
   // player view to call out the selected participant's own matches amid
   // the full bracket (see PlayerFinalStageView).
   highlightParticipantId?: string | null;
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight, independent of (and stackable with) the ring above.
+  highlightParticipantIds?: Set<string>;
   // The round header's Clear icon — wipes every match in that round back to
   // unplayed (see clearRoundResults). Only offered alongside a visible
   // round label (so it never shows when hideRoundLabels is set), and only
@@ -280,6 +290,7 @@ export function WorkspaceBracket({
                   index={i}
                   actions={actions}
                   highlightParticipantId={highlightParticipantId}
+                  highlightParticipantIds={highlightParticipantIds}
                 />
               ))}
             </div>

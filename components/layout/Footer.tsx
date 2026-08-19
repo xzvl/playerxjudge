@@ -57,11 +57,17 @@ export function Footer({ sponsors }: { sponsors: MarqueeSponsor[] }) {
   // The player view and judge console both have their own bottom nav that
   // already fills that space on mobile — hide the full marketing footer
   // there instead of stacking under it (see PlayerViewShell / JudgeConsole).
-  // Desktop keeps the footer as-is.
+  // Desktop keeps the footer as-is. A tablet/phone held sideways (landscape,
+  // still below `lg`) gets the same treatment as portrait mobile rather than
+  // the md:block cutover, since it's still using the mobile bottom-nav
+  // layout there, not the desktop sidebar one — expressed as two separate
+  // "turn on" rules (md:portrait, lg unconditional) rather than an
+  // always-on rule some other variant has to override, so there's no
+  // cascade-order fight between them.
   const hideOnMobile = isTournamentConsoleRoute(pathname);
 
   return (
-    <footer className={cn("border-t border-outline-variant/25 bg-surface-container-lowest", hideOnMobile && "hidden md:block")}>
+    <footer className={cn("border-t border-outline-variant/25 bg-surface-container-lowest", hideOnMobile && "hidden md:portrait:block lg:block")}>
       <div className="mx-auto max-w-[1440px] px-4 py-16 md:px-16">
         <div className="grid gap-10 lg:grid-cols-2">
           <div className="grid gap-6 sm:grid-cols-2">

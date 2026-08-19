@@ -20,6 +20,7 @@ export function PlayerStandingsView({
   swissRoundsCap,
   finalStageStarted,
   finalRows,
+  highlightParticipantIds,
 }: {
   groups: TournamentGroup[];
   participants: TournamentParticipant[];
@@ -30,6 +31,10 @@ export function PlayerStandingsView({
   swissRoundsCap: number;
   finalStageStarted: boolean;
   finalRows: FinalStandingRow[];
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
 }) {
   return (
     <Tabs defaultValue={finalStageStarted ? "final" : "group"}>
@@ -58,6 +63,7 @@ export function PlayerStandingsView({
                     tieBreakMetrics={tieBreakMetrics}
                     advanceCount={advanceCount}
                     swissRoundsCap={swissRoundsCap}
+                    highlightParticipantIds={highlightParticipantIds}
                   />
                 </section>
               );
@@ -72,7 +78,7 @@ export function PlayerStandingsView({
 
       <TabsContent value="final">
         {finalStageStarted ? (
-          <FinalStageStandingsTable rows={finalRows} />
+          <FinalStageStandingsTable rows={finalRows} highlightParticipantIds={highlightParticipantIds} />
         ) : (
           <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
             Standings will appear once the final stage starts.

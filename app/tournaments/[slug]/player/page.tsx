@@ -19,6 +19,7 @@ import {
   qualifiedSlots,
 } from "@/lib/final-stage-placeholder";
 import { computeFinishCounts, participantMatches, sideRecords } from "@/lib/player-view-stats";
+import { getJudgeParticipantIds } from "@/lib/tournaments/judge-participant-highlight";
 import { TIE_BREAK_OPTIONS } from "@/lib/validations/tournament-wizard";
 import { buildNavUser, getCurrentUser, getCurrentUserRoles, getUnreadNotificationCount } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
@@ -79,6 +80,12 @@ export default async function TournamentPlayerPage({
       </PlayerViewShell>
     );
   }
+
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — surfaced as a yellow
+  // highlight in the Stages/Standings tables below, same as the organizer
+  // and backend workspaces.
+  const highlightParticipantIds = await getJudgeParticipantIds(await createClient(), tournament.id);
 
   // "Link Me" state (see LinkPlayerControls) — only meaningful in the real
   // Swiss branch, where `participants` are actual `tournament_participants`
@@ -240,19 +247,20 @@ export default async function TournamentPlayerPage({
             hasGroupStage
             groups={groups}
             participants={participants}
-            groupMatches={matches.filter((m) => m.group_id !== null)}
+            tournamentId={tournament.id}
+            initialMatches={matches}
             swissPoints={settings.groupStage.swissPoints}
             tieBreakMetrics={tieBreakMetrics}
             advanceCount={advancePerGroup}
             swissRoundsCap={swissRoundsCap}
             finalStageStarted={finalStageStarted}
             finalBaseRounds={bracketRounds}
-            finalMatches={finalMatches}
+            finalSlots={slots}
             brackets={brackets}
             placementSections={placementSections}
             finalParticipantsById={finalParticipantsById}
-            finalRows={finalRows}
             selectedParticipantId={selectedId}
+            highlightParticipantIds={highlightParticipantIds}
           />
 
           {selectedId ? (

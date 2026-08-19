@@ -12,25 +12,35 @@ import type { TournamentGroup, TournamentParticipant } from "@/lib/types/databas
 // never disagrees with what actually gets generated. Deliberately mirrors
 // GroupStageWorkspace's group-tab-bar + round-column layout so the page
 // doesn't visually jump once real matches replace this preview.
-function ParticipantLine({ participant, isBye }: { participant: TournamentParticipant | null; isBye?: boolean }) {
+function ParticipantLine({ participant, isBye, highlight }: { participant: TournamentParticipant | null; isBye?: boolean; highlight?: boolean }) {
   if (isBye) return <span className="text-sm italic text-on-surface/40">Bye</span>;
   if (!participant) return <span className="text-sm text-on-surface/40">TBD</span>;
   return (
     <span className="flex min-w-0 items-center gap-2 text-sm">
       <span className="text-xs flex h-6 w-6 shrink-0 items-center justify-center bg-surface-container-high text-on-surface/40">{participant.seed}</span>
-      <span className="truncate text-xs text-on-surface">{participant.team_name ?? participant.name}</span>
+      <span className={cn("truncate text-xs text-on-surface", highlight && "bg-yellow-400/30 px-1")}>{participant.team_name ?? participant.name}</span>
     </span>
   );
 }
 
-function MatchCard({ index, a, b }: { index: number; a: TournamentParticipant | null; b: TournamentParticipant | null }) {
+function MatchCard({
+  index,
+  a,
+  b,
+  highlightParticipantIds,
+}: {
+  index: number;
+  a: TournamentParticipant | null;
+  b: TournamentParticipant | null;
+  highlightParticipantIds?: Set<string>;
+}) {
   return (
     <div className="border border-outline-variant/25 bg-surface-container-low p-1">
       <div className="flex min-h-[50px] items-center gap-3">
         <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{index + 1}</span>
         <div className="min-w-0 flex-1 space-y-1.5">
-          <ParticipantLine participant={a} />
-          <ParticipantLine participant={b} isBye={b === null} />
+          <ParticipantLine participant={a} highlight={!!a && highlightParticipantIds?.has(a.id)} />
+          <ParticipantLine participant={b} isBye={b === null} highlight={!!b && highlightParticipantIds?.has(b.id)} />
         </div>
       </div>
     </div>
@@ -40,9 +50,14 @@ function MatchCard({ index, a, b }: { index: number; a: TournamentParticipant | 
 export function GroupStageRound1Preview({
   groups,
   participants,
+  highlightParticipantIds,
 }: {
   groups: TournamentGroup[];
   participants: TournamentParticipant[];
+  // Participants whose linked account is also an approved judge on this
+  // tournament (see getJudgeParticipantIds) — their name gets a yellow
+  // highlight so a player/judge dual role never reads as an ordinary entry.
+  highlightParticipantIds?: Set<string>;
 }) {
   const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id ?? "");
   const activeGroup = groups.find((g) => g.id === activeGroupId) ?? groups[0];
@@ -86,6 +101,7 @@ export function GroupStageRound1Preview({
                   index={i}
                   a={byId.get(p.participantAId) ?? null}
                   b={p.participantBId ? (byId.get(p.participantBId) ?? null) : null}
+                  highlightParticipantIds={highlightParticipantIds}
                 />
               ))}
             </div>

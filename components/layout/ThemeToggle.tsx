@@ -13,7 +13,7 @@ const STORAGE_KEY = "theme";
 // which every CSS variable in globals.css branches on; the inline script in
 // app/layout.tsx does the same read before first paint so a reload doesn't
 // flash the wrong theme.
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string } = {}) {
   const [isLight, setIsLight] = useState(false);
 
   useEffect(() => {
@@ -36,6 +36,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
+      className={className}
       tooltip={isLight ? "Switch to dark mode" : "Switch to light mode"}
       aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
       onClick={toggle}
