@@ -5,8 +5,10 @@
 // self-serve, organizer-confirmed connection between a real account and a
 // `tournament_participants` roster entry. Only `status = 'approved'` links
 // count as "this is genuinely me" — a pending request isn't confirmed yet.
+import { computeGroupStandings } from "@/lib/swiss";
 import type { createClient } from "@/lib/supabase/server";
-import type { BattleType, BracketFormat, FinishType, TournamentType } from "@/lib/types/database";
+import type { BattleType, BracketFormat, FinishType, Match, TournamentParticipant, TournamentType } from "@/lib/types/database";
+import type { TournamentFormatSettings } from "@/lib/validations/tournament-wizard";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -23,6 +25,10 @@ export interface LinkedTournament {
   tournamentType: TournamentType;
   bracketFormat: BracketFormat;
   battleType: BattleType;
+  // Stage/group-stage/tie-break configuration — carried along just for
+  // computeBirdKing below, same shape standings/page.tsx already reads off
+  // `tournaments.format_settings`.
+  formatSettings: TournamentFormatSettings;
   linkedAt: string;
 }
 
@@ -37,6 +43,7 @@ interface LinkedTournamentRow {
     tournament_type: TournamentType;
     bracket_format: BracketFormat;
     battle_type: BattleType;
+    format_settings: TournamentFormatSettings;
   } | null;
 }
 
@@ -44,7 +51,7 @@ export async function fetchLinkedTournaments(supabase: SupabaseClient, profileId
   const { data } = await supabase
     .from("participant_links")
     .select(
-      "participant_id, tournament_id, decided_at, requested_at, tournament_participants(name, team_name), tournaments(champion_name, tournament_type, bracket_format, battle_type)"
+      "participant_id, tournament_id, decided_at, requested_at, tournament_participants(name, team_name), tournaments(champion_name, tournament_type, bracket_format, battle_type, format_settings)"
     )
     .eq("profile_id", profileId)
     .eq("status", "approved");
@@ -57,8 +64,48 @@ export async function fetchLinkedTournaments(supabase: SupabaseClient, profileId
     tournamentType: r.tournaments?.tournament_type ?? "casual",
     bracketFormat: r.tournaments?.bracket_format ?? "single_elimination",
     battleType: r.tournaments?.battle_type ?? "solo",
+    formatSettings: r.tournaments?.format_settings ?? ({ stageType: "single_stage" } as TournamentFormatSettings),
     linkedAt: r.decided_at ?? r.requested_at,
   }));
+}
+
+// Bird King ("finish last in your group") — only decidable for a two-stage
+// tournament whose group stage has actually ended (see `groupStageEnded`,
+// set by endGroupStage in matches-actions.ts); a group of one can't grant
+// it. Reuses the exact same standings computation the organizer's own
+// Standings page runs (computeGroupStandings, lib/swiss.ts) — `rows` comes
+// back sorted best-to-worst, so the last row is this group's bottom finish.
+// Stops at the first tournament that qualifies rather than checking every
+// one, since the achievement is a plain yes/no.
+export async function computeBirdKing(supabase: SupabaseClient, linked: LinkedTournament[]): Promise<boolean> {
+  const candidates = linked.filter(
+    (t) => t.formatSettings?.stageType === "two_stage" && t.formatSettings.groupStageEnded === true
+  );
+
+  for (const t of candidates) {
+    const { data: me } = await supabase
+      .from("tournament_participants")
+      .select("group_id")
+      .eq("id", t.participantId)
+      .maybeSingle();
+    if (!me?.group_id) continue;
+
+    const [{ data: members }, { data: matches }] = await Promise.all([
+      supabase.from("tournament_participants").select("*").eq("group_id", me.group_id),
+      supabase.from("matches").select("*").eq("group_id", me.group_id),
+    ]);
+    const groupMembers = (members as TournamentParticipant[] | null) ?? [];
+    if (groupMembers.length < 2) continue;
+
+    const settings = t.formatSettings;
+    const rows = computeGroupStandings(groupMembers, (matches as Match[] | null) ?? [], settings.groupStage.swissPoints, [
+      settings.groupTieBreaks.tieBreak1,
+      settings.groupTieBreaks.tieBreak2,
+      settings.groupTieBreaks.tieBreak3,
+    ]);
+    if (rows.length > 1 && rows[rows.length - 1].participantId === t.participantId) return true;
+  }
+  return false;
 }
 
 export interface PlayerMatch {
@@ -80,6 +127,16 @@ export interface PlayerMatch {
   // (a Best-of-X match can hand out several finishes), used for the
   // Statistics/Achievements finish-type tallies — see computePlayerStats.
   myBattleWins: FinishType[];
+  // Which match seat this player occupied — "X Side" (participant_a_id) or
+  // "B Side" (participant_b_id), same convention as sideRecords in
+  // lib/player-view-stats.ts. Backs the x-side-master/b-side-master
+  // achievements (computePlayerStats's sideWins).
+  mySide: "a" | "b";
+  // Penalty points charged to the *opponent's* side in this match — "Thanks
+  // to Penalty" counts penalties the player caused their opponents to take,
+  // not ones charged against the player themself. 0 when the match has no
+  // recorded penalties.
+  opponentPenalties: number;
   playedAt: string | null;
 }
 
@@ -93,7 +150,7 @@ interface RawMatchRow {
   participant_a_id: string | null;
   participant_b_id: string | null;
   winner_id: string | null;
-  score: { a?: number; b?: number; battles?: { winnerId: string; finishType: FinishType }[] };
+  score: { a?: number; b?: number; battles?: { winnerId: string; finishType: FinishType }[]; penaltiesA?: number; penaltiesB?: number };
   completed_at: string | null;
   tournaments: { title: string; battle_type: BattleType } | null;
   tournament_groups: { label: string } | null;
@@ -157,6 +214,7 @@ export async function fetchPlayerMatches(supabase: SupabaseClient, linked: Linke
       const myId = [m.participant_a_id, m.participant_b_id].find((id) => id && myParticipantIds.has(id)) ?? null;
       const opponentId = [m.participant_a_id, m.participant_b_id].find((id) => id && id !== myId) ?? null;
       const battles = m.score.battles ?? [];
+      const mySide: "a" | "b" = m.participant_a_id === myId ? "a" : "b";
 
       return {
         id: m.id,
@@ -170,6 +228,8 @@ export async function fetchPlayerMatches(supabase: SupabaseClient, linked: Linke
         stage: stageOf(m),
         finishType: battles.length > 0 ? battles[battles.length - 1].finishType : null,
         myBattleWins: battles.filter((b) => b.winnerId === myId).map((b) => b.finishType),
+        mySide,
+        opponentPenalties: (mySide === "a" ? m.score.penaltiesB : m.score.penaltiesA) ?? 0,
         playedAt: m.completed_at,
       };
     })

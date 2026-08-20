@@ -10,7 +10,7 @@ import { formatDate, formatTime } from "@/lib/format";
 import { getCurrentProfile, getCurrentUser, getUnreadNotificationCount } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getPublicTournamentListings } from "@/lib/tournaments/public-listings";
-import { fetchLinkedTournaments, fetchPlayerMatches } from "@/lib/player/linked-participants";
+import { computeBirdKing, fetchLinkedTournaments, fetchPlayerMatches } from "@/lib/player/linked-participants";
 import { computePlayerStats } from "@/lib/player/stats";
 import { ACHIEVEMENT_DEFS, computeAchievements } from "@/lib/player/achievements";
 
@@ -30,9 +30,9 @@ export default async function PlayerDashboardPage() {
     supabase.from("profile_communities").select("id", { count: "exact", head: true }).eq("profile_id", user.id).eq("status", "approved"),
     fetchLinkedTournaments(supabase, user.id),
   ]);
-  const matches = await fetchPlayerMatches(supabase, linked);
+  const [matches, birdKing] = await Promise.all([fetchPlayerMatches(supabase, linked), computeBirdKing(supabase, linked)]);
   const stats = computePlayerStats(matches);
-  const achievements = computeAchievements(matches, linked);
+  const achievements = computeAchievements(matches, linked, birdKing);
   const unlockedAchievements = achievements.filter((a) => a.achieved).length;
 
   const province = profile?.province ?? null;

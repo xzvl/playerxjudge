@@ -72,6 +72,15 @@ export interface MockTournament {
   // server-side for anyone who checked "hide me on public" — see the
   // `public_preregistrations` view.
   preRegisteredPlayers?: { id: string; bladerName: string }[];
+  // Real data only — whether the group stage (or, for a single-stage
+  // tournament, the final bracket) has actually generated its first
+  // matches, per lib/tournaments/public-listings.ts. This is the signal
+  // TournamentCard/TournamentDetailsModal use to swap Pre-register for Go
+  // Shoot! — deliberately not `startsAt` vs. now, since the scheduled start
+  // time passing doesn't mean the organizer has actually started anything
+  // yet (same `matchCount > 0` signal the organizer's own Participants page
+  // uses to lock roster edits — see tournamentStarted there).
+  stageStarted?: boolean;
 }
 
 export const PROVINCES = [

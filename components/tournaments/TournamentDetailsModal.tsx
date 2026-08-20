@@ -54,7 +54,10 @@ export function TournamentDetailsModal({
   const hasPrizesToShow = displayTournament.prizeUsesRanges ? rangeSections.length > 0 : prizes.length > 0;
   const participantCount = displayTournament.participants.length;
   const completed = displayTournament.liveStatus === "completed";
-  const hasStarted = new Date(displayTournament.startsAt).getTime() <= Date.now();
+  // Whether the group stage/final bracket has actually generated matches —
+  // not just whether the scheduled start time has passed — see
+  // MockTournament.stageStarted.
+  const hasStarted = displayTournament.stageStarted ?? false;
   const actionLabel = completed ? "View Result" : hasStarted ? "Go Shoot!" : "Register Now";
   const actionTooltip = completed ? "See the final results" : hasStarted ? "Watch this tournament live" : "Register for this tournament";
 

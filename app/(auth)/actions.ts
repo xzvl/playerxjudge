@@ -58,7 +58,22 @@ export async function signInWithPassword(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
+
+  // The "Email" field on /login is really "Username / Email" (LoginForm) —
+  // resolve a non-email identifier to its account email first via the
+  // email_for_username security-definer function (email itself lives on
+  // auth.users, unreadable to anon/authenticated directly; see
+  // 20250101000051_google_username_generation.sql). Falls through to the
+  // typed value unchanged if it doesn't resolve, so the eventual error stays
+  // the same generic "Invalid email or password" either way — no
+  // username-enumeration signal.
+  let email = parsed.data.email;
+  if (!email.includes("@")) {
+    const { data: resolvedEmail } = await supabase.rpc("email_for_username", { p_username: email });
+    if (resolvedEmail) email = resolvedEmail;
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: parsed.data.password });
 
   if (error) {
     return { status: "error", message: "Invalid email or password." };

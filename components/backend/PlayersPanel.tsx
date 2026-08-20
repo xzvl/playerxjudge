@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Ban, ShieldCheck } from "lucide-react";
+import { Ban, Mail, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,34 @@ export interface PlayerRow {
   username: string;
   province: string | null;
   isBanned: boolean;
+  // 'email' | 'google' | null (null = created before this was tracked,
+  // reads as "Email" — see app/backend/players/page.tsx).
+  provider: string | null;
   joinedAt: string;
+}
+
+// Matches Google's "G" wordmark colors closely enough to read as "Google" at
+// a glance next to the Email icon, without pulling in a whole brand icon set
+// for one badge.
+function ProviderBadge({ provider }: { provider: string | null }) {
+  if (provider === "google") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-on-surface/60">
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z" />
+          <path fill="#FBBC05" d="M5.84 14.09A6.6 6.6 0 0 1 5.5 12c0-.73.12-1.43.34-2.09V7.07H2.18A11 11 0 0 0 1 12c0 1.77.43 3.45 1.18 4.93z" />
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+        </svg>
+        Google
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-on-surface/60">
+      <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Email
+    </span>
+  );
 }
 
 export function PlayersPanel({ players }: { players: PlayerRow[] }) {
@@ -92,10 +119,11 @@ export function PlayersPanel({ players }: { players: PlayerRow[] }) {
 
       {pageRows.length > 0 ? (
         <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[680px] text-left text-sm">
+          <table className="w-full min-w-[800px] text-left text-sm">
             <thead>
               <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
                 <th className="p-4" scope="col">Player</th>
+                <th className="p-4" scope="col">Signed Up With</th>
                 <th className="p-4" scope="col">Province</th>
                 <th className="p-4" scope="col">Joined</th>
                 <th className="p-4" scope="col">Status</th>
@@ -110,6 +138,9 @@ export function PlayersPanel({ players }: { players: PlayerRow[] }) {
                   <td className="p-4">
                     <p className="font-medium text-on-surface">{r.displayName}</p>
                     <p className="text-xs text-on-surface/40">@{r.username}</p>
+                  </td>
+                  <td className="p-4 text-sm">
+                    <ProviderBadge provider={r.provider} />
                   </td>
                   <td className="p-4 text-on-surface/60">{r.province ?? "—"}</td>
                   <td className="p-4 text-on-surface/60">{formatDate(r.joinedAt)}</td>

@@ -73,6 +73,12 @@ export type Profile = {
   half_body_photo_url: string | null;
   beyz_id_url: string | null;
   beyz_id_status: BeyzIdStatus | null;
+  // Mirrors supabase/migrations/20250101000051_google_username_generation.sql
+  // — 'email' or 'google', whatever Supabase Auth put in the account's own
+  // raw_app_meta_data->>'provider' at signup. null on accounts created
+  // before this column existed (see /backend/players, which reads that as
+  // "Email").
+  provider: string | null;
   // Mirrors supabase/migrations/20250101000037_backend_admin.sql — Player
   // "remove" (see /backend/players) is ban/suspend, not account deletion.
   is_banned: boolean;
@@ -247,6 +253,12 @@ export type TournamentPreregistration = {
   payment_screenshot_url: string | null;
   payment_status: PreregistrationPaymentStatus;
   created_at: string;
+  // Mirrors supabase/migrations/20250101000050_preregistration_username.sql
+  // — the submitter's own username, captured server-side from their session
+  // at submit time (never client-trusted) when they were signed in. Powers
+  // the organizer's no-approval auto-link on promotion to the roster — see
+  // addPreRegisteredParticipant and bulkAddParticipants.
+  username: string | null;
 };
 
 // Mirrors the `public_preregistrations` view (see
@@ -759,7 +771,12 @@ export interface Database {
     Views: {
       public_preregistrations: TableDef<PublicPreregistration>;
     };
-    Functions: Record<string, never>;
+    Functions: {
+      // Mirrors supabase/migrations/20250101000051_google_username_generation.sql
+      // — resolves a username to its account email so /login can accept
+      // either (see signInWithPassword in app/(auth)/actions.ts).
+      email_for_username: { Args: { p_username: string }; Returns: string | null };
+    };
     Enums: {
       app_role: AppRole;
       role_status: RoleStatus;

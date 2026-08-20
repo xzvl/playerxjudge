@@ -20,18 +20,23 @@ export default async function PlayersPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, display_name, username, province, is_banned, created_at")
+    .select("id, display_name, username, province, is_banned, provider, created_at")
     .order("created_at", { ascending: false })
     .limit(PLAYER_FETCH_LIMIT);
 
   const players: PlayerRow[] = (
-    (data as { id: string; display_name: string; username: string; province: string | null; is_banned: boolean; created_at: string }[] | null) ?? []
+    (data as { id: string; display_name: string; username: string; province: string | null; is_banned: boolean; provider: string | null; created_at: string }[] | null) ?? []
   ).map((p) => ({
     id: p.id,
     displayName: p.display_name,
     username: p.username,
     province: p.province,
     isBanned: p.is_banned,
+    // Accounts created before the `provider` column existed (see
+    // 20250101000051_google_username_generation.sql) read null here — email/
+    // password was the only sign-up option before Google existed, so null
+    // reads as "Email" in PlayersPanel.
+    provider: p.provider,
     joinedAt: p.created_at,
   }));
 

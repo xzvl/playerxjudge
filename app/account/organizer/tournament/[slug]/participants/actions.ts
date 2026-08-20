@@ -5,8 +5,21 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { logTournamentEvent } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
+import { autoLinkParticipant } from "@/lib/tournaments/auto-link-participant";
+import type { ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
 import type { TournamentGroup, TournamentParticipant } from "@/lib/types/database";
 import type { RoleActionState } from "@/lib/validations/roles";
+
+// A pasted line from Pre-Registrations' Copy All carries an optional
+// "<username>" tag after the name — e.g. "Decim0 <decim0>" — see
+// TournamentPreRegisterWorkspace.handleCopyAll. Splits that back out so the
+// tag never ends up literally in the roster's name column.
+const USERNAME_TAG = /^(.*\S)\s+<([a-z0-9_]{3,24})>\s*$/;
+
+function parseBulkLine(line: string): { name: string; username: string | null } {
+  const match = line.match(USERNAME_TAG);
+  return match ? { name: match[1], username: match[2] } : { name: line, username: null };
+}
 
 // Authorization is enforced by RLS (`tournament_*_write_organizer_or_admin`,
 // see the 20250101000011 migration) — these actions run as the signed-in
@@ -54,11 +67,14 @@ export async function bulkAddParticipants(
   slug: string,
   names: string[],
   isTeam: boolean
-): Promise<RoleActionState & { participants?: TournamentParticipant[] }> {
+): Promise<RoleActionState & { participants?: TournamentParticipant[]; links?: { participantId: string; link: ParticipantLinkInfo }[] }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
 
-  const cleaned = names.map((n) => n.trim()).filter(Boolean);
+  // Each line may carry a "<username>" tag pasted straight from
+  // Pre-Registrations' Copy All — split it out before it ever reaches the
+  // name column (see parseBulkLine above).
+  const cleaned = names.map((n) => parseBulkLine(n.trim())).filter((n) => n.name);
   if (cleaned.length === 0) return { status: "error", message: "Nothing to add." };
 
   const supabase = await createClient();
@@ -71,7 +87,7 @@ export async function bulkAddParticipants(
     .maybeSingle();
 
   let seed = (highestSeed?.seed ?? 0) + 1;
-  const rows = cleaned.map((name) => ({
+  const rows = cleaned.map(({ name }) => ({
     tournament_id: tournamentId,
     seed: seed++,
     name,
@@ -80,9 +96,17 @@ export async function bulkAddParticipants(
 
   const { data, error } = await supabase.from("tournament_participants").insert(rows).select();
   if (error) return { status: "error", message: error.message };
+  const inserted = data as TournamentParticipant[];
+  // Postgres preserves row order for a multi-row INSERT ... RETURNING in the
+  // order the VALUES were given, so `inserted[i]` lines up with `cleaned[i]`
+  // — same assumption the seed-increment above already relies on.
+  const linkResults = await Promise.all(
+    inserted.map((p, i) => autoLinkParticipant(supabase, tournamentId, p.id, cleaned[i]?.username, user.id))
+  );
+  const links = linkResults.filter((l): l is { participantId: string; link: ParticipantLinkInfo } => l !== null);
   await logTournamentEvent(tournamentId, "Organizer", `bulk-added ${rows.length} participant${rows.length === 1 ? "" : "s"}`);
   revalidatePath(participantsPath(slug));
-  return { status: "success", participants: data as TournamentParticipant[] };
+  return { status: "success", participants: inserted, links };
 }
 
 export async function updateParticipant(
@@ -108,7 +132,16 @@ export async function updateParticipant(
   return { status: "success", participant: data as TournamentParticipant };
 }
 
-export async function removeParticipant(participantId: string, slug: string): Promise<RoleActionState> {
+// Removing seed #2 used to leave the roster reading 1, 3, 4, ... — the
+// deleted seed just vanished rather than the rest closing up behind it.
+// Safe to renumber unconditionally: Remove is only ever enabled before the
+// tournament has started (see tournamentStarted, gated in
+// TournamentParticipantsWorkspace), so nothing yet references these
+// participants by their seed-derived position.
+export async function removeParticipant(
+  participantId: string,
+  slug: string
+): Promise<RoleActionState & { participants?: TournamentParticipant[] }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
 
@@ -116,12 +149,25 @@ export async function removeParticipant(participantId: string, slug: string): Pr
   const { data, error } = await supabase.from("tournament_participants").delete().eq("id", participantId).select().single();
 
   if (error) return { status: "error", message: error.message };
+  let shifted: TournamentParticipant[] = [];
   if (data) {
     const removed = data as TournamentParticipant;
     await logTournamentEvent(removed.tournament_id, "Organizer", `removed ${removed.team_name ?? removed.name} from the roster`);
+
+    const { data: after } = await supabase
+      .from("tournament_participants")
+      .select("*")
+      .eq("tournament_id", removed.tournament_id)
+      .gt("seed", removed.seed)
+      .order("seed");
+    if (after && after.length > 0) {
+      const updates = (after as TournamentParticipant[]).map((p) => ({ ...p, seed: p.seed - 1 }));
+      const { data: updated, error: shiftError } = await supabase.from("tournament_participants").upsert(updates).select();
+      if (!shiftError) shifted = (updated as TournamentParticipant[] | null) ?? [];
+    }
   }
   revalidatePath(participantsPath(slug));
-  return { status: "success" };
+  return { status: "success", participants: shifted };
 }
 
 // Wipes the entire roster in one go — same underlying delete as

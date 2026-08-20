@@ -1,8 +1,35 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/get-user";
 import { MAX_THUMBNAIL_UPLOAD_BYTES } from "@/lib/validations/tournament-wizard";
 import type { RoleActionState } from "@/lib/validations/roles";
+import type { Profile } from "@/lib/types/database";
+
+// Prefills the Pre-register popup (PreRegisterDialog) for a signed-in
+// visitor from their own profile, so they don't retype what's already on
+// file. Returns null for a guest with no session — the dialog just leaves
+// the fields blank in that case, same as before.
+export async function getPreRegisterPrefill(): Promise<{ fullName: string; bladerName: string; facebookName: string } | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("display_name, first_name, last_name, blader_names, social_links")
+    .eq("id", user.id)
+    .maybeSingle();
+  const profile = data as Pick<Profile, "display_name" | "first_name" | "last_name" | "blader_names" | "social_links"> | null;
+  if (!profile) return null;
+
+  const fullName = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || profile.display_name;
+  return {
+    fullName,
+    bladerName: profile.blader_names?.[0] ?? "",
+    facebookName: profile.social_links?.facebook_name ?? "",
+  };
+}
 
 // Guest pre-registration payment screenshot — uploaded before submit (see
 // PreRegisterDialog's "Advance Payment" checkbox), same client-side
@@ -60,6 +87,19 @@ export async function submitPreRegistration(
   }
 
   const supabase = await createClient();
+
+  // Captured from the submitter's own session, never from client input — so
+  // a guest can't type someone else's username into a hidden field to hijack
+  // their account link. null for an anonymous guest, same as always. See the
+  // organizer-side auto-link this powers: addPreRegisteredParticipant
+  // (pre-register/actions.ts) and bulkAddParticipants (participants/actions.ts).
+  const user = await getCurrentUser();
+  let username: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
+    username = profile?.username ?? null;
+  }
+
   const { error } = await supabase.from("tournament_preregistrations").insert({
     tournament_id: tournamentId,
     full_name: fullName,
@@ -68,6 +108,7 @@ export async function submitPreRegistration(
     hide_public: input.hidePublic,
     advance_payment: input.advancePayment,
     payment_screenshot_url: input.advancePayment ? input.paymentScreenshotUrl : null,
+    username,
   });
 
   if (error) return { status: "error", message: error.message };

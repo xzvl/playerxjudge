@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { logTournamentEvent } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
+import { autoLinkParticipant } from "@/lib/tournaments/auto-link-participant";
 import type { PreregistrationPaymentStatus, TournamentParticipant, TournamentPreregistration } from "@/lib/types/database";
 import type { RoleActionState } from "@/lib/validations/roles";
 
@@ -20,11 +21,14 @@ function preRegisterPath(slug: string) {
 // the organizer's record of the original submission, not consumed by this).
 // Uses the Blader Name as the roster entry's display name, matching how
 // bladers are identified everywhere else in the tournament (seeds, brackets,
-// standings) rather than their real name.
+// standings) rather than their real name. When the submission captured a
+// signed-in submitter's username (see submitPreRegistration), the new
+// participant is auto-linked to that account, already approved.
 export async function addPreRegisteredParticipant(
   tournamentId: string,
   slug: string,
-  bladerName: string
+  bladerName: string,
+  username?: string | null
 ): Promise<RoleActionState & { participant?: TournamentParticipant }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
@@ -48,6 +52,7 @@ export async function addPreRegisteredParticipant(
 
   if (error) return { status: "error", message: error.message };
   const added = data as TournamentParticipant;
+  await autoLinkParticipant(supabase, tournamentId, added.id, username, user.id);
   await logTournamentEvent(tournamentId, "Organizer", `added pre-registered player ${added.name} to the roster`);
   revalidatePath(preRegisterPath(slug));
   revalidatePath(`/account/organizer/tournament/${slug}/participants`);

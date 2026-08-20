@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PaymentScreenshotField } from "@/components/tournaments/PaymentScreenshotField";
 import { formatCurrency } from "@/lib/format";
-import { submitPreRegistration, uploadPreRegistrationPaymentScreenshot } from "@/app/tournaments/[slug]/actions";
+import {
+  getPreRegisterPrefill,
+  submitPreRegistration,
+  uploadPreRegistrationPaymentScreenshot,
+} from "@/app/tournaments/[slug]/actions";
 import type { MockTournament } from "@/lib/mock/tournaments";
 
-// Guest pre-registration popup — no account required. Shown for logged-in
-// and anonymous visitors alike (no profile pre-fill for now); when the
-// tournament requires pre-registration payment (see Settings), the
+// Guest pre-registration popup — no account required. For a signed-in
+// visitor, Full Name/Blader Name/Facebook Name prefill from their profile on
+// open (getPreRegisterPrefill) — still editable, just a head start; their
+// username itself is never shown here or sent from the client at all, it's
+// captured server-side in submitPreRegistration from the actual session.
+// When the tournament requires pre-registration payment (see Settings), the
 // organizer's amount/instructions/QR code show below the form so the player
 // knows how to pay before the tournament starts.
 export function PreRegisterDialog({
@@ -35,6 +42,19 @@ export function PreRegisterDialog({
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Prefill for a signed-in visitor when the dialog opens — only into fields
+  // still blank, so reopening after the guest has started typing (or after a
+  // previous submission's reset) never clobbers what's already there.
+  useEffect(() => {
+    if (!open) return;
+    getPreRegisterPrefill().then((prefill) => {
+      if (!prefill) return;
+      setFullName((prev) => prev || prefill.fullName);
+      setBladerName((prev) => prev || prefill.bladerName);
+      setFacebookName((prev) => prev || prefill.facebookName);
+    });
+  }, [open]);
 
   function reset() {
     setFullName("");

@@ -108,7 +108,7 @@ export function TournamentPreRegisterWorkspace({
   function handleAdd(entry: TournamentPreregistration) {
     setError(null);
     startTransition(async () => {
-      const result = await addPreRegisteredParticipant(tournamentId, slug, entry.blader_name);
+      const result = await addPreRegisteredParticipant(tournamentId, slug, entry.blader_name, entry.username);
       if (result.status === "error") {
         setError(result.message ?? "Something went wrong.");
         return;
@@ -174,8 +174,13 @@ export function TournamentPreRegisterWorkspace({
     });
   }
 
+  // Tags each line with its submitter's captured username (see
+  // submitPreRegistration), e.g. "Decim0 <decim0>" — bulkAddParticipants
+  // parses that tag back out and auto-links the new participant to that
+  // account, already approved. Entries with no captured username (guest
+  // wasn't signed in) paste as just the plain blader name, unchanged.
   async function handleCopyAll() {
-    const text = entries.map((e) => e.blader_name).join("\n");
+    const text = entries.map((e) => (e.username ? `${e.blader_name} <${e.username}>` : e.blader_name)).join("\n");
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);

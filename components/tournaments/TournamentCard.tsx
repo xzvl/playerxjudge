@@ -19,7 +19,10 @@ export function TournamentCard({
   onOpenDetails: (id: string) => void;
 }) {
   const [preRegisterOpen, setPreRegisterOpen] = useState(false);
-  const hasStarted = new Date(tournament.startsAt).getTime() <= Date.now();
+  // Whether the group stage/final bracket has actually generated matches —
+  // not just whether the scheduled start time has passed — see
+  // MockTournament.stageStarted.
+  const hasStarted = tournament.stageStarted ?? false;
 
   return (
     <article className="group flex flex-col border border-outline-variant/25 bg-surface-container-low transition-all hover:border-primary/40">

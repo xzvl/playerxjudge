@@ -1,7 +1,13 @@
 import { z } from "zod";
 
+// `email` here is really "username or email" — see LoginForm's "Username /
+// Email" label and signInWithPassword, which resolves a non-email value to
+// its account email server-side (email_for_username) before signing in. Kept
+// loose (just non-empty) rather than a strict email/username union so
+// whichever the visitor typed passes validation the same way; the actual
+// resolution happens server-side.
 export const loginSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address"),
+  email: z.string().trim().min(3, "Enter your username or email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 export type LoginInput = z.infer<typeof loginSchema>;

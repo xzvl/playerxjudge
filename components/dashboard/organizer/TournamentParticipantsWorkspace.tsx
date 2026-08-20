@@ -205,7 +205,12 @@ function ManageParticipantsTab({
         <div className="flex flex-wrap gap-2">
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-1.5" tooltip="Add a single participant to the roster">
+              <Button
+                size="sm"
+                className="gap-1.5"
+                tooltip={tournamentStarted ? "Can't add participants once the tournament has started" : "Add a single participant to the roster"}
+                disabled={tournamentStarted}
+              >
                 <UserPlus className="h-3.5 w-3.5" /> Add Participant
               </Button>
             </DialogTrigger>
@@ -241,8 +246,8 @@ function ManageParticipantsTab({
             size="sm"
             variant="outline"
             className="gap-1.5"
-            tooltip="Randomize everyone's seed"
-            disabled={pending}
+            tooltip={tournamentStarted ? "Can't reshuffle seeds once the tournament has started" : "Randomize everyone's seed"}
+            disabled={pending || tournamentStarted}
             onClick={onShuffle}
           >
             <Shuffle className="h-3.5 w-3.5" /> Shuffle
@@ -250,7 +255,13 @@ function ManageParticipantsTab({
 
           <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1.5" tooltip="Add several participants at once, one per line">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                tooltip={tournamentStarted ? "Can't add participants once the tournament has started" : "Add several participants at once, one per line"}
+                disabled={tournamentStarted}
+              >
                 <Plus className="h-3.5 w-3.5" /> Bulk Add
               </Button>
             </DialogTrigger>
@@ -561,6 +572,7 @@ function GroupCard({
   otherGroups,
   unassigned,
   pending,
+  tournamentStarted,
   onRemoveGroup,
   onAssign,
   onUnassign,
@@ -572,6 +584,7 @@ function GroupCard({
   otherGroups: { id: string; label: string }[];
   unassigned: RosterEntry[];
   pending: boolean;
+  tournamentStarted: boolean;
   onRemoveGroup: () => void;
   onAssign: (ids: string[]) => void;
   onUnassign: (id: string) => void;
@@ -615,13 +628,20 @@ function GroupCard({
             size="sm"
             variant="outline"
             className="gap-1.5"
-            tooltip="Pick who joins this group"
-            disabled={pending}
+            tooltip={tournamentStarted ? "Can't reassign groups once the tournament has started" : "Pick who joins this group"}
+            disabled={pending || tournamentStarted}
             onClick={() => setAssignOpen(true)}
           >
             <UserPlus className="h-3.5 w-3.5" /> Assign Participants
           </Button>
-          <Button variant="ghost" size="icon" disabled={pending} aria-label={`Remove Group ${group.label}`} onClick={onRemoveGroup}>
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={pending || tournamentStarted}
+            aria-label={`Remove Group ${group.label}`}
+            tooltip={tournamentStarted ? "Can't remove a group once the tournament has started" : "Remove this group"}
+            onClick={onRemoveGroup}
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -632,7 +652,7 @@ function GroupCard({
           {members.map((m, i) => (
             <li
               key={m.id}
-              draggable={!pending}
+              draggable={!pending && !tournamentStarted}
               onDragStart={(e) => {
                 setDraggedId(m.id);
                 e.dataTransfer.effectAllowed = "move";
@@ -651,7 +671,10 @@ function GroupCard({
                 draggedId === m.id ? "opacity-40" : ""
               } ${dragOverId === m.id && draggedId && draggedId !== m.id ? "bg-primary/10" : ""}`}
             >
-              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-on-surface/25" aria-hidden="true" />
+              <GripVertical
+                className={`h-4 w-4 shrink-0 text-on-surface/25 ${tournamentStarted ? "cursor-not-allowed" : "cursor-grab"}`}
+                aria-hidden="true"
+              />
               <span className="w-5 shrink-0 font-mono text-xs text-on-surface/40">{i + 1}</span>
               <Avatar className="h-8 w-8">
                 <AvatarFallback>{initials(m.teamName ?? m.name)}</AvatarFallback>
@@ -672,8 +695,9 @@ function GroupCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  disabled={pending}
+                  disabled={pending || tournamentStarted}
                   aria-label={`Remove ${m.name} from group`}
+                  tooltip={tournamentStarted ? "Can't remove from a group once the tournament has started" : "Remove this participant from the group"}
                   onClick={() => onUnassign(m.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -712,6 +736,7 @@ function ManageGroupsTab({
   roster,
   groups,
   pending,
+  tournamentStarted,
   onAssignAutomatically,
   onAddGroup,
   onRemoveGroup,
@@ -723,6 +748,7 @@ function ManageGroupsTab({
   roster: RosterEntry[];
   groups: Group[];
   pending: boolean;
+  tournamentStarted: boolean;
   onAssignAutomatically: () => void;
   onAddGroup: () => void;
   onRemoveGroup: (groupId: string) => void;
@@ -748,13 +774,23 @@ function ManageGroupsTab({
             size="sm"
             variant="outline"
             className="gap-1.5"
-            tooltip="Distribute unassigned participants across groups automatically"
-            disabled={pending}
+            tooltip={
+              tournamentStarted
+                ? "Can't reassign groups once the tournament has started"
+                : "Distribute unassigned participants across groups automatically"
+            }
+            disabled={pending || tournamentStarted}
             onClick={onAssignAutomatically}
           >
             <Wand2 className="h-3.5 w-3.5" /> Assign Groups Automatically
           </Button>
-          <Button size="sm" className="gap-1.5" tooltip="Create a new empty group" disabled={pending} onClick={onAddGroup}>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            tooltip={tournamentStarted ? "Can't add a group once the tournament has started" : "Create a new empty group"}
+            disabled={pending || tournamentStarted}
+            onClick={onAddGroup}
+          >
             <Plus className="h-3.5 w-3.5" /> Add Group
           </Button>
         </div>
@@ -770,6 +806,7 @@ function ManageGroupsTab({
               otherGroups={groups.filter((g) => g.id !== group.id).map((g) => ({ id: g.id, label: g.label }))}
               unassigned={unassigned}
               pending={pending}
+              tournamentStarted={tournamentStarted}
               onRemoveGroup={() => onRemoveGroup(group.id)}
               onAssign={(ids) => onAssign(group.id, ids)}
               onUnassign={(id) => onUnassign(group.id, id)}
@@ -866,6 +903,18 @@ export function TournamentParticipantsWorkspace({
         if (result.participants) {
           setRoster((prev) => [...prev, ...result.participants!.map(toRosterEntry)].sort((a, b) => a.seed - b.seed));
         }
+        // A pasted "<username>" tag (see parseBulkLine, bulkAddParticipants)
+        // auto-links straight to "approved" server-side — without this, the
+        // new rows read "Not linked" until a full page reload, since
+        // `links` is local state seeded once from the initial page load and
+        // nothing else refreshes it after a bulk add.
+        if (result.links && result.links.length > 0) {
+          setLinks((prev) => {
+            const next = new Map(prev);
+            for (const { participantId, link } of result.links!) next.set(participantId, link);
+            return next;
+          });
+        }
       }
     );
   }
@@ -882,8 +931,14 @@ export function TournamentParticipantsWorkspace({
   function handleRemove(id: string) {
     run(
       () => removeParticipant(id, slug),
-      () => {
-        setRoster((prev) => prev.filter((r) => r.id !== id));
+      (result) => {
+        // Everyone seeded after the removed participant shifts down by one
+        // to close the gap (see removeParticipant) — reconcile those seed
+        // numbers locally the same way handleReorder does.
+        const shifted = new Map((result.participants ?? []).map((p) => [p.id, p]));
+        setRoster((prev) =>
+          prev.filter((r) => r.id !== id).map((r) => (shifted.has(r.id) ? toRosterEntry(shifted.get(r.id)!) : r))
+        );
         setGroups((prev) => prev.map((g) => ({ ...g, participantIds: g.participantIds.filter((pid) => pid !== id) })));
       }
     );
@@ -1033,6 +1088,7 @@ export function TournamentParticipantsWorkspace({
               roster={roster}
               groups={groups}
               pending={pending}
+              tournamentStarted={tournamentStarted}
               onAssignAutomatically={handleAssignGroupsAutomatically}
               onAddGroup={handleAddGroup}
               onRemoveGroup={handleRemoveGroup}

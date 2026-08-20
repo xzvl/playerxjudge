@@ -49,6 +49,7 @@ function mapRow(
   t: TournamentListingRow,
   participants: MockParticipant[],
   prizes: { placement: string; prizeName: string }[],
+  stageStarted: boolean,
   preRegisteredPlayers?: { id: string; bladerName: string }[]
 ): MockTournament {
   return {
@@ -96,6 +97,7 @@ function mapRow(
     preregistrationInstructions: t.preregistration_instructions,
     preregistrationQrUrl: t.preregistration_qr_url,
     preRegisteredPlayers,
+    stageStarted,
   };
 }
 
@@ -137,6 +139,23 @@ async function fetchParticipantsByTournament(
   return byTournament;
 }
 
+// Which of these tournaments have generated at least one match — same
+// signal (and reasoning) as `tournamentStarted` on the organizer's own
+// Participants page (app/account/organizer/tournament/[slug]/participants/page.tsx):
+// once the group stage or the final bracket has real matches, the
+// tournament has actually started regardless of what the scheduled
+// `starts_at` says. A plain existence check per id, not a count — nothing
+// here needs how many.
+async function fetchStartedTournamentIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tournamentIds: string[]
+): Promise<Set<string>> {
+  if (tournamentIds.length === 0) return new Set();
+
+  const { data } = await supabase.from("matches").select("tournament_id").in("tournament_id", tournamentIds);
+  return new Set((data as { tournament_id: string }[] | null)?.map((m) => m.tournament_id) ?? []);
+}
+
 async function fetchPrizesByTournament(
   supabase: Awaited<ReturnType<typeof createClient>>,
   tournamentIds: string[]
@@ -170,12 +189,15 @@ export async function getPublicTournamentListings(): Promise<MockTournament[]> {
   if (rows.length === 0) return [];
 
   const tournamentIds = rows.map((r) => r.id);
-  const [participantsByTournament, prizesByTournament] = await Promise.all([
+  const [participantsByTournament, prizesByTournament, startedIds] = await Promise.all([
     fetchParticipantsByTournament(supabase, tournamentIds),
     fetchPrizesByTournament(supabase, tournamentIds),
+    fetchStartedTournamentIds(supabase, tournamentIds),
   ]);
 
-  return rows.map((t) => mapRow(t, participantsByTournament.get(t.id) ?? [], prizesByTournament.get(t.id) ?? []));
+  return rows.map((t) =>
+    mapRow(t, participantsByTournament.get(t.id) ?? [], prizesByTournament.get(t.id) ?? [], startedIds.has(t.id))
+  );
 }
 
 // For "Find a Tournament Near You" — same public listing, but only
@@ -207,10 +229,17 @@ export async function getPublicTournamentBySlug(slug: string): Promise<MockTourn
   const row = data as unknown as TournamentListingRow | null;
   if (!row) return null;
 
-  const [participantsByTournament, prizesByTournament, preRegisteredPlayers] = await Promise.all([
+  const [participantsByTournament, prizesByTournament, preRegisteredPlayers, startedIds] = await Promise.all([
     fetchParticipantsByTournament(supabase, [row.id]),
     fetchPrizesByTournament(supabase, [row.id]),
     fetchPreRegisteredPlayers(supabase, row.id),
+    fetchStartedTournamentIds(supabase, [row.id]),
   ]);
-  return mapRow(row, participantsByTournament.get(row.id) ?? [], prizesByTournament.get(row.id) ?? [], preRegisteredPlayers);
+  return mapRow(
+    row,
+    participantsByTournament.get(row.id) ?? [],
+    prizesByTournament.get(row.id) ?? [],
+    startedIds.has(row.id),
+    preRegisteredPlayers
+  );
 }
