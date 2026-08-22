@@ -954,12 +954,24 @@ export async function endTournament(tournamentId: string, slug: string): Promise
     .eq("id", grandFinal.winner_id)
     .maybeSingle();
 
+  // ends_at must never fall before starts_at (tournaments_dates_order) —
+  // a tournament scheduled for the future that gets ended early would
+  // otherwise violate that check constraint.
+  const { data: tournamentRow } = await supabase
+    .from("tournaments")
+    .select("starts_at")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  const now = Date.now();
+  const startsAt = tournamentRow ? new Date(tournamentRow.starts_at).getTime() : now;
+  const endsAt = new Date(Math.max(now, startsAt)).toISOString();
+
   let endQuery = supabase
     .from("tournaments")
     .update({
       status: "completed",
       champion_name: champion ? champion.team_name ?? champion.name : null,
-      ends_at: new Date().toISOString(),
+      ends_at: endsAt,
     })
     .eq("id", tournamentId);
   if (!staff) endQuery = endQuery.eq("organizer_id", user.id);
