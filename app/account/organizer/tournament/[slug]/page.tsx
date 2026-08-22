@@ -82,15 +82,17 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
     }
 
     const supabase = await createClient();
-    const [{ data: participants }, { data: groups }, staff, highlightParticipantIds] = await Promise.all([
+    const [{ data: participants }, { data: groups }, { data: stationRows }, staff, highlightParticipantIds] = await Promise.all([
       supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id).order("seed"),
       supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
+      supabase.from("tournament_stations").select("id, name").eq("tournament_id", tournament.id).order("sort_order"),
       isCurrentUserStaff(),
       getJudgeParticipantIds(supabase, tournament.id),
     ]);
 
     const realParticipants = (participants as TournamentParticipant[] | null) ?? [];
     const realGroups = (groups as TournamentGroup[] | null) ?? [];
+    const stations = (stationRows as { id: string; name: string }[] | null) ?? [];
     const unassignedCount = realParticipants.filter((p) => p.group_id === null).length;
     const assignmentComplete = realGroups.length > 0 && unassignedCount === 0 && realParticipants.length > 0;
 
@@ -158,6 +160,7 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
             advancePerGroup={settings.groupStage.participantsAdvancePerGroup}
             locked={settings.finalStageStarted === true}
             canSwapParticipants={staff}
+            stations={stations}
             highlightParticipantIds={highlightParticipantIds}
           />
         )}

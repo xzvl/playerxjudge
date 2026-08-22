@@ -196,7 +196,7 @@ export function TournamentSettingsPanel({
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-on-surface">Registration Fee</p>
+                  <p className="text-sm font-bold text-on-surface">Registration Fee</p>
                   <SegmentedControl
                     value={form.watch("registrationFeeType")}
                     onChange={(v) => form.setValue("registrationFeeType", v, { shouldValidate: true })}

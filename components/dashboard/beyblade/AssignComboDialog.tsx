@@ -136,7 +136,7 @@ export function AssignComboDialog({
                     >
                       <ComboThumbnails bladeParts={combo.bladeParts} ratchet={combo.ratchet} bit={combo.bit} size="sm" fit="contain" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-on-surface">{combo.name}</p>
+                        <p className="truncate text-sm font-bold text-on-surface">{combo.name}</p>
                         <ComboPartsLine bladeDisplay={combo.bladeDisplay} ratchet={combo.ratchet} bit={combo.bit} />
                       </div>
                       {alreadyInDeck ? <span className="label-mono shrink-0 text-[9px] text-on-surface/30">In Deck</span> : null}

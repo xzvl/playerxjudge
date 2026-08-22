@@ -159,7 +159,7 @@ export default async function OrganizerDashboardPage() {
               <Card key={assignment.id}>
                 <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
                   <div>
-                    <p className="text-sm font-medium text-on-surface">
+                    <p className="text-sm font-bold text-on-surface">
                       {assignment.profiles?.display_name ?? "Unknown"}{" "}
                       <span className="text-on-surface/40">@{assignment.profiles?.username}</span>
                     </p>

@@ -65,7 +65,7 @@ export function BasicInfoSection({
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-on-surface">Host</p>
+        <p className="text-sm font-bold text-on-surface">Host</p>
         <Combobox
           label="Host"
           value={form.watch("hostCommunityId") ?? NO_COMMUNITY}
@@ -161,7 +161,7 @@ export function BasicInfoSection({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-on-surface">Participant Type</p>
+          <p className="text-sm font-bold text-on-surface">Participant Type</p>
           <Combobox
             label="Participant Type"
             value={form.watch("battleType")}
@@ -171,7 +171,7 @@ export function BasicInfoSection({
           <p className="text-xs text-on-surface/40">2v2, 3v3, 4v4, 5v5, and Team Battle are coming soon.</p>
         </div>
         <div className="space-y-2">
-          <p className="text-sm font-medium text-on-surface">Tournament Tier</p>
+          <p className="text-sm font-bold text-on-surface">Tournament Tier</p>
           <Combobox
             label="Tournament Tier"
             value={form.watch("tournamentType")}

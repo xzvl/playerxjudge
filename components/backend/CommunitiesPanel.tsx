@@ -188,7 +188,7 @@ export function CommunitiesPanel({ pending: pendingItems, communities }: { pendi
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-on-surface">{item.name}</p>
+                  <p className="text-sm font-bold text-on-surface">{item.name}</p>
                   <p className="mt-1 text-sm text-on-surface/60">{item.locationLine}</p>
                   <p className="label-mono mt-2 text-on-surface/30">
                     Applied by {item.ownerName} &middot; {formatDate(item.submittedAt)}

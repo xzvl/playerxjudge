@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, Circle, useMap } from "react-leaflet";
 
 import type { MockTournament } from "@/lib/mock/tournaments";
 
@@ -43,6 +43,26 @@ function communityPinIcon(logoUrl: string): L.DivIcon {
   });
 }
 
+// A pulsing blue dot for "you are here" — visually distinct from the
+// tournament pins (red teardrop / community logo) at a glance. Same
+// treatment as TournamentLocationMap's own meIcon (the single-venue
+// /map/[slug] page) — duplicated rather than shared, same convention every
+// icon builder in these map components already follows.
+function meIcon(): L.DivIcon {
+  return L.divIcon({
+    className: "",
+    html: `
+      <div class="relative flex h-4 w-4 items-center justify-center">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400/60"></span>
+        <span class="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-sky-500 shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"></span>
+      </div>
+    `,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    tooltipAnchor: [0, -10],
+  });
+}
+
 function FitToMarkers({ tournaments }: { tournaments: MockTournament[] }) {
   const map = useMap();
 
@@ -55,14 +75,44 @@ function FitToMarkers({ tournaments }: { tournaments: MockTournament[] }) {
   return null;
 }
 
+// Once "Use My Location" succeeds, the view shifts to frame the visitor's
+// nearby range instead of every pin on the map — that's the point of
+// picking a location + range, so this takes over from FitToMarkers above
+// rather than the two competing. LatLng.toBounds() (a square box of the
+// given size around a point) computes this from plain geography, unlike
+// L.circle(...).getBounds() — a Circle layer's getBounds() needs the layer
+// actually attached to a map to know its pixel radius, which one created
+// only to measure never is (that's the "layerPointToLatLng of undefined"
+// crash this replaced).
+function FitToRange({ center, radiusKm }: { center: [number, number]; radiusKm: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const bounds = L.latLng(center).toBounds(radiusKm * 1000);
+    map.fitBounds(bounds, { padding: [48, 48] });
+  }, [map, center, radiusKm]);
+
+  return null;
+}
+
 export function TournamentMap({
   tournaments,
   onSelect,
+  userPosition = null,
+  radiusKm = null,
 }: {
   tournaments: MockTournament[];
   onSelect: (id: string) => void;
+  // "Use My Location" state, lifted up into FindTournamentSectionClient
+  // (so the button/range picker can live outside the map itself) — a
+  // pulsing "you are here" marker plus a translucent circle showing the
+  // chosen nearby range, both only rendered once a position is actually
+  // known.
+  userPosition?: [number, number] | null;
+  radiusKm?: number | null;
 }) {
   const defaultIcon = useMemo(() => pinIcon(), []);
+  const youAreHereIcon = useMemo(() => meIcon(), []);
   const communityIcons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
     for (const t of tournaments) {
@@ -84,7 +134,7 @@ export function TournamentMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitToMarkers tournaments={tournaments} />
+      {userPosition && radiusKm ? <FitToRange center={userPosition} radiusKm={radiusKm} /> : <FitToMarkers tournaments={tournaments} />}
       {tournaments.map((t) => (
         <Marker
           key={t.id}
@@ -97,6 +147,20 @@ export function TournamentMap({
           </Tooltip>
         </Marker>
       ))}
+      {userPosition ? (
+        <>
+          <Marker position={userPosition} icon={youAreHereIcon}>
+            <Tooltip direction="top">You are here</Tooltip>
+          </Marker>
+          {radiusKm ? (
+            <Circle
+              center={userPosition}
+              radius={radiusKm * 1000}
+              pathOptions={{ color: "#38bdf8", weight: 1.5, fillColor: "#38bdf8", fillOpacity: 0.08 }}
+            />
+          ) : null}
+        </>
+      ) : null}
     </MapContainer>
   );
 }

@@ -1,7 +1,22 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Copy, CreditCard, Eye, EyeOff, Pencil, Search, Trash2, UserPlus } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  CircleCheck,
+  CircleDashed,
+  CircleX,
+  Copy,
+  CreditCard,
+  Eye,
+  EyeOff,
+  Facebook,
+  Pencil,
+  Search,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +44,12 @@ const PAYMENT_STATUS_CLASS: Record<PreregistrationPaymentStatus, string> = {
   failed: "text-destructive",
 };
 
+const PAYMENT_STATUS_ICON: Record<PreregistrationPaymentStatus, typeof CircleCheck> = {
+  pending: CircleDashed,
+  confirmed: CircleCheck,
+  failed: CircleX,
+};
+
 function EditPreRegistrationForm({
   entry,
   pending,
@@ -45,19 +66,19 @@ function EditPreRegistrationForm({
   return (
     <div className="space-y-4 px-6 pb-6">
       <div className="space-y-2">
-        <label className="text-sm font-medium text-on-surface" htmlFor="edit-prereg-full-name">
+        <label className="text-sm font-bold text-on-surface" htmlFor="edit-prereg-full-name">
           Full Name
         </label>
         <Input id="edit-prereg-full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-on-surface" htmlFor="edit-prereg-blader-name">
+        <label className="text-sm font-bold text-on-surface" htmlFor="edit-prereg-blader-name">
           Blader Name
         </label>
         <Input id="edit-prereg-blader-name" value={bladerName} onChange={(e) => setBladerName(e.target.value)} />
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-on-surface" htmlFor="edit-prereg-facebook-name">
+        <label className="text-sm font-bold text-on-surface" htmlFor="edit-prereg-facebook-name">
           Facebook Name
         </label>
         <Input id="edit-prereg-facebook-name" value={facebookName} onChange={(e) => setFacebookName(e.target.value)} />
@@ -94,6 +115,8 @@ export function TournamentPreRegisterWorkspace({
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [editing, setEditing] = useState<TournamentPreregistration | null>(null);
   const [removing, setRemoving] = useState<TournamentPreregistration | null>(null);
+
+  const confirmedCount = entries.filter((e) => e.payment_status === "confirmed").length;
 
   const visible = entries.filter((e) => {
     const q = query.trim().toLowerCase();
@@ -198,6 +221,10 @@ export function TournamentPreRegisterWorkspace({
         </p>
       ) : null}
 
+      <p className="label-mono mb-4 text-on-surface/50">
+        <span className="text-primary">{confirmedCount}</span> / {entries.length} confirmed
+      </p>
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface/30" aria-hidden="true" />
@@ -222,120 +249,229 @@ export function TournamentPreRegisterWorkspace({
       </div>
 
       {visible.length > 0 ? (
-        <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead>
-              <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                <th className="p-4" scope="col">Registered</th>
-                <th className="p-4" scope="col">Full Name</th>
-                <th className="p-4" scope="col">Blader Name</th>
-                <th className="p-4" scope="col">Facebook Name</th>
-                <th className="p-4" scope="col">Payment</th>
-                <th className="p-4" scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((e) => {
-                const added = addedIds.has(e.id);
-                return (
-                  <tr key={e.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
-                    <td className="whitespace-nowrap p-4 py-2 text-xs text-on-surface/50">
-                      {formatDate(e.created_at)} · {formatTime(e.created_at)}
-                    </td>
-                    <td className="p-4 py-2 text-on-surface/80">{e.full_name}</td>
-                    <td className="p-4 py-2 font-medium text-on-surface">
-                      <span className="flex items-center gap-2">
-                        {e.blader_name}
-                        {e.hide_public ? (
-                          <EyeOff className="h-3.5 w-3.5 shrink-0 text-on-surface/30" aria-label="Hidden on public" />
-                        ) : null}
-                      </span>
-                    </td>
-                    <td className="p-4 py-2 text-on-surface/70">{e.facebook_name}</td>
-                    <td className="p-4 py-2">
-                      <div className="space-y-1.5">
-                        {e.advance_payment ? (
-                          e.payment_screenshot_url ? (
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1.5 text-primary underline underline-offset-2"
-                              onClick={() => setScreenshotUrl(e.payment_screenshot_url)}
-                            >
-                              <CreditCard className="h-3.5 w-3.5" /> View Screenshot
-                            </button>
+        <>
+          {/* Desktop/tablet-landscape: full table. Below lg, this table's
+              seven columns don't fit even with horizontal scroll without
+              feeling cramped, so a card layout takes over instead (below). */}
+          <div className="hidden overflow-x-auto border border-outline-variant/25 lg:block">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
+                  <th className="p-4" scope="col">#</th>
+                  <th className="p-4" scope="col">Full Name</th>
+                  <th className="p-4" scope="col">Facebook Name</th>
+                  <th className="p-4" scope="col">Blader Name</th>
+                  <th className="p-4" scope="col">Registered</th>
+                  <th className="p-4" scope="col">Payment</th>
+                  <th className="p-4" scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((e, i) => {
+                  const added = addedIds.has(e.id);
+                  return (
+                    <tr key={e.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                      <td className="p-4 py-2 text-on-surface/40">{i + 1}</td>
+                      <td className="p-4 py-2 text-on-surface/80">{e.full_name}</td>
+                      <td className="p-4 py-2 text-on-surface/70">{e.facebook_name}</td>
+                      <td className="p-4 py-2 font-medium text-on-surface">
+                        <span className="flex items-center gap-2">
+                          {e.blader_name}
+                          {e.hide_public ? (
+                            <EyeOff className="h-3.5 w-3.5 shrink-0 text-on-surface/30" aria-label="Hidden on public" />
+                          ) : null}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap p-4 py-2 text-xs text-on-surface/50">
+                        {formatDate(e.created_at)} · {formatTime(e.created_at)}
+                      </td>
+                      <td className="p-4 py-2">
+                        <div className="space-y-1.5">
+                          {e.advance_payment ? (
+                            e.payment_screenshot_url ? (
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1.5 text-primary underline underline-offset-2"
+                                onClick={() => setScreenshotUrl(e.payment_screenshot_url)}
+                              >
+                                <CreditCard className="h-3.5 w-3.5" /> View Screenshot
+                              </button>
+                            ) : (
+                              <Badge variant="outline">Paid, no screenshot</Badge>
+                            )
                           ) : (
-                            <Badge variant="outline">Paid, no screenshot</Badge>
-                          )
-                        ) : (
-                          <span className="text-on-surface/30">—</span>
-                        )}
-                        <select
-                          value={e.payment_status}
-                          disabled={pending}
-                          aria-label={`Payment status for ${e.blader_name}`}
-                          className={`block border border-outline-variant/40 bg-surface-container-low px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring ${PAYMENT_STATUS_CLASS[e.payment_status]}`}
-                          onChange={(ev) => handlePaymentStatus(e, ev.target.value as PreregistrationPaymentStatus)}
+                            <span className="text-on-surface/30">—</span>
+                          )}
+                          <select
+                            value={e.payment_status}
+                            disabled={pending}
+                            aria-label={`Payment status for ${e.blader_name}`}
+                            className={`block border border-outline-variant/40 bg-surface-container-low px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring ${PAYMENT_STATUS_CLASS[e.payment_status]}`}
+                            onChange={(ev) => handlePaymentStatus(e, ev.target.value as PreregistrationPaymentStatus)}
+                          >
+                            {(Object.keys(PAYMENT_STATUS_LABEL) as PreregistrationPaymentStatus[]).map((status) => (
+                              <option key={status} value={status}>
+                                {PAYMENT_STATUS_LABEL[status]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </td>
+                      <td className="p-4 py-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={pending}
+                            aria-label={e.hide_public ? `Show ${e.blader_name} on public` : `Hide ${e.blader_name} on public`}
+                            tooltip={e.hide_public ? "Show on public" : "Hide on public"}
+                            onClick={() => handleToggleVisibility(e)}
+                          >
+                            {e.hide_public ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant={added ? "outline" : "default"}
+                            disabled={pending || added}
+                            aria-label={added ? `${e.blader_name} already added` : `Add ${e.blader_name} to the roster`}
+                            tooltip={added ? "Already added to the roster" : "Add this pre-registered player to the roster"}
+                            onClick={() => handleAdd(e)}
+                          >
+                            {added ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={pending}
+                            aria-label={`Edit ${e.blader_name}`}
+                            tooltip="Edit this pre-registration"
+                            onClick={() => setEditing(e)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={pending}
+                            aria-label={`Remove ${e.blader_name}`}
+                            tooltip="Remove this pre-registration"
+                            onClick={() => setRemoving(e)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile/tablet: one card per entry instead of a cramped
+              horizontally-scrolling table. */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {visible.map((e) => {
+              const added = addedIds.has(e.id);
+              const StatusIcon = PAYMENT_STATUS_ICON[e.payment_status];
+              return (
+                <div key={e.id} className="border border-outline-variant/25 bg-surface-container-low p-4">
+                  <p className="font-medium text-on-surface">
+                    {e.full_name} <span className="text-on-surface/50">({e.blader_name})</span>
+                    {e.hide_public ? (
+                      <EyeOff className="ml-2 inline h-3.5 w-3.5 shrink-0 text-on-surface/30" aria-label="Hidden on public" />
+                    ) : null}
+                  </p>
+                  <p className="mt-2 flex items-center gap-1.5 text-sm text-on-surface/70">
+                    <Facebook className="h-3.5 w-3.5 shrink-0 text-on-surface/40" aria-hidden="true" /> {e.facebook_name}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-on-surface/50">
+                    <Calendar className="h-3.5 w-3.5 shrink-0 text-on-surface/40" aria-hidden="true" />
+                    {formatDate(e.created_at)} · {formatTime(e.created_at)}
+                  </p>
+
+                  {e.advance_payment ? (
+                    <div className="mt-2">
+                      {e.payment_screenshot_url ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-2"
+                          onClick={() => setScreenshotUrl(e.payment_screenshot_url)}
                         >
-                          {(Object.keys(PAYMENT_STATUS_LABEL) as PreregistrationPaymentStatus[]).map((status) => (
-                            <option key={status} value={status}>
-                              {PAYMENT_STATUS_LABEL[status]}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
-                    <td className="p-4 py-2">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={pending}
-                          aria-label={e.hide_public ? `Show ${e.blader_name} on public` : `Hide ${e.blader_name} on public`}
-                          tooltip={e.hide_public ? "Show on public" : "Hide on public"}
-                          onClick={() => handleToggleVisibility(e)}
-                        >
-                          {e.hide_public ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant={added ? "outline" : "default"}
-                          disabled={pending || added}
-                          aria-label={added ? `${e.blader_name} already added` : `Add ${e.blader_name} to the roster`}
-                          tooltip={added ? "Already added to the roster" : "Add this pre-registered player to the roster"}
-                          onClick={() => handleAdd(e)}
-                        >
-                          {added ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={pending}
-                          aria-label={`Edit ${e.blader_name}`}
-                          tooltip="Edit this pre-registration"
-                          onClick={() => setEditing(e)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={pending}
-                          aria-label={`Remove ${e.blader_name}`}
-                          tooltip="Remove this pre-registration"
-                          onClick={() => setRemoving(e)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          <CreditCard className="h-3.5 w-3.5" /> View Screenshot
+                        </button>
+                      ) : (
+                        <Badge variant="outline">Paid, no screenshot</Badge>
+                      )}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <StatusIcon className={`h-4 w-4 shrink-0 ${PAYMENT_STATUS_CLASS[e.payment_status]}`} aria-hidden="true" />
+                    <select
+                      value={e.payment_status}
+                      disabled={pending}
+                      aria-label={`Payment status for ${e.blader_name}`}
+                      className={`border border-outline-variant/40 bg-surface-container-low px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring ${PAYMENT_STATUS_CLASS[e.payment_status]}`}
+                      onChange={(ev) => handlePaymentStatus(e, ev.target.value as PreregistrationPaymentStatus)}
+                    >
+                      {(Object.keys(PAYMENT_STATUS_LABEL) as PreregistrationPaymentStatus[]).map((status) => (
+                        <option key={status} value={status}>
+                          {PAYMENT_STATUS_LABEL[status]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-3 flex justify-end gap-1 border-t border-outline-variant/20 pt-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={pending}
+                      aria-label={e.hide_public ? `Show ${e.blader_name} on public` : `Hide ${e.blader_name} on public`}
+                      tooltip={e.hide_public ? "Show on public" : "Hide on public"}
+                      onClick={() => handleToggleVisibility(e)}
+                    >
+                      {e.hide_public ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant={added ? "outline" : "default"}
+                      disabled={pending || added}
+                      aria-label={added ? `${e.blader_name} already added` : `Add ${e.blader_name} to the roster`}
+                      tooltip={added ? "Already added to the roster" : "Add this pre-registered player to the roster"}
+                      onClick={() => handleAdd(e)}
+                    >
+                      {added ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={pending}
+                      aria-label={`Edit ${e.blader_name}`}
+                      tooltip="Edit this pre-registration"
+                      onClick={() => setEditing(e)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={pending}
+                      aria-label={`Remove ${e.blader_name}`}
+                      tooltip="Remove this pre-registration"
+                      onClick={() => setRemoving(e)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       ) : (
         <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
           {entries.length === 0 ? "No one has pre-registered yet." : "No pre-registrations match your search."}

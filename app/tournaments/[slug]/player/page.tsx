@@ -58,6 +58,7 @@ export default async function TournamentPlayerPage({
   const organizedBy = tournament.communityName ?? tournament.organizerName;
   const statusLabel = STATUS_LABEL[tournament.status] ?? "Not Yet Started";
   const isOngoing = tournament.status === "ongoing";
+  const tournamentEnded = tournament.status === "completed";
 
   const settings = tournament.format_settings;
   const isRealSwiss = settings?.stageType === "two_stage" && settings.groupStage.format === "swiss";
@@ -253,6 +254,7 @@ export default async function TournamentPlayerPage({
             tieBreakMetrics={tieBreakMetrics}
             advanceCount={advancePerGroup}
             swissRoundsCap={swissRoundsCap}
+            groupStageEnded={groupStageEnded}
             finalStageStarted={finalStageStarted}
             finalBaseRounds={bracketRounds}
             finalSlots={slots}
@@ -261,6 +263,8 @@ export default async function TournamentPlayerPage({
             finalParticipantsById={finalParticipantsById}
             selectedParticipantId={selectedId}
             highlightParticipantIds={highlightParticipantIds}
+            tournamentEnded={tournamentEnded}
+            championName={tournament.champion_name}
           />
 
           {selectedId ? (

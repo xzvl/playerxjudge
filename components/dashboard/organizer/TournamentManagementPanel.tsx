@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, Archive, ArchiveRestore, Copy, LayoutDashboard, Plus, Send, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Archive, ArchiveRestore, Copy, LayoutDashboard, MonitorPlay, Plus, Send, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -93,8 +93,19 @@ function summarizeFormatSettings(tournament: Tournament) {
   return `Two Stage — ${groupLabel} → ${finalLabel} final`;
 }
 
-export function TournamentManagementPanel({ tournaments }: { tournaments: Tournament[] }) {
+export function TournamentManagementPanel({
+  tournaments,
+  startedTournamentIds,
+}: {
+  tournaments: Tournament[];
+  // Tournaments with at least one generated match — see the page's own
+  // "groupStageStarted" comment. Gates the Spectator Mode action button:
+  // nothing to show on a spectator screen before the group/final stage has
+  // actually started.
+  startedTournamentIds: string[];
+}) {
   const router = useRouter();
+  const started = useMemo(() => new Set(startedTournamentIds), [startedTournamentIds]);
   const [tab, setTab] = useState<TabKey>("all");
   const [isPending, startTransition] = useTransition();
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
@@ -192,6 +203,13 @@ export function TournamentManagementPanel({ tournaments }: { tournaments: Tourna
         >
           <Copy className="h-3.5 w-3.5" />
         </Button>
+        {started.has(t.id) && t.status !== "completed" ? (
+          <Button variant="outline" size="icon" asChild tooltip="Open the big-screen Spectator Mode display">
+            <Link href={`/account/organizer/tournament/${t.slug}/spectator`} aria-label="Spectator Mode">
+              <MonitorPlay className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        ) : null}
         {t.status === "draft" || t.status === "published" ? (
           <Button
             variant="outline"

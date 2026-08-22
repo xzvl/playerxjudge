@@ -172,7 +172,7 @@ export function CalendarViewClient({ tournaments }: { tournaments: MockTournamen
                     <BattleTypeBadge type={t.battleType} />
                     <TournamentTypeBadge type={t.tournamentType} />
                   </div>
-                  <p className="line-clamp-2 text-sm font-medium text-on-surface">{t.title}</p>
+                  <p className="line-clamp-2 text-sm font-bold text-on-surface">{t.title}</p>
                   <p className="mt-2 text-xs text-on-surface/50">
                     {formatDate(t.startsAt)} &middot; {formatTime(t.startsAt)}
                   </p>

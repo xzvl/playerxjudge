@@ -65,19 +65,19 @@ function EditDialog({
         </DialogHeader>
         <div className="space-y-4 px-6 pb-6">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Sponsor Name</label>
+            <label className="text-sm font-bold text-on-surface">Sponsor Name</label>
             <Input value={values.companyName} onChange={(e) => setForm({ ...values, companyName: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Website URL</label>
+            <label className="text-sm font-bold text-on-surface">Website URL</label>
             <Input value={values.websiteUrl} onChange={(e) => setForm({ ...values, websiteUrl: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Facebook URL</label>
+            <label className="text-sm font-bold text-on-surface">Facebook URL</label>
             <Input value={values.facebookUrl} onChange={(e) => setForm({ ...values, facebookUrl: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Donation Tier</label>
+            <label className="text-sm font-bold text-on-surface">Donation Tier</label>
             <Combobox
               label="Tier"
               hideLabel
@@ -88,7 +88,7 @@ function EditDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface" htmlFor="sponsor-tier-expires">
+            <label className="text-sm font-bold text-on-surface" htmlFor="sponsor-tier-expires">
               Tier Expires
             </label>
             <input

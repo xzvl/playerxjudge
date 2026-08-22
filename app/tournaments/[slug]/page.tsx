@@ -285,7 +285,7 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
             <p className="text-sm text-on-surface">{tournament.locationName || "TBA"}</p>
             <p className="mb-3 mt-1 text-sm text-on-surface/60">{fullAddress || "Address not set"}</p>
             <Button asChild variant="outline" size="sm" className="w-full" tooltip="Show this venue on the map">
-              <Link href={`/map?tournament=${tournament.slug}`}>View on Map</Link>
+              <Link href={`/map/${tournament.slug}`}>View on Map</Link>
             </Button>
           </div>
         </div>

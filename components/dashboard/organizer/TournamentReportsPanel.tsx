@@ -63,7 +63,7 @@ export function TournamentReportsPanel({ slug, reports }: { slug: string; report
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium text-on-surface">{r.targetLabel}</p>
+                  <p className="text-sm font-bold text-on-surface">{r.targetLabel}</p>
                   <ReportStatusBadge status={r.status} />
                 </div>
                 <p className="mt-1 text-sm text-on-surface/60">{r.reason}</p>

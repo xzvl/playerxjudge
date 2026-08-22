@@ -15,7 +15,7 @@ import {
 import type { BracketFormat } from "@/lib/types/database";
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-medium text-on-surface">{children}</p>;
+  return <p className="text-sm font-bold text-on-surface">{children}</p>;
 }
 
 type TieBreakField = "tieBreak1" | "tieBreak2" | "tieBreak3";

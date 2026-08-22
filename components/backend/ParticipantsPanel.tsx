@@ -50,11 +50,11 @@ function EditDialog({
         </DialogHeader>
         <div className="space-y-4 px-6 pb-6">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Name</label>
+            <label className="text-sm font-bold text-on-surface">Name</label>
             <Input defaultValue={item.name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Team Name</label>
+            <label className="text-sm font-bold text-on-surface">Team Name</label>
             <Input defaultValue={item.teamName ?? ""} onChange={(e) => setTeamName(e.target.value)} />
           </div>
         </div>

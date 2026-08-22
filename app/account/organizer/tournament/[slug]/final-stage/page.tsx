@@ -72,18 +72,21 @@ export default async function FinalStagePage({ params }: { params: Promise<{ slu
   }
 
   const supabase = await createClient();
-  const [{ data: groups }, { data: participants }, { data: matches }, { data: brackets }, highlightParticipantIds] = await Promise.all([
-    supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
-    supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id).order("seed"),
-    supabase.from("matches").select("*").eq("tournament_id", tournament.id),
-    supabase.from("brackets").select("*").eq("tournament_id", tournament.id),
-    getJudgeParticipantIds(supabase, tournament.id),
-  ]);
+  const [{ data: groups }, { data: participants }, { data: matches }, { data: brackets }, { data: stationRows }, highlightParticipantIds] =
+    await Promise.all([
+      supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
+      supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id).order("seed"),
+      supabase.from("matches").select("*").eq("tournament_id", tournament.id),
+      supabase.from("brackets").select("*").eq("tournament_id", tournament.id),
+      supabase.from("tournament_stations").select("id, name").eq("tournament_id", tournament.id).order("sort_order"),
+      getJudgeParticipantIds(supabase, tournament.id),
+    ]);
 
   const realGroups = (groups as TournamentGroup[] | null) ?? [];
   const realParticipants = (participants as TournamentParticipant[] | null) ?? [];
   const realMatches = (matches as Match[] | null) ?? [];
   const realBrackets = (brackets as Bracket[] | null) ?? [];
+  const stations = (stationRows as { id: string; name: string }[] | null) ?? [];
   const groupStageEnded = settings.groupStageEnded === true;
   const advancePerGroup = settings.groupStage.participantsAdvancePerGroup;
 
@@ -168,6 +171,7 @@ export default async function FinalStagePage({ params }: { params: Promise<{ slu
             placementSections={placementSections}
             participantsById={participantsById}
             locked={tournamentCompleted}
+            stations={stations}
             highlightParticipantIds={highlightParticipantIds}
           />
         ) : (

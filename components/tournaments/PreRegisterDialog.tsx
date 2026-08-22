@@ -115,19 +115,19 @@ export function PreRegisterDialog({
         ) : (
           <div className="space-y-4 px-6 pb-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-on-surface" htmlFor="prereg-full-name">
+              <label className="text-sm font-bold text-on-surface" htmlFor="prereg-full-name">
                 Full Name
               </label>
               <Input id="prereg-full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-on-surface" htmlFor="prereg-blader-name">
+              <label className="text-sm font-bold text-on-surface" htmlFor="prereg-blader-name">
                 Blader Name
               </label>
               <Input id="prereg-blader-name" value={bladerName} onChange={(e) => setBladerName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-on-surface" htmlFor="prereg-facebook-name">
+              <label className="text-sm font-bold text-on-surface" htmlFor="prereg-facebook-name">
                 Facebook Name
               </label>
               <Input id="prereg-facebook-name" value={facebookName} onChange={(e) => setFacebookName(e.target.value)} />

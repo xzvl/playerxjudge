@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type DragEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpCircle, Camera, Download, Eraser, Flame, Gavel, Maximize2, Minimize2, Info, Pencil, Play, Radio, RotateCw, Swords, Trophy, Zap } from "lucide-react";
+import { ArrowUpCircle, Camera, Download, Eraser, Flame, Gavel, Maximize2, Minimize2, Info, MonitorPlay, Pencil, Play, Radio, RotateCw, Square, Swords, Trophy, Zap } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
   generateNextRound,
   reportMatchResult,
   startMatch,
+  stopMatch,
   swapMatchParticipants,
   type MatchSlot,
 } from "@/app/account/organizer/tournament/[slug]/matches-actions";
@@ -284,15 +286,38 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
   );
 }
 
-export function ReportMatchDialog({ open, onOpenChange, match, participantsById, pending, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; match: Match | null; participantsById: Map<string, RosterLite>; pending: boolean; onSubmit: (scoreA: number, scoreB: number) => void }) {
+export function ReportMatchDialog({
+  open,
+  onOpenChange,
+  match,
+  participantsById,
+  pending,
+  stations = [],
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  match: Match | null;
+  participantsById: Map<string, RosterLite>;
+  pending: boolean;
+  // Tournament's configured stations (Stations page) — lets the organizer
+  // record which stadium this was played at when reporting a result
+  // directly here, the same score.station field the judge console's own
+  // submission already snapshots (see submitJudgedMatchResult). Optional/
+  // defaults empty for any caller that hasn't fetched the list.
+  stations?: { id: string; name: string }[];
+  onSubmit: (scoreA: number, scoreB: number, station: string | null) => void;
+}) {
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
+  const [station, setStation] = useState("");
 
   useEffect(() => {
     if (!match) return;
     const score = isScore(match.score) ? match.score : { a: 0, b: 0 };
     setScoreA(score.a);
     setScoreB(score.b);
+    setStation((isScore(match.score) && match.score.station) || "");
   }, [match]);
 
   if (!match) return null;
@@ -349,9 +374,34 @@ export function ReportMatchDialog({ open, onOpenChange, match, participantsById,
               className="w-16 text-center"
             />
           </div>
+          {stations.length > 0 ? (
+            <div className="col-span-3 space-y-1.5">
+              <label className="label-mono text-on-surface/40" htmlFor="report-match-station">
+                Station
+              </label>
+              <select
+                id="report-match-station"
+                value={station}
+                onChange={(e) => setStation(e.target.value)}
+                className="w-full border border-outline-variant/40 bg-surface-container-low px-2 py-1.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">No station</option>
+                {stations.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
         </div>
         <DialogFooter className="p-6 pt-0">
-          <Button type="button" tooltip="Save this match's score" disabled={pending} onClick={() => onSubmit(scoreA, scoreB)}>
+          <Button
+            type="button"
+            tooltip="Save this match's score"
+            disabled={pending}
+            onClick={() => onSubmit(scoreA, scoreB, station || null)}
+          >
             {pending ? "Saving..." : "Save Result"}
           </Button>
         </DialogFooter>
@@ -409,6 +459,7 @@ function MatchRow({
   locked,
   canSwap,
   onStart,
+  onStop,
   onReport,
   onDetails,
   onClear,
@@ -424,6 +475,9 @@ function MatchRow({
   // GroupStageWorkspace's own doc comment for why).
   canSwap: boolean;
   onStart: () => void;
+  // Reverts a mistakenly-started match back to "scheduled" — only offered
+  // while it's actually ongoing (see the render gate below).
+  onStop: () => void;
   onReport: () => void;
   onDetails: () => void;
   onClear: () => void;
@@ -484,6 +538,11 @@ function MatchRow({
                 <Play className="h-3.5 w-3.5" />
               </Button>
             ) : null}
+            {!locked && match.status === "ongoing" ? (
+              <Button type="button" variant="ghost" size="icon" aria-label="Stop match" disabled={pending} onClick={onStop}>
+                <Square className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
             {!locked ? (
               match.status !== "completed" ? (
                 <Button type="button" variant="ghost" size="icon" aria-label="Report result" disabled={pending} onClick={onReport}>
@@ -522,6 +581,7 @@ function RoundColumn({
   generating,
   onGenerate,
   onStart,
+  onStop,
   onReport,
   onDetails,
   onClear,
@@ -539,6 +599,7 @@ function RoundColumn({
   generating: boolean;
   onGenerate: () => void;
   onStart: (id: string) => void;
+  onStop: (id: string) => void;
   onReport: (m: Match) => void;
   onDetails: (m: Match) => void;
   onClear: (m: Match) => void;
@@ -559,6 +620,7 @@ function RoundColumn({
               locked={locked}
               canSwap={canSwap}
               onStart={() => onStart(m.id)}
+              onStop={() => onStop(m.id)}
               onReport={() => onReport(m)}
               onDetails={() => onDetails(m)}
               onClear={() => onClear(m)}
@@ -582,7 +644,7 @@ function RoundColumn({
   );
 }
 
-function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMatches, swissRoundsCap, locked, canSwap, highlightParticipantIds }: { groupId: string; tournamentId: string; slug: string; participants: TournamentParticipant[]; matches: Match[]; setMatches: (updater: (prev: Match[]) => Match[]) => void; swissRoundsCap: number; locked: boolean; canSwap: boolean; highlightParticipantIds?: Set<string> }) {
+function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMatches, swissRoundsCap, locked, canSwap, stations, highlightParticipantIds }: { groupId: string; tournamentId: string; slug: string; participants: TournamentParticipant[]; matches: Match[]; setMatches: (updater: (prev: Match[]) => Match[]) => void; swissRoundsCap: number; locked: boolean; canSwap: boolean; stations: { id: string; name: string }[]; highlightParticipantIds?: Set<string> }) {
   const router = useRouter();
   const scrollRef = useDragScroll<HTMLDivElement>();
   const participantsById = new Map(participants.map((p) => [p.id, { seed: p.seed, name: p.name, teamName: p.team_name }]));
@@ -610,11 +672,23 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
     });
   }
 
-  function handleReportSubmit(scoreA: number, scoreB: number) {
+  function handleStop(matchId: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await stopMatch(matchId, slug);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, status: "scheduled" } : m)));
+    });
+  }
+
+  function handleReportSubmit(scoreA: number, scoreB: number, station: string | null) {
     if (!reportingMatch) return;
     setError(null);
     startTransition(async () => {
-      const result = await reportMatchResult(reportingMatch.id, slug, scoreA, scoreB);
+      const result = await reportMatchResult(reportingMatch.id, slug, scoreA, scoreB, station ?? undefined);
       if (result.status === "error") {
         setError(result.message ?? "Something went wrong.");
         return;
@@ -708,6 +782,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
             generating={generating}
             onGenerate={handleGenerateNext}
             onStart={handleStart}
+            onStop={handleStop}
             onReport={setReportingMatch}
             onDetails={setDetailsMatch}
             onClear={setClearingMatch}
@@ -723,6 +798,7 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
         match={reportingMatch}
         participantsById={participantsById}
         pending={pending}
+        stations={stations}
         onSubmit={handleReportSubmit}
       />
       <MatchDetailsDialog
@@ -848,7 +924,7 @@ export function GroupStandingsTable({
 // (see MatchParticipantSlot) to admin/super_admin only — an organizer
 // running their own tournament can still Start/Report/Clear/Generate, just
 // not drag one player's name onto another match to swap them.
-export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, advancePerGroup, locked = false, canSwapParticipants = false, highlightParticipantIds }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; advancePerGroup: number; locked?: boolean; canSwapParticipants?: boolean; highlightParticipantIds?: Set<string> }) {
+export function GroupStageWorkspace({ tournamentId, slug, groups, participants, matches: initialMatches, swissPoints, tieBreakMetrics, swissRoundsCap, advancePerGroup, locked = false, canSwapParticipants = false, stations = [], highlightParticipantIds }: { tournamentId: string; slug: string; groups: TournamentGroup[]; participants: TournamentParticipant[]; matches: Match[]; swissPoints: SwissPoints; tieBreakMetrics: [TieBreakMetric, TieBreakMetric, TieBreakMetric]; swissRoundsCap: number; advancePerGroup: number; locked?: boolean; canSwapParticipants?: boolean; stations?: { id: string; name: string }[]; highlightParticipantIds?: Set<string> }) {
   const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<"standings" | "matches">("matches");
   const [matches, setMatches] = useState<Match[]>(initialMatches);
@@ -960,6 +1036,11 @@ export function GroupStageWorkspace({ tournamentId, slug, groups, participants, 
           <Button type="button" variant="ghost" size="icon" aria-label="Export standings to CSV" onClick={exportCsv}>
             <Download className="h-4 w-4" />
           </Button>
+          <Button variant="ghost" size="icon" asChild tooltip="Open the big-screen Spectator Mode display">
+            <Link href={`/account/organizer/tournament/${slug}/spectator`} aria-label="Spectator Mode">
+              <MonitorPlay className="h-4 w-4" />
+            </Link>
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -993,6 +1074,7 @@ export function GroupStageWorkspace({ tournamentId, slug, groups, participants, 
           swissRoundsCap={swissRoundsCap}
           locked={locked}
           canSwap={canSwapParticipants}
+          stations={stations}
           highlightParticipantIds={highlightParticipantIds}
         />
       )}

@@ -29,10 +29,10 @@ const HOW_TO_STEPS = [
 ];
 
 const FOOTER_NAV = [
-  { label: "Calendar", href: "/calendar" },
+  { label: "Tournaments", href: "/tournaments" },
   { label: "Communities", href: "/communities" },
+  { label: "Calendar", href: "/calendar" },
   { label: "Leaderboard", href: "/leaderboard" },
-  { label: "Rules", href: "/rules" },
 ];
 
 const FOOTER_MORE = [
@@ -172,14 +172,9 @@ export function Footer({ sponsors }: { sponsors: MarqueeSponsor[] }) {
                   </li>
                 ))}
                 <li>
-                  <a
-                    href="https://xzvlstore.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-on-surface/70 hover:text-primary"
-                  >
-                    XZVL Store
-                  </a>
+                  <Link href="/rules" className="text-sm text-on-surface/70 hover:text-primary">
+                    Rules
+                  </Link>
                 </li>
               </ul>
             </div>

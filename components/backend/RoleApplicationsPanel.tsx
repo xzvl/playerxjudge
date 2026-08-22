@@ -54,7 +54,7 @@ export function RoleApplicationsPanel({ items }: { items: RoleApplicationItem[] 
           <Card key={item.id}>
             <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
               <div>
-                <p className="text-sm font-medium text-on-surface">
+                <p className="text-sm font-bold text-on-surface">
                   {item.applicantName} <span className="text-on-surface/40">@{item.applicantUsername}</span>
                 </p>
                 <p className="label-mono mt-1 text-primary">{item.role}</p>

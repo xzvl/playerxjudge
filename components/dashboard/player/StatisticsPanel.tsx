@@ -5,7 +5,7 @@ function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-center justify-between border-b border-outline-variant/15 py-3 last:border-0">
       <dt className="text-sm text-on-surface/60">{label}</dt>
-      <dd className="font-mono text-sm font-medium text-on-surface">{value}</dd>
+      <dd className="font-mono text-sm font-bold text-on-surface">{value}</dd>
     </div>
   );
 }

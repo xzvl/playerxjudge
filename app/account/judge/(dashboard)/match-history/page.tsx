@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { JudgeMatchHistoryPanel, type JudgeMatchRow } from "@/components/dashboard/judge/JudgeMatchHistoryPanel";
-import { getCurrentUser } from "@/lib/supabase/get-user";
+import { getCurrentProfile, getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { MatchScore } from "@/lib/types/database";
 
@@ -32,12 +32,27 @@ export default async function JudgeMatchHistoryPage() {
   if (!user) redirect("/login?redirectTo=/account/judge/match-history");
 
   const supabase = await createClient();
+  const profile = await getCurrentProfile();
 
   const { data: organizerTournaments } = await supabase.from("tournaments").select("id").eq("organizer_id", user.id);
   const organizerTournamentIds = (organizerTournaments as { id: string }[] | null)?.map((t) => t.id) ?? [];
 
+  // `matches.judge_id` is never actually written by the app (the judge
+  // console only stamps score.judgeUsername/judgeName on submit — see
+  // submitJudgedMatchResult in matches-actions.ts), so filtering on it here
+  // always came back empty. score->>judgeUsername is the real, non-spoofable
+  // record of who personally judged a match (captured server-side from the
+  // judge's own session at submit time — see JudgeConsole/judge/page.tsx),
+  // so that's what identifies "matches I judged" instead.
   const [{ data: judgedMatches }, { data: organizedMatches }] = await Promise.all([
-    supabase.from("matches").select(MATCH_COLUMNS).eq("judge_id", user.id).eq("status", "completed"),
+    profile?.username
+      ? supabase
+          .from("matches")
+          .select(MATCH_COLUMNS)
+          .eq("score->>judgeUsername", profile.username)
+          .eq("score->>inputBy", "judge")
+          .eq("status", "completed")
+      : Promise.resolve({ data: [] as RawMatchRow[] }),
     organizerTournamentIds.length > 0
       ? supabase
           .from("matches")

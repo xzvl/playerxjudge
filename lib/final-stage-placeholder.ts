@@ -338,6 +338,66 @@ export function buildPlacementSections(mainBracketTotalRounds: number, throughPl
   return deriveSections(mainBracketTotalRounds, null, 1, throughPlace, 0);
 }
 
+// A "Match #" display sequence spanning the WHOLE final stage — every main
+// bracket round in order (Round 1, Round of 16, Quarterfinals, Semifinals,
+// ...), then every placement section (3rd Place Match, 5th-8th Place
+// Bracket, ...) in `buildPlacementSections`' own order, with the Grand
+// Final (the main bracket's last round, always exactly one match) reserved
+// for the very last number no matter when it's actually generated or
+// completed. Purely a display concern — deliberately separate from the
+// real `matches.match_number` column, which stays a round-local 1-indexed
+// position (applyRealMatches/computeReadyPairings in matches-actions.ts
+// both depend on that positional meaning to overlay real rows onto this
+// bracket and to pair winners into the next round; renumbering it globally
+// would break both). Computed purely from the bracket's shape (round/pool
+// sizes), so it's identical for a placeholder preview and the real bracket,
+// and doesn't depend on which matches have actually been played yet.
+export interface FinalStageMatchNumberPlan {
+  // key `${roundIndex}-${matchIndex}`, both 0-indexed — matches
+  // WorkspaceBracketRound's own array positions (`rounds.map((round, r) =>
+  // round.matches.map((match, i) => ...))`).
+  main: Map<string, number>;
+  // sectionKey -> its own `${roundIndex}-${matchIndex}` map, same shape as
+  // `main` but scoped to that section's own (shorter) round array — each
+  // placement section gets its own WorkspaceBracket render, so this is
+  // keyed per-section rather than needing the section key baked into every
+  // lookup key.
+  placement: Map<string, Map<string, number>>;
+}
+
+export function buildFinalStageMatchNumberPlan(
+  mainBracketTotalRounds: number,
+  placementSections: PlacementSection[]
+): FinalStageMatchNumberPlan {
+  const main = new Map<string, number>();
+  const placement = new Map<string, Map<string, number>>();
+  let n = 1;
+
+  // Every main-bracket round except the last (the Grand Final, handled
+  // separately below) — round r (0-indexed) has 2^(mainBracketTotalRounds -
+  // 1 - r) matches, halving each round same as buildSeededBracket.
+  for (let r = 0; r < mainBracketTotalRounds - 1; r++) {
+    const count = 2 ** (mainBracketTotalRounds - 1 - r);
+    for (let i = 0; i < count; i++) main.set(`${r}-${i}`, n++);
+  }
+
+  for (const section of placementSections) {
+    const totalRounds = Math.log2(section.poolSize);
+    const sectionMap = new Map<string, number>();
+    for (let r = 0; r < totalRounds; r++) {
+      const count = section.poolSize / 2 ** (r + 1);
+      for (let i = 0; i < count; i++) sectionMap.set(`${r}-${i}`, n++);
+    }
+    placement.set(section.key, sectionMap);
+  }
+
+  // Grand Final — always the main bracket's last round, always exactly 1
+  // match — gets the very last number, after every placement match.
+  if (mainBracketTotalRounds > 0) main.set(`${mainBracketTotalRounds - 1}-0`, n);
+
+  return { main, placement };
+}
+
 function loserOf(match: WorkspaceMatch): WorkspaceParticipant | null {
   if (match.status !== "complete" || !match.winnerId) return null;
   if (match.a?.id === match.winnerId) return match.b;

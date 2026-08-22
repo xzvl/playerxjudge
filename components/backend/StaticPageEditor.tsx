@@ -42,12 +42,12 @@ export function StaticPageEditor({
       <p className="text-xs text-on-surface/40">Last updated {formatDate(updatedAt)}</p>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-on-surface">Title</label>
+        <label className="text-sm font-bold text-on-surface">Title</label>
         <Input value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-on-surface">Body</label>
+        <label className="text-sm font-bold text-on-surface">Body</label>
         <Textarea rows={20} value={body} onChange={(e) => setBody(e.target.value)} className="font-mono text-sm" />
         <p className="text-xs text-on-surface/40">
           Start a line with <code className="text-on-surface/60">## </code> to begin a new section (it becomes a

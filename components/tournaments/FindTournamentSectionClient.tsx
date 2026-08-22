@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { Locate } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TournamentDetailsModal } from "@/components/tournaments/TournamentDetailsModal";
+import { useGeolocation } from "@/lib/hooks/use-geolocation";
+import { distanceKm } from "@/lib/geo";
 import type { MockTournament } from "@/lib/mock/tournaments";
+
+const RANGE_OPTIONS_KM = [10, 25, 50, 100];
 
 const TournamentMap = dynamic(
   () => import("@/components/tournaments/TournamentMap").then((mod) => mod.TournamentMap),
@@ -18,9 +23,33 @@ const TournamentMap = dynamic(
   },
 );
 
-export function FindTournamentSectionClient({ tournaments }: { tournaments: MockTournament[] }) {
+export function FindTournamentSectionClient({
+  tournaments,
+  // /map reuses this exact component (same map, same "Use My Location"/range
+  // interactivity) as its main content instead of duplicating it — this
+  // just drops the "Open Full Map" button (redundant when already there)
+  // and gives the map more room to fill the page.
+  fullPage = false,
+}: {
+  tournaments: MockTournament[];
+  fullPage?: boolean;
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedTournament = tournaments.find((t) => t.id === selectedId) ?? null;
+
+  const { position: userPosition, locating, error: locationError, locate } = useGeolocation();
+  const [rangeKm, setRangeKm] = useState(50);
+
+  // 0,0 (Null Island) means "never pinned" — see the same check on the
+  // tournament detail page (hasPin) — excluded here too so an unpinned
+  // tournament never counts as "nearby" just because it defaults near the
+  // equator/prime meridian.
+  const nearbyCount = useMemo(() => {
+    if (!userPosition) return null;
+    return tournaments.filter(
+      (t) => (t.latitude !== 0 || t.longitude !== 0) && distanceKm(userPosition, [t.latitude, t.longitude]) <= rangeKm
+    ).length;
+  }, [tournaments, userPosition, rangeKm]);
 
   return (
     <section
@@ -39,9 +68,48 @@ export function FindTournamentSectionClient({ tournaments }: { tournaments: Mock
           </p>
         </div>
 
-        <Button asChild variant="outline" size="sm" tooltip="Open the full tournament map">
-          <Link href="/map">Open Full Map</Link>
+        {!fullPage ? (
+          <Button asChild variant="outline" size="sm" tooltip="Open the full tournament map">
+            <Link href="/map">Open Full Map</Link>
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="gap-1.5"
+          disabled={locating}
+          tooltip="Show nearby tournaments within a range of your current location"
+          onClick={locate}
+        >
+          <Locate className="h-3.5 w-3.5" /> {locating ? "Locating…" : "Use My Location"}
         </Button>
+        {userPosition ? (
+          <label className="flex items-center gap-1.5 text-xs text-on-surface/60">
+            Within
+            <select
+              value={rangeKm}
+              onChange={(e) => setRangeKm(Number(e.target.value))}
+              aria-label="Nearby range"
+              className="border border-outline-variant/40 bg-surface-container-low px-2 py-1 text-xs font-medium text-on-surface focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {RANGE_OPTIONS_KM.map((km) => (
+                <option key={km} value={km}>
+                  {km} km
+                </option>
+              ))}
+            </select>
+            {nearbyCount !== null ? (
+              <span className="text-on-surface/50">
+                — {nearbyCount} nearby
+              </span>
+            ) : null}
+          </label>
+        ) : null}
+        {locationError ? <p className="text-xs text-destructive">{locationError}</p> : null}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-on-surface/50">
@@ -64,8 +132,14 @@ export function FindTournamentSectionClient({ tournaments }: { tournaments: Mock
       </div>
 
       {tournaments.length > 0 ? (
-        <div className="h-[480px] border border-outline-variant/25 bg-surface-container-lowest md:h-[560px]">
-          <TournamentMap tournaments={tournaments} onSelect={setSelectedId} />
+        <div
+          className={
+            fullPage
+              ? "h-[calc(100vh-320px)] min-h-[480px] border border-outline-variant/25 bg-surface-container-lowest"
+              : "h-[480px] border border-outline-variant/25 bg-surface-container-lowest md:h-[560px]"
+          }
+        >
+          <TournamentMap tournaments={tournaments} onSelect={setSelectedId} userPosition={userPosition} radiusKm={userPosition ? rangeKm : null} />
         </div>
       ) : (
         <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Eraser, Info, Pencil, Play, Swords, X } from "lucide-react";
+import { Eraser, Info, Pencil, Play, Square, Swords, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useDragScroll } from "@/lib/hooks/use-drag-scroll";
@@ -17,6 +17,9 @@ export interface BracketActions {
   isInteractive: (match: WorkspaceMatch) => boolean;
   pending: boolean;
   onStart: (match: WorkspaceMatch) => void;
+  // Reverts a mistakenly-started match back to unplayed — only offered
+  // while it's actually in progress (see BracketMatchCard's render gate).
+  onStop: (match: WorkspaceMatch) => void;
   onReport: (match: WorkspaceMatch) => void;
   onDetails: (match: WorkspaceMatch) => void;
   // Wipes a completed match's score/winner back to unplayed — only ever
@@ -53,13 +56,16 @@ function ScoreChip({ value, isWinner, isLoser }: { value: number; isWinner: bool
 
 function BracketMatchCard({
   match,
-  index,
+  displayNumber,
   actions,
   highlightParticipantId,
   highlightParticipantIds,
 }: {
   match: WorkspaceMatch;
-  index: number;
+  // "Match #" badge — a global sequence across the whole final stage (see
+  // buildFinalStageMatchNumberPlan) when the caller has one, falling back
+  // to a plain round-local position for previews/placeholders that don't.
+  displayNumber: number;
   actions?: BracketActions;
   highlightParticipantId?: string | null;
   // See ParticipantLine's `highlight` — participants whose linked account
@@ -83,7 +89,7 @@ function BracketMatchCard({
       )}
     >
       <div className="flex min-h-[50px] items-center gap-3">
-        <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{index + 1}</span>
+        <span className="w-6 shrink-0 text-center font-mono text-xs text-on-surface/40">{displayNumber}</span>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
             <ParticipantLine participant={match.a} highlight={!!match.a && highlightParticipantIds?.has(match.a.id)} />
@@ -115,6 +121,18 @@ function BracketMatchCard({
                 onClick={() => actions.onStart(match)}
               >
                 <Play className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
+            {!actions.locked && match.status === "in_progress" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Stop match"
+                disabled={actions.pending}
+                onClick={() => actions.onStop(match)}
+              >
+                <Square className="h-3.5 w-3.5" />
               </Button>
             ) : null}
             {actions.locked ? null : match.status !== "complete" ? (
@@ -236,6 +254,7 @@ export function WorkspaceBracket({
   highlightParticipantId,
   highlightParticipantIds,
   onClearRound,
+  matchNumbers,
 }: {
   rounds: WorkspaceBracketRound[];
   actions?: BracketActions;
@@ -256,6 +275,13 @@ export function WorkspaceBracket({
   // round label (so it never shows when hideRoundLabels is set), and only
   // when the round actually has a result to clear.
   onClearRound?: (round: WorkspaceBracketRound) => void;
+  // The "Match #" badge for each match, keyed `${roundIndex}-${matchIndex}`
+  // — see buildFinalStageMatchNumberPlan's `main`/`placement[key]` maps.
+  // Falls back to a plain round-local position (the old behavior) when
+  // omitted, for previews/placeholders with no real bracket shape to plan
+  // from (the mock-derived Final Stage preview, and the not-yet-started
+  // placeholder bracket).
+  matchNumbers?: Map<string, number>;
 }) {
   const scrollRef = useDragScroll<HTMLDivElement>();
 
@@ -287,7 +313,7 @@ export function WorkspaceBracket({
                 <BracketMatchCard
                   key={match.id}
                   match={match}
-                  index={i}
+                  displayNumber={matchNumbers?.get(`${r}-${i}`) ?? i + 1}
                   actions={actions}
                   highlightParticipantId={highlightParticipantId}
                   highlightParticipantIds={highlightParticipantIds}

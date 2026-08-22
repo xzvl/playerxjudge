@@ -27,7 +27,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SearchBar } from "@/components/layout/SearchBar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { NotificationsBell } from "@/components/layout/NotificationsBell";
-import { ProfileMenu, type NavUser } from "@/components/layout/ProfileMenu";
+import type { NavUser } from "@/components/layout/ProfileMenu";
 import { isAccountRoute, isBackendRoute, isTournamentConsoleRoute } from "@/lib/routes";
 
 const NAV_ITEMS = [
@@ -70,15 +70,14 @@ export function Header({ user, notificationCount = 0 }: { user: NavUser | null; 
           ) : null}
           <ThemeToggle />
           <NotificationsBell count={user ? notificationCount : 0} enabled={!!user} />
-          {/* The mobile sheet below carries its own profile header (avatar,
-              name, Settings/Sign out) — showing this too would duplicate it. */}
-          <div className="hidden lg:block">
-            <ProfileMenu user={user} />
-          </div>
 
+          {/* The hamburger sheet is the single menu entry point at every
+              width — it already carries the full profile header (avatar,
+              name, Settings/Sign out) or Sign In/Join, so there's no
+              separate desktop ProfileMenu to duplicate it. */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
+              <Button variant="ghost" size="icon" aria-label="Open menu">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>

@@ -73,7 +73,7 @@ export function ThumbnailUploadField({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-on-surface">{label}</p>
+      <p className="text-sm font-bold text-on-surface">{label}</p>
       {previewUrl ? (
         preserveAspectRatio ? (
           <div className="flex items-center justify-center overflow-hidden border border-outline-variant/40 bg-surface-container-low p-2">

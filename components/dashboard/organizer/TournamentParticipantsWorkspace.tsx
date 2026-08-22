@@ -111,14 +111,14 @@ function ParticipantForm({
   return (
     <div className="space-y-4 px-6 pb-6">
       <div className="space-y-2">
-        <label className="text-sm font-medium text-on-surface" htmlFor="participant-name">
+        <label className="text-sm font-bold text-on-surface" htmlFor="participant-name">
           {isTeam ? "Player Name" : "Name"}
         </label>
         <Input id="participant-name" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       {isTeam ? (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-on-surface" htmlFor="participant-team">
+          <label className="text-sm font-bold text-on-surface" htmlFor="participant-team">
             Team Name
           </label>
           <Input id="participant-team" value={teamName} onChange={(e) => setTeamName(e.target.value)} />

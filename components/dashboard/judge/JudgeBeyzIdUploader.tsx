@@ -38,7 +38,7 @@ export function JudgeBeyzIdUploader({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <p className="text-sm font-medium text-on-surface">BeyZ ID</p>
+        <p className="text-sm font-bold text-on-surface">BeyZ ID</p>
         <BeyzIdStatusBadge status={status} />
       </div>
       <ThumbnailUploadField

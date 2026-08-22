@@ -51,20 +51,20 @@ function FaqDialog({
         </DialogHeader>
         <div className="space-y-4 px-6 pb-6">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Question</label>
+            <label className="text-sm font-bold text-on-surface">Question</label>
             <Input value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-on-surface">Answer</label>
+            <label className="text-sm font-bold text-on-surface">Answer</label>
             <Textarea rows={5} value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-on-surface">Category</label>
+              <label className="text-sm font-bold text-on-surface">Category</label>
               <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="General" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-on-surface">Sort Order</label>
+              <label className="text-sm font-bold text-on-surface">Sort Order</label>
               <Input
                 type="number"
                 value={form.sortOrder}
@@ -174,7 +174,7 @@ export function FaqsPanel({ faqs }: { faqs: FaqItem[] }) {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-on-surface">{item.question}</p>
+                    <p className="text-sm font-bold text-on-surface">{item.question}</p>
                     <Badge variant={item.isPublished ? "success" : "outline"}>{item.isPublished ? "Published" : "Draft"}</Badge>
                     {item.category ? <Badge variant="secondary">{item.category}</Badge> : null}
                   </div>

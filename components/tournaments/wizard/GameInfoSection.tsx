@@ -18,7 +18,7 @@ import {
 type StagePrefix = "groupStage" | "finalStage";
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-medium text-on-surface">{children}</p>;
+  return <p className="text-sm font-bold text-on-surface">{children}</p>;
 }
 
 function StageFormatSelect({

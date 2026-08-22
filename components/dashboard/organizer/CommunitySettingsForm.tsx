@@ -170,7 +170,7 @@ export function CommunitySettingsForm({ community }: { community: CommunityRow }
                 )}
               />
               <div className="space-y-2">
-                <p className="text-sm font-medium text-on-surface">Status</p>
+                <p className="text-sm font-bold text-on-surface">Status</p>
                 <SegmentedControl
                   value={form.watch("status")}
                   onChange={(v) => form.setValue("status", v, { shouldValidate: true })}

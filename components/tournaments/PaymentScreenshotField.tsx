@@ -92,7 +92,7 @@ export function PaymentScreenshotField({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-on-surface">{label}</p>
+      <p className="text-sm font-bold text-on-surface">{label}</p>
       <div className="flex items-center gap-3 border border-outline-variant/40 bg-surface-container-low p-3">
         <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center overflow-hidden border border-outline-variant/30 bg-surface-container-lowest">
           {previewUrl ? (

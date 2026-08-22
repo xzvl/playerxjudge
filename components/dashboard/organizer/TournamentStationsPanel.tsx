@@ -240,7 +240,7 @@ export function TournamentStationsPanel({
                     <AvatarFallback className="text-xs">{initials(j.name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-on-surface">{j.name}</p>
+                    <p className="truncate text-sm font-bold text-on-surface">{j.name}</p>
                     {station ? <p className="label-mono text-[10px] text-on-surface/40">At {station.name}</p> : null}
                   </div>
                   <JudgeAssignmentStatusBadge status={j.status} />
@@ -256,7 +256,7 @@ export function TournamentStationsPanel({
 
       <div className="mb-6 flex flex-wrap items-end gap-3 border border-outline-variant/25 bg-surface-container-low p-4">
         <div className="min-w-[200px] flex-1 space-y-2">
-          <label className="text-sm font-medium text-on-surface" htmlFor="station-name">
+          <label className="text-sm font-bold text-on-surface" htmlFor="station-name">
             Station Name
           </label>
           <Input
@@ -304,7 +304,7 @@ export function TournamentStationsPanel({
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-2 text-sm font-medium text-on-surface">
+                  <p className="flex items-center gap-2 text-sm font-bold text-on-surface">
                     <Radio className="h-4 w-4 text-primary" aria-hidden="true" /> {station.name}
                   </p>
                   <div className="flex items-center gap-1">

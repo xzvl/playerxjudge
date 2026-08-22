@@ -4,7 +4,13 @@ import { useState } from "react";
 
 import { WorkspaceBracket, type BracketActions } from "@/components/dashboard/organizer/WorkspaceBracket";
 import { MatchDetailsDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
-import { advanceWinners, applyRealMatches, populateSectionFromFeeder, type PlacementSection } from "@/lib/final-stage-placeholder";
+import {
+  advanceWinners,
+  applyRealMatches,
+  buildFinalStageMatchNumberPlan,
+  populateSectionFromFeeder,
+  type PlacementSection,
+} from "@/lib/final-stage-placeholder";
 import type { WorkspaceBracketRound, WorkspaceMatch } from "@/lib/mock/tournament-workspace";
 import type { Bracket, Match } from "@/lib/types/database";
 
@@ -53,10 +59,17 @@ export function PlayerFinalStageView({
     sectionRoundsByKey.set(section.key, advanceWinners(applyRealMatches(populated.rounds, ownMatches)));
   }
 
+  // "Match #" badges continuing across the whole final stage — see
+  // buildFinalStageMatchNumberPlan's own doc comment; same plan
+  // FinalStageBracketWorkspace computes for the organizer/backend view, so
+  // this read-only view shows the identical numbering.
+  const matchNumberPlan = buildFinalStageMatchNumberPlan(baseRounds.length, placementSections);
+
   const actions: BracketActions = {
     isInteractive: (m: WorkspaceMatch) => matchesById.has(m.id),
     pending: false,
     onStart: () => {},
+    onStop: () => {},
     onReport: () => {},
     onDetails: (m: WorkspaceMatch) => setDetailsId(m.id),
     onClear: () => {},
@@ -70,6 +83,7 @@ export function PlayerFinalStageView({
         actions={actions}
         highlightParticipantId={selectedParticipantId}
         highlightParticipantIds={highlightParticipantIds}
+        matchNumbers={matchNumberPlan.main}
       />
 
       {placementSections.map((section) => (
@@ -81,6 +95,7 @@ export function PlayerFinalStageView({
             hideRoundLabels
             highlightParticipantId={selectedParticipantId}
             highlightParticipantIds={highlightParticipantIds}
+            matchNumbers={matchNumberPlan.placement.get(section.key)}
           />
         </section>
       ))}

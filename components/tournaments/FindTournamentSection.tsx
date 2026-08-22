@@ -3,8 +3,9 @@ import { getPublicUpcomingTournamentsWithLocation } from "@/lib/tournaments/publ
 
 // Server wrapper: fetches real upcoming tournaments that have a pin dropped
 // and hands them to the client component that owns the map/interactivity —
-// same pattern as TournamentListings.
-export async function FindTournamentSection() {
+// same pattern as TournamentListings. `fullPage` passes straight through —
+// see FindTournamentSectionClient's own doc comment (used by /map).
+export async function FindTournamentSection({ fullPage = false }: { fullPage?: boolean } = {}) {
   const tournaments = await getPublicUpcomingTournamentsWithLocation();
-  return <FindTournamentSectionClient tournaments={tournaments} />;
+  return <FindTournamentSectionClient tournaments={tournaments} fullPage={fullPage} />;
 }

@@ -85,7 +85,7 @@ export function NotificationsPanel({ notifications: initial }: { notifications: 
                   <Icon className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-on-surface">{n.title}</p>
+                  <p className="text-sm font-bold text-on-surface">{n.title}</p>
                   {n.body ? <p className="mt-1 text-sm text-on-surface/60">{n.body}</p> : null}
                   <p className="label-mono mt-2 text-on-surface/30">
                     {formatDate(n.created_at)} &middot; {formatTime(n.created_at)}

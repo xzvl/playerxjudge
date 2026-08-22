@@ -21,7 +21,7 @@ function ConfirmSide({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
-      <p className="min-w-0 max-w-full truncate text-sm font-medium text-on-surface">{name}</p>
+      <p className="min-w-0 max-w-full truncate text-sm font-bold text-on-surface">{name}</p>
       <p className="font-mono text-4xl font-bold text-on-surface">{score}</p>
       <Button size="sm" className="w-full gap-1.5" disabled={disabled} onClick={onConfirm}>
         {confirmed ? (

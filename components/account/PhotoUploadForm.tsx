@@ -94,7 +94,7 @@ function PhotoSlotUploader({ slot, initialUrl }: { slot: PhotoSlot; initialUrl: 
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-on-surface">{SLOT_LABELS[slot]}</p>
+      <p className="text-sm font-bold text-on-surface">{SLOT_LABELS[slot]}</p>
       <div className="flex h-40 w-32 items-center justify-center overflow-hidden border border-outline-variant/40 bg-surface-container-low">
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

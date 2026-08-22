@@ -100,7 +100,7 @@ export function TournamentInfoForm({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <label className="text-sm font-medium text-on-surface">Blader Name(s)</label>
+        <label className="text-sm font-bold text-on-surface">Blader Name(s)</label>
         <div className="flex gap-2">
           <Input
             value={bladerInput}
@@ -141,7 +141,7 @@ export function TournamentInfoForm({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-on-surface">Communities</label>
+        <label className="text-sm font-bold text-on-surface">Communities</label>
         <Combobox
           label="Add community"
           value=""

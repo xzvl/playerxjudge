@@ -156,11 +156,38 @@ export async function startMatch(matchId: string, slug: string): Promise<RoleAct
   return { status: "success" };
 }
 
+// Reverts a match that was started by mistake (or needs to be re-called to
+// a different station/judge) back to "scheduled" — the inverse of
+// startMatch. Only meaningful for a match that's actually "ongoing"; the
+// caller (MatchRow/BracketMatchCard's Stop icon) only ever offers this for
+// one, but the update itself doesn't need to re-check that — setting an
+// already-scheduled or already-completed match's status to "scheduled"
+// would be a no-op/regression either way, and nothing calls this except
+// that gated icon.
+export async function stopMatch(matchId: string, slug: string): Promise<RoleActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("matches").update({ status: "scheduled" }).eq("id", matchId);
+
+  if (error) return { status: "error", message: error.message };
+  revalidatePath(groupStagePath(slug), "layout");
+  revalidatePath(judgeViewPath(slug));
+  return { status: "success" };
+}
+
 export async function reportMatchResult(
   matchId: string,
   slug: string,
   scoreA: number,
-  scoreB: number
+  scoreB: number,
+  // The stadium/station this was played at, if the organizer picked one on
+  // the Report Result dialog — snapshotted onto the result the same way the
+  // judge console's own submission does (see submitJudgedMatchResult in
+  // this file), rather than a live station_id reference, so it survives
+  // that station being renamed or removed later.
+  station?: string
 ): Promise<RoleActionState & { match?: Match; advancedMatches?: Match[]; advancedBrackets?: { key: string; id: string }[] }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
@@ -182,7 +209,7 @@ export async function reportMatchResult(
   const { data, error } = await supabase
     .from("matches")
     .update({
-      score: { a: scoreA, b: scoreB, inputBy: "organizer" },
+      score: { a: scoreA, b: scoreB, inputBy: "organizer", ...(station ? { station } : {}) },
       winner_id: winnerId,
       status: "completed",
       completed_at: new Date().toISOString(),

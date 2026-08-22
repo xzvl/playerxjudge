@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
-import { TournamentSubNav } from "@/components/dashboard/organizer/TournamentSubNav";
+import { TournamentSubNav, TournamentSubNavMobileBar } from "@/components/dashboard/organizer/TournamentSubNav";
 import { TournamentStatusBadge } from "@/components/dashboard/organizer/badges";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
@@ -29,6 +29,8 @@ export default async function TournamentWorkspaceLayout({
       >
         <ArrowLeft className="h-3.5 w-3.5" /> All Tournaments
       </Link>
+
+      <TournamentSubNavMobileBar baseHref={baseHref} isTwoStage={tournament.format_settings?.stageType === "two_stage"} />
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="heading text-2xl">{tournament.title}</h1>

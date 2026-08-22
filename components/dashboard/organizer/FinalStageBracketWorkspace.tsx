@@ -1,14 +1,23 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
+import { Maximize2, Minimize2, MonitorPlay } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WorkspaceBracket } from "@/components/dashboard/organizer/WorkspaceBracket";
 import { ClearResultDialog, MatchDetailsDialog, ReportMatchDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
 import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
-import { clearMatchResult, clearRoundResults, startMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
-import { advanceWinners, applyRealMatches, populateSectionFromFeeder, type PlacementSection } from "@/lib/final-stage-placeholder";
+import { clearMatchResult, clearRoundResults, startMatch, stopMatch, reportMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import {
+  advanceWinners,
+  applyRealMatches,
+  buildFinalStageMatchNumberPlan,
+  populateSectionFromFeeder,
+  type PlacementSection,
+} from "@/lib/final-stage-placeholder";
+import { cn } from "@/lib/utils";
 import type { WorkspaceBracketRound, WorkspaceMatch } from "@/lib/mock/tournament-workspace";
 import type { Bracket, Match } from "@/lib/types/database";
 
@@ -61,6 +70,7 @@ export function FinalStageBracketWorkspace({
   placementSections,
   participantsById,
   locked = false,
+  stations = [],
   highlightParticipantIds,
 }: {
   slug: string;
@@ -73,6 +83,9 @@ export function FinalStageBracketWorkspace({
   // The tournament has already ended — Start/Report/Edit go away everywhere,
   // Match Details stays.
   locked?: boolean;
+  // Tournament's configured stations — forwarded to ReportMatchDialog's
+  // station picker, same as GroupStageWorkspace.
+  stations?: { id: string; name: string }[];
   // Participants whose linked account is also an approved judge on this
   // tournament (see getJudgeParticipantIds) — their name gets a yellow
   // highlight so a player/judge dual role never reads as an ordinary entry.
@@ -86,6 +99,28 @@ export function FinalStageBracketWorkspace({
   // placement-section match also has bracket_id set, but so does nothing
   // about group-stage matches, so group_id is the only reliable filter).
   useRealtimeMatches(tournamentId, setMatches, (m) => m.group_id === null);
+
+  // Same fullscreen toggle as GroupStageWorkspace's own toolbar — wraps this
+  // component's whole output (bracket + placement sections) rather than
+  // just one table, so it fills the screen exactly like Group Stage's does.
+  const [fullscreen, setFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setFullscreen(document.fullscreenElement === containerRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      containerRef.current?.requestFullscreen();
+    }
+  }
   const [sectionBracketIds, setSectionBracketIds] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       initialBrackets
@@ -117,6 +152,11 @@ export function FinalStageBracketWorkspace({
     sectionRoundsByKey.set(section.key, advanceWinners(applyRealMatches(populated.rounds, ownMatches)));
   }
 
+  // "Match #" badges continuing across the whole final stage — see
+  // buildFinalStageMatchNumberPlan's own doc comment for why this is
+  // computed purely from the bracket's shape rather than from `matches`.
+  const matchNumberPlan = buildFinalStageMatchNumberPlan(baseRounds.length, placementSections);
+
   function mergeAdvanced(advancedMatches: Match[] | undefined, advancedBrackets: { key: string; id: string }[] | undefined) {
     if (advancedMatches?.length) {
       setMatches((prev) => [...prev, ...advancedMatches.filter((m) => !prev.some((p) => p.id === m.id))]);
@@ -142,11 +182,23 @@ export function FinalStageBracketWorkspace({
     });
   }
 
-  function handleReportSubmit(scoreA: number, scoreB: number) {
+  function handleStop(match: WorkspaceMatch) {
+    setError(null);
+    startTransition(async () => {
+      const result = await stopMatch(match.id, slug);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      setMatches((prev) => prev.map((m) => (m.id === match.id ? { ...m, status: "scheduled" } : m)));
+    });
+  }
+
+  function handleReportSubmit(scoreA: number, scoreB: number, station: string | null) {
     if (!reportingId) return;
     setError(null);
     startTransition(async () => {
-      const result = await reportMatchResult(reportingId, slug, scoreA, scoreB);
+      const result = await reportMatchResult(reportingId, slug, scoreA, scoreB, station ?? undefined);
       if (result.status === "error") {
         setError(result.message ?? "Something went wrong.");
         return;
@@ -199,6 +251,7 @@ export function FinalStageBracketWorkspace({
     isInteractive: (m: WorkspaceMatch) => matchesById.has(m.id),
     pending,
     onStart: handleStart,
+    onStop: handleStop,
     onReport: (m: WorkspaceMatch) => setReportingId(m.id),
     onDetails: (m: WorkspaceMatch) => setDetailsId(m.id),
     onClear: (m: WorkspaceMatch) => setClearingId(m.id),
@@ -209,7 +262,24 @@ export function FinalStageBracketWorkspace({
   const onClearRound = locked ? undefined : (round: WorkspaceBracketRound) => setClearingRound(round);
 
   return (
-    <div className="space-y-10">
+    <div ref={containerRef} className={cn("space-y-10", fullscreen && "overflow-auto bg-background p-6")}>
+      <div className="flex justify-end gap-1">
+        <Button variant="ghost" size="icon" asChild tooltip="Open the big-screen Spectator Mode display">
+          <Link href={`/account/organizer/tournament/${slug}/spectator`} aria-label="Spectator Mode">
+            <MonitorPlay className="h-4 w-4" />
+          </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          onClick={toggleFullscreen}
+        >
+          {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </Button>
+      </div>
+
       {error ? (
         <p role="alert" className="border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
@@ -221,6 +291,7 @@ export function FinalStageBracketWorkspace({
         actions={sharedActions}
         onClearRound={onClearRound}
         highlightParticipantIds={highlightParticipantIds}
+        matchNumbers={matchNumberPlan.main}
       />
 
       {placementSections.map((section) => (
@@ -229,6 +300,7 @@ export function FinalStageBracketWorkspace({
           <WorkspaceBracket
             rounds={sectionRoundsByKey.get(section.key) ?? section.rounds}
             actions={sharedActions}
+            matchNumbers={matchNumberPlan.placement.get(section.key)}
             hideRoundLabels
             onClearRound={onClearRound}
             highlightParticipantIds={highlightParticipantIds}
@@ -242,6 +314,7 @@ export function FinalStageBracketWorkspace({
         match={reportingId ? matchesById.get(reportingId) ?? null : null}
         participantsById={participantsById}
         pending={pending}
+        stations={stations}
         onSubmit={handleReportSubmit}
       />
       <MatchDetailsDialog

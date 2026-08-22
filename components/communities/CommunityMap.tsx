@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, Circle, useMap } from "react-leaflet";
 
 import type { PublicCommunityListing } from "@/lib/communities/public-profile";
 
@@ -49,6 +49,24 @@ function communityPinIcon(imageUrl: string): L.DivIcon {
   });
 }
 
+// Same pulsing "you are here" dot as TournamentMap's own meIcon —
+// duplicated rather than shared, same convention every icon builder in
+// these map components already follows.
+function meIcon(): L.DivIcon {
+  return L.divIcon({
+    className: "",
+    html: `
+      <div class="relative flex h-4 w-4 items-center justify-center">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400/60"></span>
+        <span class="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-sky-500 shadow-[0_0_0_1px_rgba(0,0,0,0.3)]"></span>
+      </div>
+    `,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    tooltipAnchor: [0, -10],
+  });
+}
+
 function FitToMarkers({ communities }: { communities: PublicCommunityListing[] }) {
   const map = useMap();
 
@@ -61,14 +79,37 @@ function FitToMarkers({ communities }: { communities: PublicCommunityListing[] }
   return null;
 }
 
+// Once "Use My Location" succeeds, the view shifts to frame the visitor's
+// nearby range instead of every pin — see TournamentMap's own FitToRange
+// for the full rationale (same component, mirrored here for communities),
+// including why this uses LatLng.toBounds() rather than
+// L.circle(...).getBounds().
+function FitToRange({ center, radiusKm }: { center: [number, number]; radiusKm: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const bounds = L.latLng(center).toBounds(radiusKm * 1000);
+    map.fitBounds(bounds, { padding: [48, 48] });
+  }, [map, center, radiusKm]);
+
+  return null;
+}
+
 export function CommunityMap({
   communities,
   onSelect,
+  userPosition = null,
+  radiusKm = null,
 }: {
   communities: PublicCommunityListing[];
   onSelect: (slug: string) => void;
+  // "Use My Location" state, lifted up into FindCommunitySectionClient — see
+  // TournamentMap's identical props for the full rationale.
+  userPosition?: [number, number] | null;
+  radiusKm?: number | null;
 }) {
   const defaultIcon = useMemo(() => pinIcon(), []);
+  const youAreHereIcon = useMemo(() => meIcon(), []);
   const communityIcons = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
     for (const c of communities) {
@@ -84,7 +125,7 @@ export function CommunityMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitToMarkers communities={communities} />
+      {userPosition && radiusKm ? <FitToRange center={userPosition} radiusKm={radiusKm} /> : <FitToMarkers communities={communities} />}
       {communities.map((c) => {
         const imageUrl = c.pinLogoUrl ?? c.logoUrl;
         return (
@@ -100,6 +141,20 @@ export function CommunityMap({
           </Marker>
         );
       })}
+      {userPosition ? (
+        <>
+          <Marker position={userPosition} icon={youAreHereIcon}>
+            <Tooltip direction="top">You are here</Tooltip>
+          </Marker>
+          {radiusKm ? (
+            <Circle
+              center={userPosition}
+              radius={radiusKm * 1000}
+              pathOptions={{ color: "#38bdf8", weight: 1.5, fillColor: "#38bdf8", fillOpacity: 0.08 }}
+            />
+          ) : null}
+        </>
+      ) : null}
     </MapContainer>
   );
 }

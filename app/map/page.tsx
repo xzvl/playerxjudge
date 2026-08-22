@@ -1,20 +1,23 @@
 import type { Metadata } from "next";
-import { MapPin } from "lucide-react";
+import { redirect } from "next/navigation";
 
-import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
+import { FindTournamentSection } from "@/components/tournaments/FindTournamentSection";
 
 export const metadata: Metadata = {
   title: "Tournament Map",
-  description: "Explore every upcoming Beyblade X tournament and community on an interactive map.",
+  description: "Explore every upcoming Beyblade X tournament on an interactive map.",
 };
 
-export default function MapPage() {
-  return (
-    <PagePlaceholder
-      eyebrow="Explore"
-      title="Interactive Tournament Map"
-      description="Leaflet + OpenStreetMap tournament and community map wiring is coming in the next build phase."
-      Icon={MapPin}
-    />
-  );
+export default async function MapPage({ searchParams }: { searchParams: Promise<{ tournament?: string }> }) {
+  // Back-compat for the old ?tournament= query param (see the tournament
+  // detail page's "View on Map" link) — that single-tournament view now
+  // lives at its own /map/[slug] route instead.
+  const { tournament } = await searchParams;
+  if (tournament) redirect(`/map/${tournament}`);
+
+  // Same map + "Use My Location"/range interactivity /tournaments already
+  // has (FindTournamentSectionClient) rather than a separate map built for
+  // this page — fullPage just drops its redundant "Open Full Map" button
+  // and gives the map more vertical room.
+  return <FindTournamentSection fullPage />;
 }

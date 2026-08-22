@@ -150,7 +150,7 @@ export function SwissGroupStageControls({
       </div>
 
       <div className={cn("space-y-3 border-t border-outline-variant/20 pt-6 md:border-l md:border-t-0 md:pl-6 md:pt-0")}>
-        <label htmlFor="swiss-rounds" className="text-sm font-medium text-on-surface">
+        <label htmlFor="swiss-rounds" className="text-sm font-bold text-on-surface">
           Number of Swiss rounds for each group
         </label>
         <div className="flex flex-wrap items-center gap-3">
