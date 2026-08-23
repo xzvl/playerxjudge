@@ -20,7 +20,13 @@ import {
 import { ConfirmResultDialog } from "@/components/tournaments/judge/ConfirmResultDialog";
 import { JudgeViewResultDialog } from "@/components/tournaments/judge/JudgeViewResultDialog";
 import { JudgeStadiumPromptDialog } from "@/components/tournaments/judge/JudgeStadiumPromptDialog";
-import { startMatch, submitJudgedMatchResult, updateMatchScoreProgress } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import {
+  attachMatchScreenshot,
+  startMatch,
+  stopMatch,
+  submitJudgedMatchResult,
+  updateMatchScoreProgress,
+} from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import { assignStationMatch } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
 import {
   getParticipantComboSlots,
@@ -29,17 +35,10 @@ import {
   uploadMatchScreenshot,
 } from "@/app/tournaments/[slug]/judge/actions";
 import { captureElementAsWebp } from "@/lib/images/screenshot";
+import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
+import { useRealtimeRows } from "@/lib/hooks/use-realtime-rows";
 import { cn } from "@/lib/utils";
-import type { FinishType, MatchBattle, MatchBattleCombo } from "@/lib/types/database";
-
-export interface JudgeMatchLite {
-  id: string;
-  round: number;
-  matchNumber: number;
-  groupId: string | null;
-  participantAId: string | null;
-  participantBId: string | null;
-}
+import type { FinishType, Match, MatchBattle, MatchBattleCombo, TournamentStation } from "@/lib/types/database";
 
 export interface JudgeMatchContext {
   matchId: string;
@@ -50,13 +49,40 @@ export interface JudgeMatchContext {
   participantBId: string;
 }
 
-export interface JudgeStationOption {
-  id: string;
-  name: string;
-  currentMatchId: string | null;
+type Side = "left" | "right";
+
+interface PersistedSide {
+  events: BoxEvent[];
+  penaltyProgress: 0 | 1;
 }
 
-type Side = "left" | "right";
+interface PersistedJudgeState {
+  matchId: string;
+  player1: PersistedSide;
+  player2: PersistedSide;
+}
+
+function judgeConsoleStorageKey(tournamentId: string) {
+  return `judge-console:${tournamentId}`;
+}
+
+// The per-battle tally (finish steppers, penalties, the box grid) lives
+// only in this console's own React state until Submit Result — an
+// involuntary reload (a phone's browser reclaiming a backgrounded tab, a
+// flaky connection, a dev Fast Refresh) used to wipe it out completely,
+// even though the match/players themselves reload fine from the server
+// (see initialMatch in page.tsx). Mirrored into localStorage on every
+// change below and read back in here at mount, keyed per tournament since
+// a judge only ever works one match at a time on one device.
+function loadPersistedJudgeState(tournamentId: string): PersistedJudgeState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(judgeConsoleStorageKey(tournamentId));
+    return raw ? (JSON.parse(raw) as PersistedJudgeState) : null;
+  } catch {
+    return null;
+  }
+}
 
 const NAV_ITEMS = [
   { id: "switch", label: "Switch", sub: "Swap players side", icon: RefreshCw },
@@ -67,38 +93,93 @@ export function JudgeConsole({
   slug,
   tournamentId,
   tournamentTitle,
-  stations,
+  initialStations,
   initialStationId,
   judgeName,
   judgeUsername,
   participants,
-  matches,
+  initialMatches,
   groups,
   initialMatch,
 }: {
   slug: string;
   tournamentId: string;
   tournamentTitle: string;
-  stations: JudgeStationOption[];
+  initialStations: TournamentStation[];
   initialStationId: string | null;
   judgeName: string;
   judgeUsername: string;
+  // The tournament's full participant roster, not pre-filtered to whoever
+  // has an active match right now — which participants are actually
+  // pickable is derived live below (see pickableParticipantIds) so it stays
+  // correct as matches complete and new rounds get generated, instead of
+  // freezing at whatever was true the moment this page happened to load.
   participants: JudgePlayerOption[];
-  matches: JudgeMatchLite[];
+  initialMatches: Match[];
   groups: { id: string; label: string }[];
   initialMatch: JudgeMatchContext | null;
 }) {
   const groupLabelById = useMemo(() => new Map(groups.map((g) => [g.id, g.label])), [groups]);
 
+  // Kept live the same way every other tournament workspace already does
+  // (GroupStageWorkspace, SpectatorBoard) — a judge's console used to be
+  // handed a one-time snapshot at page load and never hear about anything
+  // that happened afterward: a new round generated, another judge finishing
+  // their match, a station being freed. That staleness is what made picking
+  // a player in a just-generated round silently fail (their match wasn't in
+  // this snapshot yet) and let two judges both load the same "ongoing"
+  // match. `matches` here is the tournament's non-completed matches plus
+  // whatever transitions to/from "completed" while this console stays open;
+  // `stations` is every station, kept in sync the same way the organizer's
+  // own Stations page and the Spectator Board are.
+  const [matches, setMatches] = useState<Match[]>(initialMatches);
+  useRealtimeMatches(tournamentId, setMatches);
+  const [stations, setStations] = useState<TournamentStation[]>(initialStations);
+  useRealtimeRows<TournamentStation>("tournament_stations", tournamentId, setStations);
+
+  // Read once at mount (the setter is never used) — only relevant if it's
+  // for the *same* match the server just handed back as initialMatch;
+  // otherwise it's leftover from a previous match this device was scoring
+  // and gets ignored (the persistence effect below overwrites/clears it the
+  // moment a real match loads here).
+  const [persisted] = useState(() => loadPersistedJudgeState(tournamentId));
+  const persistedForThisMatch = persisted && persisted.matchId === initialMatch?.matchId ? persisted : null;
+
   const [player1, setPlayer1] = useState<PlayerScoreState>(() => ({
     ...emptyPlayerScoreState(),
     participantId: initialMatch?.participantAId ?? null,
+    ...(persistedForThisMatch ? persistedForThisMatch.player1 : {}),
   }));
   const [player2, setPlayer2] = useState<PlayerScoreState>(() => ({
     ...emptyPlayerScoreState(),
     participantId: initialMatch?.participantBId ?? null,
+    ...(persistedForThisMatch ? persistedForThisMatch.player2 : {}),
   }));
   const [matchContext, setMatchContext] = useState<JudgeMatchContext | null>(initialMatch);
+
+  // A match still "ongoing" somewhere else shouldn't show its players in
+  // either picker — they're already seated at another station — but this
+  // console's own currently-loaded match (if it's the ongoing one) stays
+  // visible since it's already selected. Anything "scheduled" (not yet
+  // picked up by anyone) is always fair game.
+  const pickableParticipantIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const m of matches) {
+      if (m.status === "completed") continue;
+      if (m.status === "ongoing" && m.id !== matchContext?.matchId) continue;
+      if (m.participant_a_id) ids.add(m.participant_a_id);
+      if (m.participant_b_id) ids.add(m.participant_b_id);
+    }
+    return ids;
+  }, [matches, matchContext?.matchId]);
+  // Always keeps whoever's actually loaded on either side right now in the
+  // list too, even if they wouldn't otherwise qualify — so a picker never
+  // appears to "lose" its own current selection.
+  const pickableParticipants = useMemo(() => {
+    const extra = new Set([player1.participantId, player2.participantId].filter((id): id is string => !!id));
+    return participants.filter((p) => pickableParticipantIds.has(p.id) || extra.has(p.id));
+  }, [participants, pickableParticipantIds, player1.participantId, player2.participantId]);
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [viewResultOpen, setViewResultOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,7 +190,15 @@ export function JudgeConsole({
   // (from here or the header field below) dismisses it for the rest of the
   // session.
   const [stadiumPromptOpen, setStadiumPromptOpen] = useState(() => stations.length > 0 && !initialStationId);
-  const seqRef = useRef(0);
+  // Resumes from the highest `seq` already restored above rather than
+  // always starting back at 0 — a fresh box scored after a reload has to
+  // sort *after* whatever was recovered, or the merged battle log at
+  // submit time would reorder itself around the restored events.
+  const seqRef = useRef(
+    persistedForThisMatch
+      ? Math.max(0, ...[...persistedForThisMatch.player1.events, ...persistedForThisMatch.player2.events].map((e) => e.seq))
+      : 0
+  );
   // The console's own root — every dialog here (Confirm Result, View
   // Result, the stadium popup) is a Radix Dialog, which portals its content
   // to `document.body` rather than rendering inside this tree. Capturing
@@ -143,6 +232,19 @@ export function JudgeConsole({
     if (forStationId) void assignStationMatch(forStationId, slug, matchId);
     const stationName = forStationId ? stations.find((s) => s.id === forStationId)?.name ?? null : null;
     void notifySeatedParticipants(tournamentId, slug, tournamentTitle, aId, bId, stationName, judgeName);
+  }
+
+  // Reverts a match this console picked up but never actually finished
+  // scoring — stepping away from it (Clear, or picking a different player
+  // because the wrong one got selected by mistake) back to "scheduled" and
+  // frees whichever station had it, instead of leaving it stuck "ongoing"
+  // forever and permanently unpickable by anyone (see pickableParticipantIds
+  // above). Never call this for a match that just finished submitting —
+  // handleBothConfirmed already frees the station itself and the match is
+  // rightfully "completed" by then, not abandoned.
+  function abandonMatch(matchId: string, forStationId: string | null) {
+    void stopMatch(matchId, slug);
+    if (forStationId) void assignStationMatch(forStationId, slug, null);
   }
 
   // Fetches both sides' linked-account combo slots (see
@@ -179,33 +281,92 @@ export function JudgeConsole({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchContext?.matchId]);
 
+  // Mirrors the live box tally into localStorage on every change (see
+  // loadPersistedJudgeState above) so an involuntary reload can recover it.
+  // Clears the slot the moment there's no active match, so a stale tally
+  // never bleeds into whatever gets picked next.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = judgeConsoleStorageKey(tournamentId);
+    if (!matchContext) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        // Ignored — recovery is best-effort.
+      }
+      return;
+    }
+    try {
+      const toPersist: PersistedJudgeState = {
+        matchId: matchContext.matchId,
+        player1: { events: player1.events, penaltyProgress: player1.penaltyProgress },
+        player2: { events: player2.events, penaltyProgress: player2.penaltyProgress },
+      };
+      window.localStorage.setItem(key, JSON.stringify(toPersist));
+    } catch {
+      // Ignored — recovery is best-effort.
+    }
+  }, [tournamentId, matchContext, player1.events, player1.penaltyProgress, player2.events, player2.penaltyProgress]);
+
+  // A second line of defense against the same loss: warns before a manual
+  // reload/tab-close/navigation while there's actually unsaved scoring
+  // progress, rather than letting it happen silently. Doesn't (can't) catch
+  // every way a browser can reload itself — a backgrounded mobile tab being
+  // discarded for memory happens with no event to hook — which is what the
+  // recovery above is for.
+  useEffect(() => {
+    if (!matchContext) return;
+    if (player1.events.length === 0 && player2.events.length === 0) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [matchContext, player1.events.length, player2.events.length]);
+
   // Picking a participant on either side looks up their one active
   // (non-completed) match and fills the *other* side with the real
-  // opponent, plus the round/stage that match is actually part of.
+  // opponent, plus the round/stage that match is actually part of. If this
+  // console already had a *different* match loaded and not yet submitted —
+  // the judge picked the wrong player and is now correcting it — that old
+  // one is abandoned first (see abandonMatch) rather than left stuck
+  // "ongoing" at this station.
   function selectPlayer(side: Side, participantId: string) {
-    const match = matches.find((m) => m.participantAId === participantId || m.participantBId === participantId);
+    // A participant can have more than one match in `matches` once a new
+    // round's been generated (their just-finished previous-round match is
+    // still in state, now "completed" — see the realtime subscription
+    // above) — completed ones don't count as "their one active match" here,
+    // same as the server-side query this list started from used to filter.
+    const match = matches.find(
+      (m) => m.status !== "completed" && (m.participant_a_id === participantId || m.participant_b_id === participantId)
+    );
     const picked: PlayerScoreState = { participantId, events: [], penaltyProgress: 0, comboSlots: null };
 
-    if (!match || !match.participantAId || !match.participantBId) {
+    if (matchContext && matchContext.matchId !== match?.id) {
+      abandonMatch(matchContext.matchId, stationId);
+    }
+
+    if (!match || !match.participant_a_id || !match.participant_b_id) {
       stateSetter(side)(picked);
       stateSetter(side === "left" ? "right" : "left")(emptyPlayerScoreState());
       setMatchContext(null);
       return;
     }
 
-    const opponentId = match.participantAId === participantId ? match.participantBId : match.participantAId;
+    const opponentId = match.participant_a_id === participantId ? match.participant_b_id : match.participant_a_id;
     const opponent: PlayerScoreState = { participantId: opponentId, events: [], penaltyProgress: 0, comboSlots: null };
     stateSetter(side)(picked);
     stateSetter(side === "left" ? "right" : "left")(opponent);
     setMatchContext({
       matchId: match.id,
       round: match.round,
-      matchNumber: match.matchNumber,
-      stage: match.groupId ? `Group ${groupLabelById.get(match.groupId) ?? "?"}` : "Final Stage",
-      participantAId: match.participantAId,
-      participantBId: match.participantBId,
+      matchNumber: match.match_number,
+      stage: match.group_id ? `Group ${groupLabelById.get(match.group_id) ?? "?"}` : "Final Stage",
+      participantAId: match.participant_a_id,
+      participantBId: match.participant_b_id,
     });
-    startMatchAtStation(match.id, stationId, match.participantAId, match.participantBId);
+    startMatchAtStation(match.id, stationId, match.participant_a_id, match.participant_b_id);
   }
 
   // Fills both sides from whatever match a stadium is currently running —
@@ -214,22 +375,30 @@ export function JudgeConsole({
   // Stadium field changes instead of only once at mount. `forStationId` is
   // the stadium being switched *to* — passed explicitly rather than read
   // off the `stationId` state, since the caller's own setStationId hasn't
-  // committed yet when this runs.
+  // committed yet when this runs. Same wrong-player correction as
+  // selectPlayer: switching away from an unsubmitted match abandons it
+  // first instead of leaving it orphaned.
   function applyStationMatch(currentMatchId: string | null, forStationId: string | null) {
+    if (matchContext && matchContext.matchId !== currentMatchId) {
+      abandonMatch(matchContext.matchId, stationId);
+      setPlayer1(emptyPlayerScoreState());
+      setPlayer2(emptyPlayerScoreState());
+      setMatchContext(null);
+    }
     if (!currentMatchId) return;
     const stationMatch = matches.find((m) => m.id === currentMatchId);
-    if (!stationMatch?.participantAId || !stationMatch?.participantBId) return;
-    setPlayer1({ participantId: stationMatch.participantAId, events: [], penaltyProgress: 0, comboSlots: null });
-    setPlayer2({ participantId: stationMatch.participantBId, events: [], penaltyProgress: 0, comboSlots: null });
+    if (!stationMatch?.participant_a_id || !stationMatch?.participant_b_id) return;
+    setPlayer1({ participantId: stationMatch.participant_a_id, events: [], penaltyProgress: 0, comboSlots: null });
+    setPlayer2({ participantId: stationMatch.participant_b_id, events: [], penaltyProgress: 0, comboSlots: null });
     setMatchContext({
       matchId: stationMatch.id,
       round: stationMatch.round,
-      matchNumber: stationMatch.matchNumber,
-      stage: stationMatch.groupId ? `Group ${groupLabelById.get(stationMatch.groupId) ?? "?"}` : "Final Stage",
-      participantAId: stationMatch.participantAId,
-      participantBId: stationMatch.participantBId,
+      matchNumber: stationMatch.match_number,
+      stage: stationMatch.group_id ? `Group ${groupLabelById.get(stationMatch.group_id) ?? "?"}` : "Final Stage",
+      participantAId: stationMatch.participant_a_id,
+      participantBId: stationMatch.participant_b_id,
     });
-    startMatchAtStation(stationMatch.id, forStationId, stationMatch.participantAId, stationMatch.participantBId);
+    startMatchAtStation(stationMatch.id, forStationId, stationMatch.participant_a_id, stationMatch.participant_b_id);
   }
 
   // Claims a stadium as the current session's own (persisted server-side —
@@ -242,7 +411,12 @@ export function JudgeConsole({
     void setOwnStation(slug, resolved);
     if (resolved) {
       const station = stations.find((s) => s.id === resolved);
-      if (station) applyStationMatch(station.currentMatchId, resolved);
+      if (station) applyStationMatch(station.current_match_id, resolved);
+    } else if (matchContext) {
+      abandonMatch(matchContext.matchId, stationId);
+      setPlayer1(emptyPlayerScoreState());
+      setPlayer2(emptyPlayerScoreState());
+      setMatchContext(null);
     }
   }
 
@@ -297,7 +471,18 @@ export function JudgeConsole({
     setPlayer2(player1);
   }
 
+  // The explicit Clear action (nav item + mobile bar) — also abandons
+  // whatever match was loaded (see abandonMatch) so a mis-pick cleared out
+  // this way doesn't stay stuck "ongoing" either. resetLocalState below is
+  // the shared bit that doesn't touch the server, reused by the post-submit
+  // path in handleBothConfirmed where the match is rightfully completed,
+  // not abandoned.
   function handleClear() {
+    if (matchContext) abandonMatch(matchContext.matchId, stationId);
+    resetLocalState();
+  }
+
+  function resetLocalState() {
     setPlayer1(emptyPlayerScoreState());
     setPlayer2(emptyPlayerScoreState());
     setMatchContext(null);
@@ -335,25 +520,24 @@ export function JudgeConsole({
         participantBCombo: e.bCombo,
       }));
 
+    const matchId = matchContext.matchId;
+    const submittingStationId = stationId;
+
     // Proof-of-result screenshot of the console itself (both scorecards,
     // header, everything in consoleRef) — deliberately not document.body,
     // since that would also pick up the Confirm Result dialog's portal
-    // (see consoleRef's comment above). Best-effort: a capture or upload
-    // failure shouldn't block the actual result from being saved, just
-    // leave it without a screenshot.
-    let screenshotUrl: string | undefined;
-    try {
-      const webpBlob = await captureElementAsWebp(consoleRef.current ?? document.body);
-      const webpFile = new File([webpBlob], "match-screenshot.webp", { type: "image/webp" });
-      const formData = new FormData();
-      formData.set("file", webpFile);
-      const uploadResult = await uploadMatchScreenshot(tournamentId, matchContext.matchId, formData);
-      if (uploadResult.status === "success" && uploadResult.url) screenshotUrl = uploadResult.url;
-    } catch {
-      // Ignored — see comment above.
-    }
+    // (see consoleRef's comment above). Kicked off here but *not* awaited
+    // before the actual score write below: html2canvas rendering a whole
+    // console and uploading the result is by far the slowest part of
+    // judging a match, and both players used to sit waiting on that before
+    // their score even reached the database. It races the write instead —
+    // whichever finishes first, the other just keeps going — and gets
+    // attached to the match afterward (see the background block below).
+    // Best-effort throughout: a capture or upload failure never blocks or
+    // undoes the result itself.
+    const screenshotPromise = captureElementAsWebp(consoleRef.current ?? document.body).catch(() => null);
 
-    const result = await submitJudgedMatchResult(matchContext.matchId, slug, {
+    const result = await submitJudgedMatchResult(matchId, slug, {
       scoreA: ownScore(aState) + committedPenalties(bState),
       scoreB: ownScore(bState) + committedPenalties(aState),
       battles,
@@ -363,8 +547,7 @@ export function JudgeConsole({
       judgeUsername,
       participantAName: aName,
       participantBName: bName,
-      screenshotUrl,
-      station: stationId ? (stations.find((s) => s.id === stationId)?.name ?? undefined) : undefined,
+      station: submittingStationId ? (stations.find((s) => s.id === submittingStationId)?.name ?? undefined) : undefined,
     });
 
     setSaving(false);
@@ -375,9 +558,30 @@ export function JudgeConsole({
     // The match is done — free up the stadium it was running at for
     // whichever match gets picked next, same "clear" assignStationMatch(...,
     // null) already gives the organizer's own Stations page.
-    if (stationId) void assignStationMatch(stationId, slug, null);
+    if (submittingStationId) void assignStationMatch(submittingStationId, slug, null);
     setConfirmOpen(false);
-    handleClear();
+
+    // Finish the screenshot in the background — the console only actually
+    // clears (resetLocalState, not the abandon-match handleClear: the match
+    // is rightfully completed, not abandoned) once the *capture* itself
+    // settles, never the upload, so html2canvas can't race resetLocalState's
+    // own DOM mutation mid-render and end up with a torn/blank screenshot.
+    void (async () => {
+      const blob = await screenshotPromise;
+      resetLocalState();
+      if (!blob) return;
+      try {
+        const webpFile = new File([blob], "match-screenshot.webp", { type: "image/webp" });
+        const formData = new FormData();
+        formData.set("file", webpFile);
+        const uploadResult = await uploadMatchScreenshot(tournamentId, matchId, formData);
+        if (uploadResult.status === "success" && uploadResult.url) {
+          await attachMatchScreenshot(matchId, slug, uploadResult.url);
+        }
+      } catch {
+        // Ignored — see comment above.
+      }
+    })();
   }
 
   const score1 = ownScore(player1) + committedPenalties(player2);
@@ -476,7 +680,7 @@ export function JudgeConsole({
               <JudgePlayerPicker
                 label="Player 1"
                 sideLabel="[X Side]"
-                options={participants}
+                options={pickableParticipants}
                 selectedId={player1.participantId}
                 onSelect={(id) => selectPlayer("left", id)}
               />
@@ -490,7 +694,7 @@ export function JudgeConsole({
               <JudgePlayerPicker
                 label="Player 2"
                 sideLabel="[B Side]"
-                options={participants}
+                options={pickableParticipants}
                 selectedId={player2.participantId}
                 onSelect={(id) => selectPlayer("right", id)}
                 align="right"

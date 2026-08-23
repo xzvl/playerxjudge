@@ -19,7 +19,11 @@ import {
 } from "@/components/ui/form";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 
-export function LoginForm() {
+// `redirectTo` — where /login?redirectTo=... asked to land after signing in
+// — comes from the page's own searchParams (a Server Component prop, see
+// app/login/page.tsx) rather than this component reading the URL itself
+// with useSearchParams, so it doesn't need its own Suspense boundary.
+export function LoginForm({ redirectTo }: { redirectTo?: string } = {}) {
   const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [magicSent, setMagicSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -32,7 +36,7 @@ export function LoginForm() {
   async function onSubmit(values: LoginInput) {
     setSubmitting(true);
     setServerMessage(null);
-    const result = await signInWithPassword(values);
+    const result = await signInWithPassword(values, redirectTo);
     setSubmitting(false);
     if (result.status === "error") {
       setServerMessage(result.message ?? "Something went wrong.");
@@ -47,7 +51,7 @@ export function LoginForm() {
       return;
     }
     setSubmitting(true);
-    const result = await signInWithMagicLink(parsed.data);
+    const result = await signInWithMagicLink(parsed.data, redirectTo);
     setSubmitting(false);
     if (result.status === "success") {
       setMagicSent(true);
@@ -58,7 +62,7 @@ export function LoginForm() {
 
   return (
     <div className="space-y-6">
-      <GoogleButton />
+      <GoogleButton redirectTo={redirectTo} />
 
       <div className="flex items-center gap-4">
         <div className="h-px flex-1 bg-outline-variant/25" />

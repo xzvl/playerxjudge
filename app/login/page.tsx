@@ -9,7 +9,9 @@ export const metadata: Metadata = {
   description: "Sign in to your PlayerXJudge account to register for tournaments, judge matches, and manage your community.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ redirectTo?: string }> }) {
+  const { redirectTo } = await searchParams;
+
   return (
     <AuthCard
       title="Welcome Back"
@@ -23,7 +25,7 @@ export default function LoginPage() {
         </>
       }
     >
-      <LoginForm />
+      <LoginForm redirectTo={redirectTo} />
     </AuthCard>
   );
 }

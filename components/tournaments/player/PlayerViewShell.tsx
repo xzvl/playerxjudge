@@ -23,12 +23,16 @@ const NAV_ITEMS = [
 
 export function PlayerViewShell({
   tournamentTitle,
+  tournamentSlug,
   organizedBy,
   user,
   notificationCount,
   children,
 }: {
   tournamentTitle: string;
+  // The public tournament page this title links back to — optional so
+  // callers mid-migration don't break, but every current caller passes it.
+  tournamentSlug?: string;
   organizedBy: string;
   user: NavUser | null;
   notificationCount?: number;
@@ -69,7 +73,15 @@ export function PlayerViewShell({
       <div className="min-w-0 flex-1">
         <header className="flex items-start justify-between gap-4 border-b border-outline-variant/25 px-4 py-5 md:px-8">
           <div className="min-w-0">
-            <h1 className="heading truncate text-base sm:text-xl md:text-2xl">{tournamentTitle}</h1>
+            <h1 className="heading truncate text-base sm:text-xl md:text-2xl">
+              {tournamentSlug ? (
+                <Link href={`/tournaments/${tournamentSlug}`} className="transition-colors hover:text-primary">
+                  {tournamentTitle}
+                </Link>
+              ) : (
+                tournamentTitle
+              )}
+            </h1>
             <p className="mt-1 text-sm text-on-surface/50">Organized by {organizedBy}</p>
           </div>
           <PlayerViewHeaderActions user={user} notificationCount={notificationCount} />

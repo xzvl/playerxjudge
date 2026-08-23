@@ -76,7 +76,7 @@ export default async function TournamentPlayerPage({
         : (workspace.participants[0]?.id ?? null);
 
     return (
-      <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
+      <PlayerViewShell tournamentTitle={tournament.title} tournamentSlug={slug} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
         <PlayerPreviewView workspace={workspace} selectedId={selectedId} />
       </PlayerViewShell>
     );

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
+import { ScreenshotLightboxDialog } from "@/components/tournaments/ScreenshotLightboxDialog";
 import { useDragScroll } from "@/lib/hooks/use-drag-scroll";
 import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
 import { cn } from "@/lib/utils";
@@ -189,6 +190,7 @@ function ScoreChip({ value, isWinner, isLoser }: { value: number; isWinner: bool
 }
 
 export function MatchDetailsDialog({ open, onOpenChange, match, participantsById }: { open: boolean; onOpenChange: (open: boolean) => void; match: Match | null; participantsById: Map<string, RosterLite> }) {
+  const [screenshotOpen, setScreenshotOpen] = useState(false);
   if (!match) return null;
   const score = isScore(match.score) ? match.score : null;
   const a = match.participant_a_id ? participantsById.get(match.participant_a_id) : undefined;
@@ -261,10 +263,14 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
               {score.screenshotUrl ? (
                 <TimelineItem icon={Camera}>
                   Match Screenshot:{" "}
-                  <a href={score.screenshotUrl} target="_blank" rel="noreferrer" className="text-primary underline">
+                  <button
+                    type="button"
+                    onClick={() => setScreenshotOpen(true)}
+                    className="text-primary underline underline-offset-2"
+                  >
                     {winnerName} vs {loserName}
                     {match.completed_at ? ` — ${new Date(match.completed_at).toLocaleString("en-PH")}` : ""}
-                  </a>
+                  </button>
                 </TimelineItem>
               ) : null}
               <TimelineItem icon={Info}>{score.confirmedByBoth ? "Result confirmed by both players." : "Awaiting confirmation from both players."}</TimelineItem>
@@ -282,6 +288,14 @@ export function MatchDetailsDialog({ open, onOpenChange, match, participantsById
           )}
         </div>
       </DialogContent>
+      {score?.screenshotUrl ? (
+        <ScreenshotLightboxDialog
+          open={screenshotOpen}
+          onOpenChange={setScreenshotOpen}
+          imageUrl={score.screenshotUrl}
+          title={`${winnerName ?? "—"} vs ${loserName ?? "—"} match screenshot`}
+        />
+      ) : null}
     </Dialog>
   );
 }

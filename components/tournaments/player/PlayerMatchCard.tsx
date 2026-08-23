@@ -6,6 +6,7 @@ import { Camera, Info } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MatchDetailsDialog, type RosterLite } from "@/components/dashboard/organizer/GroupStageWorkspace";
+import { ScreenshotLightboxDialog } from "@/components/tournaments/ScreenshotLightboxDialog";
 import { FINISH_LABEL, rankedFinishes, type FinishCounts } from "@/lib/player-view-stats";
 import { cn } from "@/lib/utils";
 import type { Match, MatchScore } from "@/lib/types/database";
@@ -124,6 +125,7 @@ export function PreviousMatchCard({
   participantsById: Map<string, RosterLite>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [screenshotOpen, setScreenshotOpen] = useState(false);
   const screenshotUrl = isScore(match.score) ? match.score.screenshotUrl : undefined;
 
   return (
@@ -160,16 +162,22 @@ export function PreviousMatchCard({
             <Info className="h-3.5 w-3.5" />
           </Button>
           {screenshotUrl ? (
-            <Button type="button" variant="ghost" size="icon" aria-label="Match screenshot" asChild>
-              <a href={screenshotUrl} target="_blank" rel="noreferrer">
-                <Camera className="h-3.5 w-3.5" />
-              </a>
+            <Button type="button" variant="ghost" size="icon" aria-label="Match screenshot" onClick={() => setScreenshotOpen(true)}>
+              <Camera className="h-3.5 w-3.5" />
             </Button>
           ) : null}
         </div>
       </div>
 
       <MatchDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} match={match} participantsById={participantsById} />
+      {screenshotUrl ? (
+        <ScreenshotLightboxDialog
+          open={screenshotOpen}
+          onOpenChange={setScreenshotOpen}
+          imageUrl={screenshotUrl}
+          title={`${opponentName} match screenshot`}
+        />
+      ) : null}
     </div>
   );
 }

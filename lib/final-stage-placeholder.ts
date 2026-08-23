@@ -51,7 +51,7 @@ export function seedOrder(size: number): number[] {
   return order;
 }
 
-function roundLabel(participantsInRound: number, totalRounds: number, roundIndex: number): string {
+export function roundLabel(participantsInRound: number, totalRounds: number, roundIndex: number): string {
   if (participantsInRound === 2) return "Grand Final";
   if (participantsInRound === 4) return "Semifinals";
   if (participantsInRound === 8) return "Quarterfinals";
@@ -254,7 +254,7 @@ export interface PlacementSection {
   rounds: WorkspaceBracketRound[];
 }
 
-function placementLabel(basePlace: number, poolSize: number): string {
+export function placementLabel(basePlace: number, poolSize: number): string {
   return poolSize === 2 ? `${ordinal(basePlace)} Place Match` : `${ordinal(basePlace)}–${ordinal(basePlace + poolSize - 1)} Place Bracket`;
 }
 
@@ -336,6 +336,44 @@ function deriveSections(
 export function buildPlacementSections(mainBracketTotalRounds: number, throughPlace: number): PlacementSection[] {
   if (throughPlace < 3) return [];
   return deriveSections(mainBracketTotalRounds, null, 1, throughPlace, 0);
+}
+
+// Every final-stage match's human bracket-round label — "Quarterfinals",
+// "Semifinals", "Grand Final", "3rd Place Match", "5th–8th Place Bracket",
+// ... — derived from which matches/brackets actually exist rather than
+// needing the real seeded slots buildSeededBracket takes. Used wherever a
+// live match list needs a bracket-accurate label without the rest of that
+// machinery (see SpectatorBoard's "Playing Now"/"Upcoming" cards). A match
+// this can't place a label on (no round-1 matches generated yet, or a
+// placement match whose `brackets` row hasn't loaded) is simply absent from
+// the returned map — callers fall back to a plain "Round N".
+export function finalStageRoundLabels(
+  matches: { id: string; round: number; group_id: string | null; bracket_id: string | null }[],
+  // bracket id -> its own structure.basePlace/poolSize (see the `Bracket`
+  // row type) — already exactly what placementLabel needs, no need to
+  // re-derive placement sections from format_settings at all.
+  bracketStructureById: Map<string, { basePlace: number; poolSize: number }>
+): Map<string, string> {
+  const labels = new Map<string, string>();
+
+  const mainMatches = matches.filter((m) => m.group_id === null && m.bracket_id === null);
+  const round1Count = mainMatches.filter((m) => m.round === 1).length;
+  if (round1Count > 0) {
+    const size = round1Count * 2;
+    const totalRounds = Math.log2(size);
+    for (const m of mainMatches) {
+      const participantsInRound = size / 2 ** (m.round - 1);
+      labels.set(m.id, roundLabel(participantsInRound, totalRounds, m.round - 1));
+    }
+  }
+
+  for (const m of matches) {
+    if (m.group_id !== null || !m.bracket_id) continue;
+    const structure = bracketStructureById.get(m.bracket_id);
+    if (structure) labels.set(m.id, placementLabel(structure.basePlace, structure.poolSize));
+  }
+
+  return labels;
 }
 
 // A "Match #" display sequence spanning the WHOLE final stage — every main

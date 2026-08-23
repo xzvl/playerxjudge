@@ -82,7 +82,7 @@ function ResultCard({
 }) {
   if (kind === "champion") {
     return (
-      <div className="mx-auto flex w-full max-w-xs flex-col items-center gap-2 border border-primary/40 bg-primary/5 p-6 text-center">
+      <div className="mx-auto flex w-full lg:max-w-xs flex-col items-center gap-2 border border-primary/40 bg-primary/5 p-6 text-center">
         <Trophy className="h-9 w-9 shrink-0 text-[#eab308]" aria-hidden="true" />
         <p className="label-mono text-[#eab308]">{label}</p>
         <p className="heading text-xl text-on-surface">{name}</p>

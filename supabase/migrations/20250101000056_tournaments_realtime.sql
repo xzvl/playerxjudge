@@ -1,0 +1,11 @@
+-- Powers the organizer's own Stations page showing "Organizer (You)" at
+-- whichever stadium they've claimed for themself from
+-- /tournaments/[slug]/judge — see TournamentStationsPanel's own
+-- `tournaments` subscription and tournaments.organizer_station_id (set by
+-- setOwnStation in app/tournaments/[slug]/judge/actions.ts). The organizer
+-- has no `judges` row of their own to carry that pick on the way an
+-- invited judge's does, so it lives on the tournament row instead, and
+-- nothing surfaced it on the Stations page at all until this was live.
+-- No RLS changes needed — already selectable by the tournament's own
+-- organizer/admin ("tournaments_select_published_or_own").
+alter publication supabase_realtime add table public.tournaments;

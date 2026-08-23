@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { getActiveDeckReadOnly, getDeckCombos, type ComboWithParts } from "@/app/account/beyblade/data";
+import { logTournamentEvent } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
 import type { RoleActionState } from "@/lib/validations/roles";
 
 // The console's own "stadium" picker (the header field, and the popup
@@ -31,7 +32,13 @@ export async function setOwnStation(slug: string, stationId: string | null): Pro
   if (tournament.organizer_id === user.id) {
     const { error } = await supabase.from("tournaments").update({ organizer_station_id: stationId }).eq("id", tournament.id);
     if (error) return { status: "error", message: error.message };
+    // Same page the judge branch below revalidates — the Stations page
+    // reads this off `tournaments.organizer_station_id` too (see
+    // TournamentStationsPanel's "Organizer (You)" indicator), so a fresh
+    // navigation there should pick this up even without the realtime
+    // subscription that already keeps an *open* tab live.
     revalidatePath(`/tournaments/${slug}/judge`);
+    revalidatePath(`/account/organizer/tournament/${slug}/stations`);
     return { status: "success" };
   }
 
@@ -52,6 +59,21 @@ export async function setOwnStation(slug: string, stationId: string | null): Pro
   }
   const { error } = await supabase.from("judges").update({ station_id: stationId }).eq("id", judgeRow.id);
   if (error) return { status: "error", message: error.message };
+
+  // A judge picking their own stadium here bypasses the organizer's own
+  // Stations page entirely — including bumping whoever else was assigned
+  // there — so without this, the organizer's Stations page would just
+  // silently show a different judge at that station with no record of who
+  // moved or why.
+  const [{ data: profile }, { data: station }] = await Promise.all([
+    supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+    stationId ? supabase.from("tournament_stations").select("name").eq("id", stationId).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  await logTournamentEvent(
+    tournament.id,
+    profile?.display_name ?? "A judge",
+    station?.name ? `claimed ${station.name} as their stadium` : "vacated their stadium"
+  );
 
   revalidatePath(`/tournaments/${slug}/judge`);
   revalidatePath(`/account/organizer/tournament/${slug}/stations`);

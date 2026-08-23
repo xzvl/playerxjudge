@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { rateLimit } from "@/lib/rate-limit";
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import {
   loginSchema,
   registerSchema,
@@ -40,7 +41,12 @@ const NOT_CONFIGURED_STATE: AuthActionState = {
 };
 
 export async function signInWithPassword(
-  input: LoginInput
+  input: LoginInput,
+  // Where /login?redirectTo=... asked to land after a successful sign-in —
+  // see LoginForm, which reads it off the URL and threads it through here.
+  // Sanitized (safeRedirectPath) rather than trusted outright: it's a query
+  // param a visitor's URL controls.
+  redirectTo?: string
 ): Promise<AuthActionState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED_STATE;
 
@@ -91,7 +97,7 @@ export async function signInWithPassword(
     }
   }
 
-  redirect("/");
+  redirect(safeRedirectPath(redirectTo));
 }
 
 export async function signUp(
@@ -136,7 +142,11 @@ export async function signUp(
 }
 
 export async function signInWithMagicLink(
-  input: MagicLinkInput
+  input: MagicLinkInput,
+  // See signInWithPassword's own redirectTo doc comment — same deal, just
+  // carried through the callback route instead of applied immediately,
+  // since this one doesn't land a session until the emailed link is opened.
+  redirectTo?: string
 ): Promise<AuthActionState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED_STATE;
 
@@ -154,7 +164,7 @@ export async function signInWithMagicLink(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,
-    options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+    options: { emailRedirectTo: `${siteUrl}/auth/callback?redirectTo=${encodeURIComponent(safeRedirectPath(redirectTo))}` },
   });
 
   if (error) {
@@ -164,7 +174,10 @@ export async function signInWithMagicLink(
   return { status: "success", message: "Check your email for a sign-in link." };
 }
 
-export async function signInWithGoogle() {
+// `redirectTo` arrives bound onto the form action (see GoogleButton) rather
+// than read off a URL here — a server action invoked as a form submission
+// has no request URL of its own to read query params from.
+export async function signInWithGoogle(redirectTo?: string) {
   if (!isSupabaseConfigured) {
     redirect("/login?error=not_configured");
   }
@@ -174,7 +187,7 @@ export async function signInWithGoogle() {
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${siteUrl}/auth/callback` },
+    options: { redirectTo: `${siteUrl}/auth/callback?redirectTo=${encodeURIComponent(safeRedirectPath(redirectTo))}` },
   });
 
   if (error || !data.url) {

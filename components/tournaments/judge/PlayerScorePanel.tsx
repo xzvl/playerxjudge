@@ -169,12 +169,37 @@ function BoxCell({ event }: { event: BoxEvent | undefined }) {
   );
 }
 
-function Stepper({ label, points, value, onPlus, onMinus }: { label: string; points: string; value: number; onPlus: () => void; onMinus: () => void }) {
+function Stepper({
+  label,
+  points,
+  value,
+  armed,
+  onPlus,
+  onMinus,
+}: {
+  label: string;
+  points: string;
+  value: number;
+  // Penalty-only: a first "+" press primes a penalty without committing it
+  // yet (see PlayerScoreState.penaltyProgress) — highlighted here rather
+  // than folded into `value` itself, so the number always reads as "how
+  // many penalties this player has actually been charged," the same as
+  // every other stepper's count, instead of dropping back to what looked
+  // like zero the instant a primed press commits.
+  armed?: boolean;
+  onPlus: () => void;
+  onMinus: () => void;
+}) {
   return (
-    <div className="lg:flex items-center justify-between gap-2 border border-outline-variant/20 bg-surface-container-lowest px-2 py-2">
+    <div
+      className={cn(
+        "lg:flex items-center justify-between gap-2 border border-outline-variant/20 bg-surface-container-lowest px-2 py-2",
+        armed && "border-amber-500/60 bg-amber-500/10"
+      )}
+    >
       <div className="flex justify-between mb-2 gap-1 lg:gap-2">
         <p className="text-xs font-medium text-on-surface">{label}</p>
-        <p className="label-mono text-[9px] text-on-surface/40">{points}</p>
+        <p className="label-mono text-[9px] text-on-surface/40">{armed ? "primed" : points}</p>
       </div>
       <div className="flex justify-between gap-1 lg:gap-2">
         <button
@@ -252,7 +277,14 @@ export function PlayerScorePanel({
             onMinus={() => onDecrementFinish(kind)}
           />
         ))}
-        <Stepper label="Penalty" points="rnd" value={state.penaltyProgress} onPlus={onPenaltyPlus} onMinus={onPenaltyMinus} />
+        <Stepper
+          label="Penalty"
+          points="rnd"
+          value={committedPenalties(state)}
+          armed={state.penaltyProgress === 1}
+          onPlus={onPenaltyPlus}
+          onMinus={onPenaltyMinus}
+        />
       </div>
     </div>
   );

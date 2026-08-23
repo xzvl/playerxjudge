@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Gavel, Plus, Radio, X } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,8 +17,9 @@ import {
   removeJudge,
   unassignJudgeFromStation,
 } from "@/app/account/organizer/tournament/[slug]/judges-actions";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import type { JudgeAssignmentStatus, TournamentStationStatus } from "@/lib/types/database";
+import type { Judge, JudgeAssignmentStatus, TournamentStation, TournamentStationStatus } from "@/lib/types/database";
 
 export interface StationItem {
   id: string;
@@ -70,6 +71,7 @@ export function TournamentStationsPanel({
   matchOptions,
   judges: initialJudges,
   availableJudges,
+  initialOrganizerStationId,
 }: {
   tournamentId: string;
   tournamentTitle: string;
@@ -78,13 +80,106 @@ export function TournamentStationsPanel({
   matchOptions: ComboboxOption[];
   judges: JudgeItem[];
   availableJudges: AvailableJudge[];
+  // The organizer's own claimed stadium (tournaments.organizer_station_id)
+  // — set from /tournaments/[slug]/judge same as a judge's own pick, but
+  // they have no `judges` row of their own to carry it on (see
+  // setOwnStation's doc comment), so it's carried separately here instead.
+  initialOrganizerStationId: string | null;
 }) {
   const [stations, setStations] = useState<StationItem[]>(initialStations);
   const [judges, setJudges] = useState<JudgeItem[]>(initialJudges);
+  const [organizerStationId, setOrganizerStationId] = useState<string | null>(initialOrganizerStationId);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [dragOverStationId, setDragOverStationId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // This page's own optimistic local state (every handler below updates
+  // `stations`/`judges` directly) used to be the *only* way it ever
+  // changed — a judge claiming/switching stadiums from their own console
+  // (setOwnStation, startMatchAtStation → assignStationMatch) writes to the
+  // exact same `tournament_stations`/`judges` rows, but nothing here ever
+  // heard about it short of a full page reload. Merged into the existing
+  // arrays by id below rather than replacing them outright, so it coexists
+  // fine with this panel's own optimistic updates (its own mutation lands
+  // locally first, then this fires again moments later with the same data,
+  // a harmless no-op overwrite). Both tables are already on the realtime
+  // publication — see 20250101000054_stations_judges_realtime.sql.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`stations-panel-stations-${tournamentId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tournament_stations", filter: `tournament_id=eq.${tournamentId}` },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as { id?: string }).id;
+            if (!deletedId) return;
+            setStations((prev) => prev.filter((s) => s.id !== deletedId));
+            return;
+          }
+          const row = payload.new as TournamentStation;
+          const item: StationItem = { id: row.id, name: row.name, status: row.status, currentMatchId: row.current_match_id };
+          setStations((prev) => (prev.some((s) => s.id === item.id) ? prev.map((s) => (s.id === item.id ? item : s)) : [...prev, item]));
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [tournamentId]);
+
+  // Judges only ever get added/removed here on this page (handleInviteJudge/
+  // handleRemoveJudge already keep those local) — this only needs to catch
+  // an *existing* row's own status/station_id changing elsewhere, so a
+  // realtime row with no local match is left alone rather than inserted
+  // without the display name/avatar a fresh INSERT payload doesn't carry.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`stations-panel-judges-${tournamentId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "judges", filter: `tournament_id=eq.${tournamentId}` },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as { id?: string }).id;
+            if (!deletedId) return;
+            setJudges((prev) => prev.filter((j) => j.id !== deletedId));
+            return;
+          }
+          const row = payload.new as Judge;
+          setJudges((prev) => prev.map((j) => (j.id === row.id ? { ...j, status: row.status, stationId: row.station_id } : j)));
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [tournamentId]);
+
+  // The organizer's own pick (see initialOrganizerStationId above) lives on
+  // `tournaments.organizer_station_id`, not a row in either table above —
+  // a third, narrower subscription just for that one field on this one
+  // tournament row.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`stations-panel-tournament-${tournamentId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tournaments", filter: `id=eq.${tournamentId}` },
+        (payload) => {
+          const row = payload.new as { organizer_station_id: string | null };
+          setOrganizerStationId(row.organizer_station_id);
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [tournamentId]);
 
   const matchLabel = (id: string | null) => (id ? matchOptions.find((m) => m.value === id)?.label ?? "Unknown match" : "No match assigned");
   const judgeAtStation = (stationId: string) => judges.find((j) => j.stationId === stationId) ?? null;
@@ -322,6 +417,21 @@ export function TournamentStationsPanel({
                 </div>
                 <p className="mt-2 text-xs text-on-surface/50">{matchLabel(station.currentMatchId)}</p>
 
+                {/* The organizer claimed this stadium for themself from
+                    /tournaments/[slug]/judge — no `judges` row to drag/drop
+                    or unassign here (that only ever happens from the judge
+                    console itself, same as it was set), just a read-only
+                    indicator so it isn't invisible on this page. Shown
+                    alongside an assigned judge, not instead of — nothing
+                    stops the organizer from also claiming a station a judge
+                    already has. */}
+                {organizerStationId === station.id ? (
+                  <div className="mt-3 flex items-center gap-2 border border-primary/30 bg-primary/5 px-2.5 py-1.5">
+                    <Gavel className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate text-xs text-on-surface">Organizer (You)</span>
+                  </div>
+                ) : null}
+
                 {assignedJudge ? (
                   <div
                     draggable
@@ -342,11 +452,11 @@ export function TournamentStationsPanel({
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                ) : (
+                ) : organizerStationId !== station.id ? (
                   <p className="mt-3 border border-dashed border-outline-variant/30 px-2.5 py-1.5 text-center text-[11px] text-on-surface/30">
                     Drag a judge here
                   </p>
-                )}
+                ) : null}
 
                 <div className="mt-3">
                   <Combobox

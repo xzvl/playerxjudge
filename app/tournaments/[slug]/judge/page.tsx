@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import { JudgeConsole, type JudgeMatchContext, type JudgeMatchLite } from "@/components/tournaments/judge/JudgeConsole";
+import { JudgeConsole, type JudgeMatchContext } from "@/components/tournaments/judge/JudgeConsole";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Judge, Match, TournamentGroup, TournamentParticipant, TournamentStation } from "@/lib/types/database";
@@ -69,28 +69,17 @@ export default async function TournamentJudgePage({ params }: { params: Promise<
   ]);
 
   const groups = ((groupRows as TournamentGroup[] | null) ?? []).map((g) => ({ id: g.id, label: g.label }));
-  const matches: JudgeMatchLite[] = ((matchRows as Match[] | null) ?? []).map((m) => ({
-    id: m.id,
-    round: m.round,
-    matchNumber: m.match_number,
-    groupId: m.group_id,
-    participantAId: m.participant_a_id,
-    participantBId: m.participant_b_id,
-  }));
+  const matches = (matchRows as Match[] | null) ?? [];
+  const stations = (stationRows as TournamentStation[] | null) ?? [];
 
-  // Only participants with an active (unscored) match belong in the
-  // pickers — the roster overall is much bigger than whoever's actually
-  // mid-match right now, and a completed match's players drop out here the
-  // moment the judge submits (matches above already excludes "completed").
-  const activeParticipantIds = new Set(matches.flatMap((m) => [m.participantAId, m.participantBId].filter((id): id is string => id !== null)));
-  const participants = ((participantRows as TournamentParticipant[] | null) ?? [])
-    .filter((p) => activeParticipantIds.has(p.id))
-    .map((p) => ({ id: p.id, displayName: p.team_name ?? p.name }));
-
-  const stations = ((stationRows as TournamentStation[] | null) ?? []).map((s) => ({
-    id: s.id,
-    name: s.name,
-    currentMatchId: s.current_match_id,
+  // The console keeps this live itself from here on (see JudgeConsole's own
+  // realtime subscriptions) — the full roster, not just whoever has an
+  // active match at this exact moment, so a newly generated round's
+  // pairings are pickable the instant they exist instead of only after the
+  // judge reloads the page.
+  const participants = ((participantRows as TournamentParticipant[] | null) ?? []).map((p) => ({
+    id: p.id,
+    displayName: p.team_name ?? p.name,
   }));
 
   // Whoever's running the console can claim their own station (see
@@ -101,18 +90,18 @@ export default async function TournamentJudgePage({ params }: { params: Promise<
   let initialMatch: JudgeMatchContext | null = null;
   if (currentStationId) {
     const station = stations.find((s) => s.id === currentStationId);
-    if (station?.currentMatchId) {
-      const stationMatch = matches.find((m) => m.id === station.currentMatchId);
-      if (stationMatch?.participantAId && stationMatch?.participantBId) {
+    if (station?.current_match_id) {
+      const stationMatch = matches.find((m) => m.id === station.current_match_id);
+      if (stationMatch?.participant_a_id && stationMatch?.participant_b_id) {
         initialMatch = {
           matchId: stationMatch.id,
           round: stationMatch.round,
-          matchNumber: stationMatch.matchNumber,
-          stage: stationMatch.groupId
-            ? `Group ${groups.find((g) => g.id === stationMatch.groupId)?.label ?? "?"}`
+          matchNumber: stationMatch.match_number,
+          stage: stationMatch.group_id
+            ? `Group ${groups.find((g) => g.id === stationMatch.group_id)?.label ?? "?"}`
             : "Final Stage",
-          participantAId: stationMatch.participantAId,
-          participantBId: stationMatch.participantBId,
+          participantAId: stationMatch.participant_a_id,
+          participantBId: stationMatch.participant_b_id,
         };
       }
     }
@@ -123,12 +112,12 @@ export default async function TournamentJudgePage({ params }: { params: Promise<
       slug={slug}
       tournamentId={tournament.id}
       tournamentTitle={tournament.title}
-      stations={stations}
+      initialStations={stations}
       initialStationId={currentStationId}
       judgeName={profile?.display_name ?? user.email?.split("@")[0] ?? "Judge"}
       judgeUsername={profile?.username ?? ""}
       participants={participants}
-      matches={matches}
+      initialMatches={matches}
       groups={groups}
       initialMatch={initialMatch}
     />

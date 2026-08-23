@@ -89,6 +89,12 @@ export default async function StationsPage({ params }: { params: Promise<{ slug:
           matchOptions={matchOptions}
           judges={judges}
           availableJudges={availableJudges}
+          // Whichever stadium the organizer has claimed for themself from
+          // /tournaments/[slug]/judge (setOwnStation) — they have no
+          // `judges` row to carry that on (see setOwnStation's own doc
+          // comment), so without this the panel had nowhere to show it at
+          // all, live-updated or not.
+          initialOrganizerStationId={tournament.organizer_station_id}
         />
       </div>
     </div>

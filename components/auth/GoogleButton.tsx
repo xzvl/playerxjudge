@@ -1,9 +1,12 @@
 import { signInWithGoogle } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 
-export function GoogleButton() {
+// `redirectTo` — see LoginForm — is bound onto the server action here
+// (`.bind`) rather than passed as a hidden input: the action itself has no
+// request URL of its own to read it from once submitted.
+export function GoogleButton({ redirectTo }: { redirectTo?: string } = {}) {
   return (
-    <form action={signInWithGoogle}>
+    <form action={signInWithGoogle.bind(null, redirectTo)}>
       <Button type="submit" variant="outline" size="lg" className="w-full gap-2" tooltip="Continue with your Google account">
         <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
           <path

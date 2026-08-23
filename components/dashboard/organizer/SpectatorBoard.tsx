@@ -6,16 +6,20 @@ import { Clock, Gavel, Maximize2, Minimize2, Radio, RadioTower } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
 import { useRealtimeRows } from "@/lib/hooks/use-realtime-rows";
+import { finalStageRoundLabels } from "@/lib/final-stage-placeholder";
 import { cn } from "@/lib/utils";
-import type { Judge, Match, TournamentGroup, TournamentStation } from "@/lib/types/database";
+import type { Bracket, Judge, Match, TournamentGroup, TournamentStation } from "@/lib/types/database";
 
-// Same three-bucket stage simplification as the judge Match History page
-// and the player view (no single stored human label for a placement
-// bracket — see Bracket's `structure`).
-function stageLabel(m: Match, groupLabelById: Map<string, string>): string {
-  if (m.group_id) return `Group ${groupLabelById.get(m.group_id) ?? "—"}`;
-  if (m.bracket_id) return "Placement Bracket";
-  return "Final Stage";
+// A group match gets "Group A · Round N" (Swiss rounds have no special
+// names); a final-stage match keeps the same "Final Stage · " lead-in but
+// with its real bracket name after it — "Final Stage · Quarterfinals",
+// "Final Stage · Grand Final", "Final Stage · 3rd Place Match", ... (see
+// finalStageRoundLabels) — instead of just "Round N". Falls back to plain
+// "Round N" only for the sliver before round 1 exists yet to size the
+// bracket from.
+function matchMeta(m: Match, groupLabelById: Map<string, string>, finalLabels: Map<string, string>): string {
+  if (m.group_id) return `Group ${groupLabelById.get(m.group_id) ?? "—"} · Round ${m.round}`;
+  return `Final Stage · ${finalLabels.get(m.id) ?? `Round ${m.round}`}`;
 }
 
 // Reads the running score straight off `match.score` — the judge console
@@ -33,7 +37,7 @@ function currentScoreOf(match: Match): { a: number; b: number } | null {
 
 function MatchCard({
   match,
-  stage,
+  meta,
   nameOf,
   live,
   score,
@@ -42,7 +46,10 @@ function MatchCard({
   judgePlaying,
 }: {
   match: Match;
-  stage: string;
+  // Full header line — "Group A · Round 3", "Quarterfinals", "3rd Place
+  // Match", ... — see matchMeta above. Already includes the round number
+  // where that's meaningful, so nothing else appends one.
+  meta: string;
   nameOf: (id: string | null) => string;
   live: boolean;
   // Only ever set for a "Playing Now" card — the running score straight off
@@ -72,9 +79,7 @@ function MatchCard({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="label-mono text-on-surface/40">
-          {stage} · Round {match.round}
-        </span>
+        <span className="label-mono text-on-surface/40">{meta}</span>
         {live ? (
           <span className="flex shrink-0 items-center gap-1.5 text-xs font-bold text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-hidden="true" /> LIVE
@@ -139,6 +144,7 @@ export function SpectatorBoard({
   participantNames,
   initialStations,
   initialJudges,
+  initialBrackets,
   judgeNameByJudgeId,
   judgePlayerParticipantIds,
 }: {
@@ -149,6 +155,11 @@ export function SpectatorBoard({
   participantNames: Record<string, string>;
   initialStations: TournamentStation[];
   initialJudges: Judge[];
+  // Placement brackets ("3rd Place Match", ...) — new ones get created
+  // mid-final-stage as later rounds unlock them (see autoAdvanceFinalStage),
+  // so this stays live the same way stations/judges do, not just a
+  // once-at-load snapshot.
+  initialBrackets: Bracket[];
   // judge_id -> display name — static (a judge's own name essentially never
   // changes mid-tournament), unlike stations/judges below which need to stay
   // live for their station_id/current_match_id assignments.
@@ -167,6 +178,14 @@ export function SpectatorBoard({
 
   const [judges, setJudges] = useState<Judge[]>(initialJudges);
   useRealtimeRows<Judge>("judges", tournamentId, setJudges);
+
+  const [brackets, setBrackets] = useState<Bracket[]>(initialBrackets);
+  useRealtimeRows<Bracket>("brackets", tournamentId, setBrackets);
+  const bracketStructureById = useMemo(
+    () => new Map(brackets.map((b) => [b.id, { basePlace: b.structure.basePlace, poolSize: b.structure.poolSize }])),
+    [brackets]
+  );
+  const finalLabels = useMemo(() => finalStageRoundLabels(matches, bracketStructureById), [matches, bracketStructureById]);
 
   const [fullscreen, setFullscreen] = useState(false);
   useEffect(() => {
@@ -258,7 +277,7 @@ export function SpectatorBoard({
                 <MatchCard
                   key={m.id}
                   match={m}
-                  stage={stageLabel(m, groupLabelById)}
+                  meta={matchMeta(m, groupLabelById, finalLabels)}
                   nameOf={nameOf}
                   live
                   score={currentScoreOf(m)}
@@ -284,7 +303,7 @@ export function SpectatorBoard({
                 <MatchCard
                   key={m.id}
                   match={m}
-                  stage={stageLabel(m, groupLabelById)}
+                  meta={matchMeta(m, groupLabelById, finalLabels)}
                   nameOf={nameOf}
                   live={false}
                   judgePlaying={hasJudgePlaying(m)}

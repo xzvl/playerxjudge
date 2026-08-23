@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import { getJudgeParticipantIds } from "@/lib/tournaments/judge-participant-highlight";
-import type { Judge, Match, TournamentGroup, TournamentStation } from "@/lib/types/database";
+import type { Bracket, Judge, Match, TournamentGroup, TournamentStation } from "@/lib/types/database";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -21,7 +21,7 @@ export default async function TournamentSpectatorPage({ params }: { params: Prom
   const tournament = await getManagedTournament(user.id, slug);
 
   const supabase = await createClient();
-  const [{ data: matches }, { data: groups }, { data: participants }, { data: stations }, { data: judgeRows }, highlightParticipantIds] =
+  const [{ data: matches }, { data: groups }, { data: participants }, { data: stations }, { data: judgeRows }, { data: brackets }, highlightParticipantIds] =
     await Promise.all([
       supabase.from("matches").select("*").eq("tournament_id", tournament.id).order("round").order("match_number"),
       supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
@@ -33,6 +33,9 @@ export default async function TournamentSpectatorPage({ params }: { params: Prom
       // own realtime subscription (a judge's display name essentially never
       // changes mid-tournament, so this snapshot doesn't need to be live).
       supabase.from("judges").select("*, profiles(display_name)").eq("tournament_id", tournament.id),
+      // Placement brackets ("3rd Place Match", ...) — see
+      // finalStageRoundLabels/SpectatorBoard's own bracket-name cards.
+      supabase.from("brackets").select("*").eq("tournament_id", tournament.id),
       // Participants who are also an approved judge on this tournament —
       // same highlight every other workspace/player view already gives a
       // player/judge dual role (see getJudgeParticipantIds).
@@ -75,6 +78,7 @@ export default async function TournamentSpectatorPage({ params }: { params: Prom
       participantNames={participantNames}
       initialStations={(stations as TournamentStation[] | null) ?? []}
       initialJudges={initialJudges}
+      initialBrackets={(brackets as Bracket[] | null) ?? []}
       judgeNameByJudgeId={judgeNameByJudgeId}
       judgePlayerParticipantIds={[...highlightParticipantIds]}
     />

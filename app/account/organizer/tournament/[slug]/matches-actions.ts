@@ -7,7 +7,7 @@ import { getCurrentUser, isCurrentUserStaff } from "@/lib/supabase/get-user";
 import { computeGroupStandings, generateInitialPairings, generateNextRoundPairings } from "@/lib/swiss";
 import { buildPlacementSections, buildRound1Pairings, qualifiedSlots } from "@/lib/final-stage-placeholder";
 import { logTournamentEvent } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
-import type { Bracket, Match, MatchBattle, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import type { Bracket, Match, MatchBattle, MatchScore, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
 import type { RoleActionState } from "@/lib/validations/roles";
 
 function groupStagePath(slug: string) {
@@ -501,6 +501,37 @@ export async function submitJudgedMatchResult(
 
   const advanced = await autoAdvanceFinalStage(match.tournament_id, slug);
   return { status: "success", match, advancedMatches: advanced.matches, advancedBrackets: advanced.brackets };
+}
+
+// Patches just the screenshot URL onto an already-completed match's score
+// JSON — called after submitJudgedMatchResult has already returned (see
+// JudgeConsole's handleBothConfirmed). The proof-of-result screenshot
+// (html2canvas rendering the whole console, then uploading it) is by far
+// the slowest part of judging a result; both players used to sit waiting
+// on that render+upload before their actual score ever reached the
+// database, since the old flow captured and uploaded it *before* calling
+// submitJudgedMatchResult. It's now a small follow-up write neither
+// player's UI blocks on — best-effort, same as the screenshot always was:
+// a failure here never touches the score/winner/battles already saved.
+export async function attachMatchScreenshot(matchId: string, slug: string, screenshotUrl: string): Promise<RoleActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase.from("matches").select("score").eq("id", matchId).maybeSingle();
+  if (fetchError) return { status: "error", message: fetchError.message };
+  if (!existing) return { status: "error", message: "Match not found." };
+
+  const score = (existing.score && typeof existing.score === "object" ? existing.score : {}) as Record<string, unknown>;
+  const { error } = await supabase
+    .from("matches")
+    .update({ score: { ...score, screenshotUrl } as MatchScore })
+    .eq("id", matchId);
+  if (error) return { status: "error", message: error.message };
+
+  revalidatePath(groupStagePath(slug), "layout");
+  revalidatePath(judgeViewPath(slug));
+  return { status: "success" };
 }
 
 // Best-effort sweep run after every final-stage result: pairs up the main

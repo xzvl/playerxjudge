@@ -81,6 +81,7 @@ export default async function BackendStationsPage({ params }: { params: Promise<
           matchOptions={matchOptions}
           judges={judges}
           availableJudges={availableJudges}
+          initialOrganizerStationId={tournament.organizer_station_id}
         />
       </div>
     </div>
