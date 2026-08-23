@@ -18,11 +18,25 @@ function stageLabel(m: Match, groupLabelById: Map<string, string>): string {
   return "Final Stage";
 }
 
+// Reads the running score straight off `match.score` — the judge console
+// writes {a, b} there live as each box is scored (see JudgeConsole's
+// updateMatchScoreProgress effect), not just once at completion, so the
+// realtime `matches` subscription this board already holds is enough; no
+// separate live-score channel needed. `{}` covers both "hasn't started
+// scoring yet" and the still-possible sliver where a completed match's
+// fuller score briefly shows here before its "ongoing" -> "completed"
+// update flips it out of the Playing Now list.
+function currentScoreOf(match: Match): { a: number; b: number } | null {
+  const score = match.score;
+  return "a" in score && "b" in score ? { a: score.a, b: score.b } : null;
+}
+
 function MatchCard({
   match,
   stage,
   nameOf,
   live,
+  score,
   stationName,
   judgeName,
   judgePlaying,
@@ -31,6 +45,10 @@ function MatchCard({
   stage: string;
   nameOf: (id: string | null) => string;
   live: boolean;
+  // Only ever set for a "Playing Now" card — the running score straight off
+  // `match.score` (see currentScoreOf), null until the judge scores the
+  // first box.
+  score?: { a: number; b: number } | null;
   // Only ever set for a "Playing Now" card — an upcoming match hasn't been
   // called to a station or picked up by a judge yet.
   stationName?: string | null;
@@ -71,7 +89,13 @@ function MatchCard({
         <p className="min-w-0 flex-1 truncate text-lg font-bold text-on-surface" title={nameOf(match.participant_a_id)}>
           {nameOf(match.participant_a_id)}
         </p>
-        <span className="shrink-0 text-sm text-on-surface/30">vs</span>
+        {live && score ? (
+          <span className="shrink-0 font-mono text-2xl font-bold tabular-nums text-primary">
+            {score.a} – {score.b}
+          </span>
+        ) : (
+          <span className="shrink-0 text-sm text-on-surface/30">vs</span>
+        )}
         <p className="min-w-0 flex-1 truncate text-right text-lg font-bold text-on-surface" title={nameOf(match.participant_b_id)}>
           {nameOf(match.participant_b_id)}
         </p>
@@ -237,6 +261,7 @@ export function SpectatorBoard({
                   stage={stageLabel(m, groupLabelById)}
                   nameOf={nameOf}
                   live
+                  score={currentScoreOf(m)}
                   stationName={matchInfoById.get(m.id)?.stationName}
                   judgeName={matchInfoById.get(m.id)?.judgeName}
                 />

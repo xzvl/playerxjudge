@@ -13,6 +13,7 @@ import {
   EyeOff,
   Facebook,
   Pencil,
+  Plus,
   Search,
   Trash2,
   UserPlus,
@@ -26,6 +27,7 @@ import { formatDate, formatTime } from "@/lib/format";
 import type { PreregistrationPaymentStatus, TournamentPreregistration } from "@/lib/types/database";
 import {
   addPreRegisteredParticipant,
+  createPreRegistration,
   removePreRegistration,
   updatePreRegistration,
   updatePreRegistrationPaymentStatus,
@@ -97,6 +99,50 @@ function EditPreRegistrationForm({
   );
 }
 
+// The organizer's own manual entry — same three fields as the guest-facing
+// PreRegisterDialog (components/tournaments/PreRegisterDialog.tsx), just
+// without its advance-payment section: an organizer typing someone's
+// details in by hand has no reason to walk through that flow, they can
+// just set Payment Status from the list afterward like any other entry.
+function AddPreRegistrationForm({ pending, onSubmit }: { pending: boolean; onSubmit: (input: { fullName: string; bladerName: string; facebookName: string }) => void }) {
+  const [fullName, setFullName] = useState("");
+  const [bladerName, setBladerName] = useState("");
+  const [facebookName, setFacebookName] = useState("");
+
+  return (
+    <div className="space-y-4 px-6 pb-6">
+      <div className="space-y-2">
+        <label className="text-sm font-bold text-on-surface" htmlFor="add-prereg-full-name">
+          Full Name
+        </label>
+        <Input id="add-prereg-full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-bold text-on-surface" htmlFor="add-prereg-blader-name">
+          Blader Name
+        </label>
+        <Input id="add-prereg-blader-name" value={bladerName} onChange={(e) => setBladerName(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-bold text-on-surface" htmlFor="add-prereg-facebook-name">
+          Facebook Name
+        </label>
+        <Input id="add-prereg-facebook-name" value={facebookName} onChange={(e) => setFacebookName(e.target.value)} />
+      </div>
+      <DialogFooter className="p-0 pt-2">
+        <Button
+          type="button"
+          tooltip="Add this pre-registration"
+          disabled={pending || !fullName.trim() || !bladerName.trim() || !facebookName.trim()}
+          onClick={() => onSubmit({ fullName: fullName.trim(), bladerName: bladerName.trim(), facebookName: facebookName.trim() })}
+        >
+          Add
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
 export function TournamentPreRegisterWorkspace({
   tournamentId,
   slug,
@@ -115,6 +161,7 @@ export function TournamentPreRegisterWorkspace({
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [editing, setEditing] = useState<TournamentPreregistration | null>(null);
   const [removing, setRemoving] = useState<TournamentPreregistration | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const confirmedCount = entries.filter((e) => e.payment_status === "confirmed").length;
 
@@ -137,6 +184,22 @@ export function TournamentPreRegisterWorkspace({
         return;
       }
       setAddedIds((prev) => new Set(prev).add(entry.id));
+    });
+  }
+
+  function handleCreate(input: { fullName: string; bladerName: string; facebookName: string }) {
+    setError(null);
+    startTransition(async () => {
+      const result = await createPreRegistration(tournamentId, slug, input);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      if (result.preregistration) {
+        const created = result.preregistration;
+        setEntries((prev) => [created, ...prev]);
+      }
+      setAdding(false);
     });
   }
 
@@ -235,17 +298,23 @@ export function TournamentPreRegisterWorkspace({
             className="pl-9"
           />
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5"
-          tooltip="Copy every blader name to your clipboard, one per line — paste it into Bulk Add on Participants"
-          disabled={entries.length === 0}
-          onClick={handleCopyAll}
-        >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? "Copied" : "Copy All"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            tooltip="Copy every blader name to your clipboard, one per line — paste it into Bulk Add on Participants"
+            disabled={entries.length === 0}
+            onClick={handleCopyAll}
+          >
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? "Copied" : "Copy All"}
+          </Button>
+          <Button size="sm" className="gap-1.5" tooltip="Manually add a pre-registration" onClick={() => setAdding(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Add New
+          </Button>
+        </div>
       </div>
 
       {visible.length > 0 ? (
@@ -489,6 +558,16 @@ export function TournamentPreRegisterWorkspace({
               <img src={screenshotUrl} alt="Payment screenshot" className="w-full border border-outline-variant/30 object-contain" />
             </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={adding} onOpenChange={setAdding}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Pre-Registration</DialogTitle>
+            <DialogDescription>For a walk-in, or anyone else you took details from yourself.</DialogDescription>
+          </DialogHeader>
+          <AddPreRegistrationForm pending={pending} onSubmit={handleCreate} />
         </DialogContent>
       </Dialog>
 

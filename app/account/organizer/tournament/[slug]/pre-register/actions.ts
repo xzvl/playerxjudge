@@ -59,6 +59,42 @@ export async function addPreRegisteredParticipant(
   return { status: "success", participant: added };
 }
 
+// Organizer's own manual entry — for a walk-in or someone the organizer
+// took details from off-platform, without them ever touching the public
+// Pre-register form themselves. Same required fields as that guest form
+// (submitPreRegistration, app/tournaments/[slug]/actions.ts), minus the
+// advance-payment flow — payment_status starts at its default "pending" and
+// gets set from the list afterward, same as any other entry. No captured
+// `username` (there's no signed-in submitter session here to pull one
+// from), so this entry never auto-links on promotion — same as any guest
+// submission that wasn't signed in.
+export async function createPreRegistration(
+  tournamentId: string,
+  slug: string,
+  input: { fullName: string; bladerName: string; facebookName: string }
+): Promise<RoleActionState & { preregistration?: TournamentPreregistration }> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const fullName = input.fullName.trim();
+  const bladerName = input.bladerName.trim();
+  const facebookName = input.facebookName.trim();
+  if (!fullName || !bladerName || !facebookName) {
+    return { status: "error", message: "Full Name, Blader Name, and Facebook Name are all required." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tournament_preregistrations")
+    .insert({ tournament_id: tournamentId, full_name: fullName, blader_name: bladerName, facebook_name: facebookName })
+    .select()
+    .single();
+
+  if (error) return { status: "error", message: error.message };
+  revalidatePath(preRegisterPath(slug));
+  return { status: "success", preregistration: data as TournamentPreregistration };
+}
+
 export async function updatePreRegistration(
   preregistrationId: string,
   slug: string,

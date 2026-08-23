@@ -20,7 +20,7 @@ import {
 import { ConfirmResultDialog } from "@/components/tournaments/judge/ConfirmResultDialog";
 import { JudgeViewResultDialog } from "@/components/tournaments/judge/JudgeViewResultDialog";
 import { JudgeStadiumPromptDialog } from "@/components/tournaments/judge/JudgeStadiumPromptDialog";
-import { startMatch, submitJudgedMatchResult } from "@/app/account/organizer/tournament/[slug]/matches-actions";
+import { startMatch, submitJudgedMatchResult, updateMatchScoreProgress } from "@/app/account/organizer/tournament/[slug]/matches-actions";
 import { assignStationMatch } from "@/app/account/organizer/tournament/[slug]/workspace-panels-actions";
 import {
   getParticipantComboSlots,
@@ -382,6 +382,31 @@ export function JudgeConsole({
 
   const score1 = ownScore(player1) + committedPenalties(player2);
   const score2 = ownScore(player2) + committedPenalties(player1);
+
+  // Keeps the match row's own `score` in sync with the live tally while
+  // it's being scored — not just at Submit Result — so the Spectator
+  // Board's "Playing Now" cards (which just read `matches` off the same
+  // realtime subscription every other live view already uses) can show a
+  // running score instead of only a final one. Harmless if it fires after
+  // the match has already been submitted/cleared: updateMatchScoreProgress
+  // only ever writes to a still-"ongoing" row, so a stray call for a
+  // match that just got marked "completed" is a no-op.
+  //
+  // score1/score2 are the *left/right* panels, not participant A/B — Switch
+  // swaps which participant sits in which panel without touching
+  // matchContext's own participantAId/participantBId, so score1 doesn't
+  // reliably mean "A's score" once a match's been switched. Remapped here
+  // by participantId, same as handleBothConfirmed's aState/bState do at
+  // submit time, so `score.a` in the DB always lines up with
+  // participant_a_id regardless of which side it's currently displayed on.
+  useEffect(() => {
+    if (!matchContext) return;
+    const player1IsA = player1.participantId === matchContext.participantAId;
+    const scoreA = player1IsA ? score1 : score2;
+    const scoreB = player1IsA ? score2 : score1;
+    void updateMatchScoreProgress(matchContext.matchId, scoreA, scoreB);
+  }, [matchContext, player1.participantId, score1, score2]);
+
   const name1 = participants.find((p) => p.id === player1.participantId)?.displayName ?? "Player 1";
   const name2 = participants.find((p) => p.id === player2.participantId)?.displayName ?? "Player 2";
   const combo1 = comboForNextBattle(player1, player2);

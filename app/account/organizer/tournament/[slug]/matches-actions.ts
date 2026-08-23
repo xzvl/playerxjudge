@@ -156,6 +156,30 @@ export async function startMatch(matchId: string, slug: string): Promise<RoleAct
   return { status: "success" };
 }
 
+// Fires on every box scored/undone for a match still in progress (see
+// JudgeConsole's score-sync effect) so the running tally is visible
+// wherever `matches` is read live — currently just the Spectator Board's
+// "Playing Now" cards (useRealtimeMatches picks the postgres_changes event
+// up automatically, no extra plumbing needed there). Deliberately just the
+// two numbers, no `battles`/`penalties*`/etc. — those only get written once,
+// atomically, by submitJudgedMatchResult when the match actually finishes;
+// this only ever runs while it's still "ongoing", so there's nothing else
+// on `score` yet to preserve. No revalidatePath: this can fire many times a
+// minute while a match is being scored, and nothing server-rendered needs
+// to reflect it — only the client-side realtime subscription does.
+export async function updateMatchScoreProgress(matchId: string, scoreA: number, scoreB: number): Promise<RoleActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+  if (!Number.isInteger(scoreA) || !Number.isInteger(scoreB) || scoreA < 0 || scoreB < 0) {
+    return { status: "error", message: "Scores must be zero or a positive whole number." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("matches").update({ score: { a: scoreA, b: scoreB } }).eq("id", matchId).eq("status", "ongoing");
+  if (error) return { status: "error", message: error.message };
+  return { status: "success" };
+}
+
 // Reverts a match that was started by mistake (or needs to be re-called to
 // a different station/judge) back to "scheduled" — the inverse of
 // startMatch. Only meaningful for a match that's actually "ongoing"; the
