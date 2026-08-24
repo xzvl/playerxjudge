@@ -776,6 +776,10 @@ export interface Database {
       // — resolves a username to its account email so /login can accept
       // either (see signInWithPassword in app/(auth)/actions.ts).
       email_for_username: { Args: { p_username: string }; Returns: string | null };
+      // Mirrors supabase/migrations/20250101000057_tournament_view_count_increment.sql
+      // — bumps tournaments.view_count by 1, bypassing RLS so anonymous
+      // visitors to the player view can count too (see getPlayerViewData).
+      increment_tournament_view_count: { Args: { target_tournament_id: string }; Returns: void };
     };
     Enums: {
       app_role: AppRole;

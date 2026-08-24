@@ -23,6 +23,9 @@ export function TournamentCard({
   // not just whether the scheduled start time has passed — see
   // MockTournament.stageStarted.
   const hasStarted = tournament.stageStarted ?? false;
+  const completed = tournament.liveStatus === "completed";
+  const actionLabel = completed ? "View Result" : "Go Shoot!";
+  const actionTooltip = completed ? "See the final results" : "Watch this tournament live";
 
   return (
     <article className="group flex flex-col border border-outline-variant/25 bg-surface-container-low transition-all hover:border-primary/40">
@@ -77,8 +80,8 @@ export function TournamentCard({
             <Link href={`/tournaments/${tournament.slug}`}>Full Details</Link>
           </Button>
           {hasStarted ? (
-            <Button asChild size="sm" className="flex-1" tooltip="Watch this tournament live">
-              <Link href={`/tournaments/${tournament.slug}/player`}>Go Shoot!</Link>
+            <Button asChild size="sm" className="flex-1" tooltip={actionTooltip}>
+              <Link href={`/tournaments/${tournament.slug}/player`}>{actionLabel}</Link>
             </Button>
           ) : (
             <Button

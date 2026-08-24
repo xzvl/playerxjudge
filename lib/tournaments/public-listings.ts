@@ -18,7 +18,7 @@ import type { Tournament } from "@/lib/types/database";
 const THUMBNAIL_PALETTE = ["#ed0d11", "#603e39", "#454747", "#ffb4ab"];
 
 // See `isUpcoming` in mapRow below.
-const UPCOMING_GRACE_PERIOD_MS = 3 * 24 * 60 * 60 * 1000;
+const UPCOMING_GRACE_PERIOD_MS = 5 * 24 * 60 * 60 * 1000;
 
 function thumbnailColorFor(id: string): string {
   let hash = 0;
@@ -83,12 +83,12 @@ function mapRow(
     prizePool: t.prize_pool,
     championName: t.champion_name,
     viewCount: t.view_count,
-    // Keeps a tournament on the "Upcoming" tab for a 3-day grace window
-    // after its scheduled start — not just up until `starts_at` — since a
-    // live/ongoing event shouldn't vanish into "Recent" the moment its
-    // start time ticks over. It still drops out immediately once the
-    // organizer marks it completed.
-    isUpcoming: t.status !== "completed" && new Date(t.starts_at).getTime() + UPCOMING_GRACE_PERIOD_MS >= Date.now(),
+    // Keeps a tournament on the "Upcoming" tab for a 5-day grace window
+    // after its scheduled start — not just up until `starts_at`, and not
+    // just while it's still running — since a just-finished event
+    // shouldn't vanish into "Recent" the moment the organizer marks it
+    // completed. It only drops off once the window itself elapses.
+    isUpcoming: new Date(t.starts_at).getTime() + UPCOMING_GRACE_PERIOD_MS >= Date.now(),
     participants: [...participants].sort((a, b) => a.seed - b.seed),
     judges: [],
     sponsors: [],

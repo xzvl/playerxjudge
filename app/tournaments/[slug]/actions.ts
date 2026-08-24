@@ -6,6 +6,25 @@ import { MAX_THUMBNAIL_UPLOAD_BYTES } from "@/lib/validations/tournament-wizard"
 import type { RoleActionState } from "@/lib/validations/roles";
 import type { Profile } from "@/lib/types/database";
 
+// Bumps a tournament's view_count by one — called wherever a visitor
+// actually looks at the tournament: from TournamentDetailsModal (the
+// "Quick Look" popup, opened from every listing surface — /tournaments,
+// the homepage, calendar, search, and the player dashboard panels) the
+// moment it opens, and directly from the /tournaments/[slug] full-details
+// page (TournamentDetailsPage) on every visit. Goes through the
+// security-definer RPC (see
+// 20250101000057_tournament_view_count_increment.sql) so a signed-out
+// visitor — who has no RLS update rights on `tournaments` — still counts.
+// Best-effort: a failed count bump shouldn't surface as a client error, or
+// fail the page for a server-rendered visit.
+export async function recordTournamentView(tournamentId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.rpc("increment_tournament_view_count", { target_tournament_id: tournamentId }).then(
+    () => {},
+    () => {}
+  );
+}
+
 // Prefills the Pre-register popup (PreRegisterDialog) for a signed-in
 // visitor from their own profile, so they don't retype what's already on
 // file. Returns null for a guest with no session — the dialog just leaves

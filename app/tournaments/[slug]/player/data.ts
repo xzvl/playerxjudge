@@ -45,6 +45,15 @@ export const getPlayerViewData = cache(async (slug: string): Promise<PlayerViewD
     supabase.from("tournament_participants").select("*").eq("tournament_id", row.id).order("seed"),
     supabase.from("matches").select("*").eq("tournament_id", row.id).order("round").order("match_number"),
     supabase.from("brackets").select("*").eq("tournament_id", row.id),
+    // Every visit to this page — spectator or participant, signed in or
+    // not — counts as a view. Fire via the security-definer RPC (see
+    // 20250101000057_tournament_view_count_increment.sql) since anonymous
+    // visitors have no RLS update rights on `tournaments` themselves.
+    // Best-effort: a failed count bump shouldn't fail the page.
+    supabase.rpc("increment_tournament_view_count", { target_tournament_id: row.id }).then(
+      () => {},
+      () => {}
+    ),
   ]);
 
   return {

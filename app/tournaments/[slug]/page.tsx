@@ -10,6 +10,7 @@ import { TournamentThumbnail } from "@/components/tournaments/TournamentThumbnai
 import { CountdownTimer } from "@/components/tournaments/CountdownTimer";
 import { VenueMapSection } from "@/components/tournaments/VenueMapSection";
 import { TournamentPageActionButton } from "@/components/tournaments/TournamentPageActionButton";
+import { recordTournamentView } from "@/app/tournaments/[slug]/actions";
 import { formatDate, formatTime } from "@/lib/format";
 import { getPublicTournamentBySlug } from "@/lib/tournaments/public-listings";
 import { getCurrentUser } from "@/lib/supabase/get-user";
@@ -60,6 +61,13 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
   const { slug } = await params;
   const tournament = await getPublicTournamentBySlug(slug);
   if (!tournament) notFound();
+
+  // Only counted here, not in generateMetadata above — Next.js runs both
+  // once per request, and both call getPublicTournamentBySlug, so counting
+  // in the page body alone keeps this at one view per visit. See
+  // recordTournamentView's doc comment for why this page bumps the count
+  // itself instead of going through the same helper as the popup.
+  await recordTournamentView(tournament.id);
 
   const canJudge = await canJudgeTournament(tournament.id);
 

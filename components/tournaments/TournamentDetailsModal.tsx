@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarClock, Clock, MapPin, Trophy, User } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { BattleTypeBadge, TournamentTypeBadge } from "@/components/tournaments/b
 import { TournamentThumbnail } from "@/components/tournaments/TournamentThumbnail";
 import { CountdownTimer } from "@/components/tournaments/CountdownTimer";
 import { PreRegisterDialog } from "@/components/tournaments/PreRegisterDialog";
+import { recordTournamentView } from "@/app/tournaments/[slug]/actions";
 import { formatDate, formatTime } from "@/lib/format";
 import type { MockTournament } from "@/lib/mock/tournaments";
 
@@ -46,6 +47,20 @@ export function TournamentDetailsModal({
   useEffect(() => {
     if (tournament) setDisplayTournament(tournament);
   }, [tournament]);
+
+  // One view per popup open, not per re-render while it stays open — the
+  // ref remembers which tournament this open already counted and resets
+  // once the dialog closes, so re-opening the same tournament counts again.
+  const countedViewIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      countedViewIdRef.current = null;
+      return;
+    }
+    if (!tournament || countedViewIdRef.current === tournament.id) return;
+    countedViewIdRef.current = tournament.id;
+    void recordTournamentView(tournament.id);
+  }, [open, tournament]);
 
   if (!displayTournament) return null;
 
