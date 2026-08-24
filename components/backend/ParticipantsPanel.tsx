@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Link2, Pencil, Trash2, Unlink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { LinkedAccountCell, ParticipantLinkActions, type ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
-import { adminRemoveParticipant, adminUpdateParticipant } from "@/app/backend/participants/actions";
+import { adminLinkParticipant, adminRemoveParticipant, adminUnlinkParticipant, adminUpdateParticipant } from "@/app/backend/participants/actions";
 
 const PAGE_SIZE = 30;
 
@@ -23,8 +23,10 @@ export interface ParticipantItem {
   id: string;
   name: string;
   teamName: string | null;
+  tournamentId: string;
   tournamentTitle: string;
   seed: number;
+  link: ParticipantLinkInfo | null;
 }
 
 function EditDialog({
@@ -68,6 +70,63 @@ function EditDialog({
   );
 }
 
+// Admin's direct "link to any registered user" dialog — separate from
+// ParticipantLinkActions' Confirm/Decline, since there's no pending request
+// to review here; the admin types the account's username and the link is
+// created already-approved (see adminLinkParticipant).
+function LinkDialog({
+  item,
+  onOpenChange,
+  pending,
+  error,
+  onLink,
+}: {
+  item: ParticipantItem | null;
+  onOpenChange: (open: boolean) => void;
+  pending: boolean;
+  error: string | null;
+  onLink: (username: string) => void;
+}) {
+  const [username, setUsername] = useState("");
+
+  if (!item) return null;
+  return (
+    <Dialog
+      open={item !== null}
+      onOpenChange={(open) => {
+        if (!open) setUsername("");
+        onOpenChange(open);
+      }}
+    >
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Link to Registered User</DialogTitle>
+          <DialogDescription>
+            Link <span className="font-medium text-on-surface">{item.teamName ?? item.name}</span> to a registered
+            account by username. The link is created already-approved.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 px-6 pb-6">
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-on-surface" htmlFor="link-username">Username</label>
+            <Input id="link-username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
+          </div>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <DialogFooter className="p-6 pt-0">
+          <Button type="button" tooltip="Link this participant to the account" disabled={pending || !username.trim()} onClick={() => onLink(username.trim())}>
+            {pending ? "Linking..." : "Link Account"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Every pending player-link request platform-wide (reuses the exact
 // Confirm/Decline UI organizers already have on their own tournament's
 // roster — see ParticipantLinkControls) plus a searchable, paginated view
@@ -85,6 +144,8 @@ export function ParticipantsPanel({
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<ParticipantItem | null>(null);
   const [removing, setRemoving] = useState<ParticipantItem | null>(null);
+  const [linking, setLinking] = useState<ParticipantItem | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -123,6 +184,38 @@ export function ParticipantsPanel({
       }
       setRows((prev) => prev.filter((r) => r.id !== removing.id));
       setRemoving(null);
+    });
+  }
+
+  function handleLink(username: string) {
+    if (!linking) return;
+    setLinkError(null);
+    startTransition(async () => {
+      const result = await adminLinkParticipant(linking.id, linking.tournamentId, username);
+      if (result.status === "error") {
+        setLinkError(result.message ?? "Something went wrong.");
+        return;
+      }
+      setRows((prev) => prev.map((r) => (r.id === linking.id ? { ...r, link: result.link ?? r.link } : r)));
+      setLinking(null);
+    });
+  }
+
+  function handleUnlink(item: ParticipantItem) {
+    if (!item.link) return;
+    const linkId = item.link.id;
+    setError(null);
+    startTransition(async () => {
+      const result = await adminUnlinkParticipant(linkId);
+      if (result.status === "error") {
+        setError(result.message ?? "Something went wrong.");
+        return;
+      }
+      setRows((prev) => prev.map((r) => (r.id === item.id ? { ...r, link: null } : r)));
+      // Unlinking a still-pending request here also has to drop it from the
+      // "Pending Player Links" queue above — same underlying row, separate
+      // client-side state.
+      setLinks((prev) => prev.filter((l) => l.link.id !== linkId));
     });
   }
 
@@ -198,13 +291,14 @@ export function ParticipantsPanel({
 
         {pageRows.length > 0 ? (
           <div className="overflow-x-auto border border-outline-variant/25">
-            <table className="w-full min-w-[680px] text-left text-sm">
+            <table className="w-full min-w-[820px] text-left text-sm">
               <thead>
                 <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
                   <th className="p-4" scope="col">Name</th>
                   <th className="p-4" scope="col">Team</th>
                   <th className="p-4" scope="col">Tournament</th>
                   <th className="p-4" scope="col">Seed</th>
+                  <th className="p-4" scope="col">Linked Account</th>
                   <th className="p-4" scope="col">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -218,7 +312,36 @@ export function ParticipantsPanel({
                     <td className="p-4 text-on-surface/60">{p.tournamentTitle}</td>
                     <td className="p-4 text-on-surface/60">{p.seed}</td>
                     <td className="p-4">
+                      <LinkedAccountCell link={p.link} />
+                    </td>
+                    <td className="p-4">
                       <div className="flex gap-1">
+                        {p.link ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            tooltip="Unlink this account"
+                            aria-label={`Unlink ${p.name}`}
+                            disabled={pending}
+                            onClick={() => handleUnlink(p)}
+                          >
+                            <Unlink className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            tooltip="Link to a registered user"
+                            aria-label={`Link ${p.name} to a registered user`}
+                            disabled={pending}
+                            onClick={() => {
+                              setLinkError(null);
+                              setLinking(p);
+                            }}
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" tooltip="Edit this participant" aria-label={`Edit ${p.name}`} disabled={pending} onClick={() => setEditing(p)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -240,6 +363,14 @@ export function ParticipantsPanel({
       </section>
 
       <EditDialog item={editing} onOpenChange={(open) => !open && setEditing(null)} pending={pending} onSave={handleSave} />
+
+      <LinkDialog
+        item={linking}
+        onOpenChange={(open) => !open && setLinking(null)}
+        pending={pending}
+        error={linkError}
+        onLink={handleLink}
+      />
 
       <Dialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
         <DialogContent className="max-w-sm">
