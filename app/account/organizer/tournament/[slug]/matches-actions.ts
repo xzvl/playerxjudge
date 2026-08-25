@@ -222,7 +222,7 @@ export async function reportMatchResult(
   const supabase = await createClient();
   const { data: existing, error: fetchError } = await supabase
     .from("matches")
-    .select("participant_a_id, participant_b_id")
+    .select("participant_a_id, participant_b_id, winner_id")
     .eq("id", matchId)
     .maybeSingle();
   if (fetchError) return { status: "error", message: fetchError.message };
@@ -248,6 +248,11 @@ export async function reportMatchResult(
   revalidatePath(judgeViewPath(slug));
 
   const match = data as Match;
+  // Re-report on an already-completed match (correcting a result) can
+  // change who this match's winner/loser is after they've already been
+  // copied into a generated downstream match — keep that seat in sync (see
+  // syncDownstreamOnResultChange's own doc comment).
+  await syncDownstreamOnResultChange(supabase, match, existing.winner_id, winnerId);
   if (match.group_id !== null) return { status: "success", match };
 
   // Final-stage match — automatically pair up the next round (and any
@@ -262,10 +267,11 @@ export async function reportMatchResult(
 // back to `scheduled` with no score, winner, battles, or judge/screenshot
 // record, as if it had never been played. Round/match_number/participants/
 // group_id/bracket_id are untouched, so it stays exactly where it was and
-// can just be re-reported. Deliberately doesn't try to unwind anything
-// downstream (a final-stage winner that already advanced into a generated
-// next-round match stays there) — same gap "Edit Result" already has today
-// when it changes a completed match's winner.
+// can just be re-reported. If this match's winner (or loser) had already
+// propagated into a generated downstream match, that seat gets cleared back
+// to TBD too, the same way reportMatchResult keeps a correction in sync
+// (see syncDownstreamOnResultChange) — otherwise it'd be left showing
+// whoever the old winner was until the next result quietly overwrites it.
 export async function clearMatchResult(matchId: string, slug: string): Promise<RoleActionState & { match?: Match }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
@@ -273,7 +279,7 @@ export async function clearMatchResult(matchId: string, slug: string): Promise<R
   const supabase = await createClient();
   const { data: existing, error: fetchError } = await supabase
     .from("matches")
-    .select("round, match_number, status")
+    .select("round, match_number, status, tournament_id, bracket_id, group_id, participant_a_id, participant_b_id, winner_id")
     .eq("id", matchId)
     .maybeSingle();
   if (fetchError) return { status: "error", message: fetchError.message };
@@ -289,6 +295,7 @@ export async function clearMatchResult(matchId: string, slug: string): Promise<R
   if (error) return { status: "error", message: error.message };
 
   const match = data as Match;
+  await syncDownstreamOnResultChange(supabase, { ...existing, id: matchId }, existing.winner_id, null);
   await logTournamentEvent(match.tournament_id, "Organizer", `cleared the result for Round ${existing.round}, Match ${existing.match_number}`);
 
   revalidatePath(groupStagePath(slug), "layout");
@@ -302,16 +309,26 @@ export async function clearMatchResult(matchId: string, slug: string): Promise<R
 // Bulk version of clearMatchResult, for the Final Stage bracket's per-round
 // Clear icon (WorkspaceBracket's onClearRound / FinalStageBracketWorkspace)
 // — wipes every completed match a round has back to unplayed in one go.
-// Same "doesn't unwind downstream advancement" caveat as the single-match
-// version above. No owner filter needed (matches the rest of this file) —
-// RLS already covers organizer/judge/admin, and this is reachable from both
-// the organizer's own Final Stage page and /backend/tournaments/[slug].
+// Same downstream-seat sync as the single-match version above (see
+// syncDownstreamOnResultChange), run per match once the bulk update lands.
+// No owner filter needed (matches the rest of this file) — RLS already
+// covers organizer/judge/admin, and this is reachable from both the
+// organizer's own Final Stage page and /backend/tournaments/[slug].
 export async function clearRoundResults(matchIds: string[], slug: string): Promise<RoleActionState & { matches?: Match[] }> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "You need to be signed in." };
   if (matchIds.length === 0) return { status: "success", matches: [] };
 
   const supabase = await createClient();
+  // Snapshot each match's winner before the bulk clear wipes it — needed to
+  // tell syncDownstreamOnResultChange what to look for downstream.
+  const { data: before } = await supabase
+    .from("matches")
+    .select("id, tournament_id, bracket_id, group_id, round, match_number, participant_a_id, participant_b_id, winner_id")
+    .in("id", matchIds)
+    .eq("status", "completed");
+  const previousById = new Map(((before as Match[] | null) ?? []).map((m) => [m.id, m]));
+
   const { data, error } = await supabase
     .from("matches")
     .update({ score: {}, winner_id: null, status: "scheduled", completed_at: null })
@@ -321,6 +338,10 @@ export async function clearRoundResults(matchIds: string[], slug: string): Promi
   if (error) return { status: "error", message: error.message };
 
   const matches = (data as Match[] | null) ?? [];
+  for (const m of matches) {
+    const prev = previousById.get(m.id);
+    if (prev) await syncDownstreamOnResultChange(supabase, prev, prev.winner_id, null);
+  }
   if (matches.length > 0) {
     const staff = await isCurrentUserStaff();
     await logTournamentEvent(matches[0].tournament_id, staff ? "Admin" : "Organizer", `cleared all results for Round ${matches[0].round}`);
@@ -449,7 +470,7 @@ export async function submitJudgedMatchResult(
   const supabase = await createClient();
   const { data: existing, error: fetchError } = await supabase
     .from("matches")
-    .select("participant_a_id, participant_b_id")
+    .select("participant_a_id, participant_b_id, winner_id")
     .eq("id", matchId)
     .maybeSingle();
   if (fetchError) return { status: "error", message: fetchError.message };
@@ -497,6 +518,10 @@ export async function submitJudgedMatchResult(
   revalidatePath(judgeViewPath(slug));
   revalidatePath(`/account/organizer/tournament/${slug}/log`);
 
+  // Same downstream-seat sync reportMatchResult does — a judge correcting an
+  // already-completed match's result can change who was already copied into
+  // a generated next-round match (see syncDownstreamOnResultChange).
+  await syncDownstreamOnResultChange(supabase, match, existing.winner_id, winnerId);
   if (match.group_id !== null) return { status: "success", match };
 
   const advanced = await autoAdvanceFinalStage(match.tournament_id, slug);
@@ -788,21 +813,128 @@ interface ReadyPairing {
 // per-position, not gated on the whole feeder round finishing: position i
 // only needs its own two feeders (match numbers 2i+1 and 2i+2) done, so an
 // early match can be started while the rest of its round is still playing.
+// THE BUG (see the comment inside for the fix): a feeder round's rows don't
+// all necessarily exist yet when this runs — a round's later positions get
+// their own row created only once THEIR two feeders finish (this same
+// function, called on the round before), so it's entirely normal for
+// match_number 3's row to exist and be complete while match_number 2's row
+// hasn't been created at all yet. The previous version sorted whatever rows
+// DID exist and paired them up by their position in that array — so with
+// match 2 missing, match 3 silently slid into "the second slot" and got
+// paired with match 1's winner instead of match 2's, seating the wrong
+// player the moment match 1 and match 3 both happened to finish before
+// match 2 did. Now pairs strictly by each feeder's own `match_number` (2i+1
+// with 2i+2, into position i+1) via a lookup, so a missing match_number
+// just reads as "not ready" (`undefined`, skipped) instead of quietly
+// shifting every match number after it out of place.
 function computeReadyPairings(feederMatches: Match[], existingNumbers: Set<number>, mode: FeederMode): ReadyPairing[] {
-  const sorted = [...feederMatches].sort((a, b) => a.match_number - b.match_number);
+  const byMatchNumber = new Map(feederMatches.map((m) => [m.match_number, m]));
+  const maxMatchNumber = feederMatches.reduce((max, m) => Math.max(max, m.match_number), 0);
   const pairings: ReadyPairing[] = [];
 
-  for (let i = 0; i * 2 < sorted.length; i++) {
+  for (let i = 0; i * 2 < maxMatchNumber; i++) {
     const matchNumber = i + 1;
     if (existingNumbers.has(matchNumber)) continue;
-    const a = resolveParticipant(sorted[i * 2], mode);
-    const b = resolveParticipant(sorted[i * 2 + 1], mode);
+    const a = resolveParticipant(byMatchNumber.get(i * 2 + 1), mode);
+    const b = resolveParticipant(byMatchNumber.get(i * 2 + 2), mode);
     if (a === undefined || b === undefined) continue;
     if (a === null) continue; // nothing to seat here — the seeding keeps byes apart, but stay safe
     pairings.push({ matchNumber, aId: a, bId: b });
   }
 
   return pairings;
+}
+
+// A generated next-round (or placement-bracket) match's participant_a_id/
+// participant_b_id are a ONE-TIME SNAPSHOT taken by generateNextFinalRound/
+// generatePlacementRound1 at the moment they're generated — not a live
+// reference back to the feeder match. Correcting a final-stage result
+// AFTER its winner (or, for a bracket that breaks ties with placement
+// matches, its loser) already propagated downstream used to leave that
+// downstream match permanently seated with the wrong player: Spectator Mode
+// reads `matches.participant_a_id`/`participant_b_id` straight off the row
+// (so it kept showing the stale seat), while the Final Stage bracket
+// recomputes its display from the live chain of `winner_id`s every render
+// (so it already showed the corrected one) — the two disagreeing about who
+// was actually in a match was the visible symptom of this gap.
+//
+// Called after every write that can change a final-stage match's
+// `winner_id` (a fresh report, a correction via clear+re-report, a judge's
+// submission, or a bulk round clear) so a correction can never go stale
+// downstream again. Only ever patches a downstream match that's still
+// "scheduled" (unplayed, no result of its own riding on the old seat yet) —
+// one already started or completed needs a human to sort out, not a silent
+// reseat.
+async function syncDownstreamOnResultChange(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  match: Pick<Match, "id" | "tournament_id" | "bracket_id" | "group_id" | "round" | "match_number" | "participant_a_id" | "participant_b_id">,
+  previousWinnerId: string | null,
+  newWinnerId: string | null
+): Promise<void> {
+  if (match.group_id !== null) return; // only final-stage matches chain into a generated downstream row this way
+  if (previousWinnerId === newWinnerId) return; // nothing that was already propagated downstream actually changed
+  if (previousWinnerId === null) return; // first-ever result — autoAdvanceFinalStage generates any downstream row fresh, nothing stale to fix
+
+  // Same per-position pairing generateNextFinalRound/computeReadyPairings
+  // use: match_number M (1-indexed within its round) feeds slot "a" of
+  // round+1's match ceil(M/2) if M is odd, slot "b" of that same match if
+  // M is even.
+  const nextPosition = Math.ceil(match.match_number / 2);
+  const slot: "participant_a_id" | "participant_b_id" = match.match_number % 2 === 1 ? "participant_a_id" : "participant_b_id";
+
+  // Winner-forward: whichever match this one's winner advances into, within
+  // its own bracket (bracket_id null = the main bracket).
+  let winnerQuery = supabase
+    .from("matches")
+    .select("id, status, participant_a_id, participant_b_id")
+    .eq("tournament_id", match.tournament_id)
+    .is("group_id", null)
+    .eq("round", match.round + 1)
+    .eq("match_number", nextPosition);
+  winnerQuery = match.bracket_id === null ? winnerQuery.is("bracket_id", null) : winnerQuery.eq("bracket_id", match.bracket_id);
+  const { data: winnerTarget } = await winnerQuery.maybeSingle();
+  if (winnerTarget && winnerTarget.status === "scheduled" && winnerTarget[slot] === previousWinnerId) {
+    await supabase
+      .from("matches")
+      .update({ [slot]: newWinnerId } as Partial<Pick<Match, "participant_a_id" | "participant_b_id">>)
+      .eq("id", winnerTarget.id);
+  }
+
+  // Loser-forward: whichever placement section's Round 1 (if any) is fed by
+  // THIS bracket's own round — only relevant when the tournament breaks
+  // ties with placement matches at all (see buildPlacementSections).
+  const previousLoserId = match.participant_a_id === previousWinnerId ? match.participant_b_id : match.participant_a_id;
+  const newLoserId = match.participant_a_id === newWinnerId ? match.participant_b_id : match.participant_a_id;
+  if (previousLoserId === newLoserId || previousLoserId === null) return;
+
+  const ownSectionKey =
+    match.bracket_id === null
+      ? null
+      : ((await supabase.from("brackets").select("structure").eq("id", match.bracket_id).maybeSingle()).data as {
+          structure: { key: string };
+        } | null)?.structure?.key ?? null;
+
+  const { data: allBrackets } = await supabase.from("brackets").select("*").eq("tournament_id", match.tournament_id);
+  const feedSection = ((allBrackets as Bracket[] | null) ?? []).find(
+    (b) => (b.structure?.feederKey ?? null) === ownSectionKey && b.structure?.feederRound === match.round
+  );
+  if (!feedSection) return;
+
+  const { data: loserTarget } = await supabase
+    .from("matches")
+    .select("id, status, participant_a_id, participant_b_id")
+    .eq("tournament_id", match.tournament_id)
+    .is("group_id", null)
+    .eq("bracket_id", feedSection.id)
+    .eq("round", 1)
+    .eq("match_number", nextPosition)
+    .maybeSingle();
+  if (loserTarget && loserTarget.status === "scheduled" && loserTarget[slot] === previousLoserId) {
+    await supabase
+      .from("matches")
+      .update({ [slot]: newLoserId } as Partial<Pick<Match, "participant_a_id" | "participant_b_id">>)
+      .eq("id", loserTarget.id);
+  }
 }
 
 async function fetchBracketMatches(
