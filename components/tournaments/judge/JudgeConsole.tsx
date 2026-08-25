@@ -603,12 +603,35 @@ export function JudgeConsole({
   // by participantId, same as handleBothConfirmed's aState/bState do at
   // submit time, so `score.a` in the DB always lines up with
   // participant_a_id regardless of which side it's currently displayed on.
+  //
+  // Debounced (last change in a ~500ms burst wins) rather than firing on
+  // every single tap: each call is its own authenticated server round trip
+  // (middleware validates the session, then this action validates it again
+  // — both are real network hits to Supabase Auth, not just a local check),
+  // and box-scoring taps during a fast battle can come in well under a
+  // second apart. Undebounced, a burst of taps used to queue up a pile of
+  // these still in flight, competing with — and visibly delaying — both
+  // later taps' own sync and the Submit Result call fired right after
+  // scoring stopped. The live score staying half a second behind is
+  // unnoticeable on a spectator screen; a judge unable to tell if a tap or
+  // Submit actually registered is not.
+  const scoreSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!matchContext) return;
     const player1IsA = player1.participantId === matchContext.participantAId;
     const scoreA = player1IsA ? score1 : score2;
     const scoreB = player1IsA ? score2 : score1;
-    void updateMatchScoreProgress(matchContext.matchId, scoreA, scoreB);
+    const matchId = matchContext.matchId;
+
+    if (scoreSyncTimeoutRef.current) clearTimeout(scoreSyncTimeoutRef.current);
+    scoreSyncTimeoutRef.current = setTimeout(() => {
+      scoreSyncTimeoutRef.current = null;
+      void updateMatchScoreProgress(matchId, scoreA, scoreB);
+    }, 500);
+
+    return () => {
+      if (scoreSyncTimeoutRef.current) clearTimeout(scoreSyncTimeoutRef.current);
+    };
   }, [matchContext, player1.participantId, score1, score2]);
 
   const name1 = participants.find((p) => p.id === player1.participantId)?.displayName ?? "Player 1";

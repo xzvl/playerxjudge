@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isCurrentUserStaff } from "@/lib/supabase/get-user";
@@ -507,11 +508,18 @@ export async function submitJudgedMatchResult(
   const match = data as Match;
 
   // A tie has no winnerId (see above) and nothing sensible to narrate as a
-  // "win for X over Y" — only log a decisive result.
+  // "win for X over Y" — only log a decisive result. Deferred via
+  // `after()` rather than awaited — an audit-log row is worth writing but
+  // not worth a player sitting and staring at "Saving..." for one more
+  // round trip (its own errors were already silently ignored even when
+  // this was awaited). Plain `void` would risk the write getting cut off
+  // on a serverless deploy the moment this action's response goes out;
+  // `after()` is Next's own guarantee that this still runs to completion
+  // once the response has been sent.
   if (winnerId) {
     const winnerName = scoreA > scoreB ? participantAName : participantBName;
     const loserName = scoreA > scoreB ? participantBName : participantAName;
-    await logTournamentEvent(match.tournament_id, judgeName, `reported a ${scoreA}-${scoreB} win for ${winnerName} over ${loserName}`);
+    after(() => logTournamentEvent(match.tournament_id, judgeName, `reported a ${scoreA}-${scoreB} win for ${winnerName} over ${loserName}`));
   }
 
   revalidatePath(groupStagePath(slug), "layout");

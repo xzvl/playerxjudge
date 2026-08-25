@@ -1,9 +1,27 @@
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Profile, ProfileRole } from "@/lib/types/database";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
-export async function getCurrentUser() {
+// Wrapped in React's cache() — supabase.auth.getUser() is a real network
+// round trip to Supabase's Auth server (it validates the token there,
+// unlike a local cookie read), and this is the single most-called helper in
+// the app: nearly every page and action needs "who's signed in", and it's
+// common for several of those to run within the same request (a page
+// reading its own user directly, then also calling a couple of helpers below
+// — getCurrentUserRoles, getUnreadNotificationCount, ... — that each used to
+// call this again from scratch). Each of those used to be its own separate
+// Auth round trip; cache() dedupes repeat calls into the one already in
+// flight/resolved for this request, not one per call site. This is what was
+// actually behind /tournaments/[slug]/player feeling slow just to switch
+// which participant's stats were showing: every switch re-runs the whole
+// page, and the page's own handful of getCurrentUser()-calling helpers were
+// each paying for a redundant Auth round trip on top of the unavoidable one.
+// Scoped to a single request by Next's per-request cache() context, so this
+// can never leak a signed-in user across requests or between visitors.
+export const getCurrentUser = cache(async () => {
   if (!isSupabaseConfigured) return null;
 
   const supabase = await createClient();
@@ -11,7 +29,7 @@ export async function getCurrentUser() {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
 export async function getCurrentProfile(): Promise<Profile | null> {
   const user = await getCurrentUser();
