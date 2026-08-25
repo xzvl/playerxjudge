@@ -6,7 +6,10 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import { getJudgeParticipantIds } from "@/lib/tournaments/judge-participant-highlight";
-import type { Bracket, Judge, Match, TournamentGroup, TournamentStation } from "@/lib/types/database";
+import { computeGroupStandings } from "@/lib/swiss";
+import { placeholderSlots, qualifiedSlots } from "@/lib/final-stage-placeholder";
+import type { WorkspaceParticipant } from "@/lib/mock/tournament-workspace";
+import type { Bracket, Judge, Match, TournamentGroup, TournamentParticipant, TournamentStation } from "@/lib/types/database";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -25,7 +28,11 @@ export default async function TournamentSpectatorPage({ params }: { params: Prom
     await Promise.all([
       supabase.from("matches").select("*").eq("tournament_id", tournament.id).order("round").order("match_number"),
       supabase.from("tournament_groups").select("*").eq("tournament_id", tournament.id).order("sort_order"),
-      supabase.from("tournament_participants").select("id, name, team_name").eq("tournament_id", tournament.id),
+      // "*" (not just id/name/team_name) — seed/group_id are needed below
+      // to recompute group standings/final-stage seeding the same way
+      // final-stage/page.tsx does, for the Final Result board once the
+      // tournament's completed.
+      supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id).order("seed"),
       supabase.from("tournament_stations").select("*").eq("tournament_id", tournament.id).order("sort_order"),
       // A judge claims a station via judges.station_id (see the Stations
       // page) — joined here just to build a static judge_id -> display name
@@ -47,9 +54,45 @@ export default async function TournamentSpectatorPage({ params }: { params: Prom
   // same pattern as the judge Match History page and the player view. Passed
   // down as a plain object (not a Map) since only plain, serializable values
   // cross the server/client component boundary as props.
+  const realParticipants = (participants as TournamentParticipant[] | null) ?? [];
   const participantNames: Record<string, string> = {};
-  for (const p of (participants as { id: string; name: string; team_name: string | null }[] | null) ?? []) {
+  for (const p of realParticipants) {
     participantNames[p.id] = p.team_name ?? p.name;
+  }
+
+  // The same final-stage seed list final-stage/page.tsx computes — needed so
+  // the Spectator Board can show the exact same "Final Result" tiers
+  // /tournaments/[slug]/player does once the tournament wraps (see
+  // SpectatorBoard's own computeFinalStandings call). Only meaningful for a
+  // real two-stage Swiss tournament, same restriction the player view's
+  // Final Result tab already has — other formats don't have a real
+  // group-standings pipeline to seed from yet, so this is just `[]` there
+  // and SpectatorBoard falls back to championName alone.
+  const settings = tournament.format_settings;
+  const isRealSwiss = settings?.stageType === "two_stage" && settings.groupStage.format === "swiss";
+  const realGroups = (groups as TournamentGroup[] | null) ?? [];
+  const realMatches = (matches as Match[] | null) ?? [];
+  let finalSlots: WorkspaceParticipant[] = [];
+  if (isRealSwiss) {
+    const advancePerGroup = settings.groupStage.participantsAdvancePerGroup;
+    finalSlots = settings.groupStageEnded
+      ? qualifiedSlots(
+          realGroups,
+          new Map(
+            realGroups.map((g) => {
+              const members = realParticipants.filter((p) => p.group_id === g.id);
+              const groupMatches = realMatches.filter((m) => m.group_id === g.id);
+              const rows = computeGroupStandings(members, groupMatches, settings.groupStage.swissPoints, [
+                settings.groupTieBreaks.tieBreak1,
+                settings.groupTieBreaks.tieBreak2,
+                settings.groupTieBreaks.tieBreak3,
+              ]);
+              return [g.id, rows.map((r) => ({ participantId: r.participantId, name: r.name, teamName: r.teamName }))] as const;
+            })
+          ),
+          advancePerGroup
+        )
+      : placeholderSlots(realGroups, advancePerGroup);
   }
 
   type JudgeRowWithProfile = Judge & { profiles: { display_name: string } | null };
@@ -73,14 +116,17 @@ export default async function TournamentSpectatorPage({ params }: { params: Prom
     <SpectatorBoard
       tournamentId={tournament.id}
       tournamentTitle={tournament.title}
-      initialMatches={(matches as Match[] | null) ?? []}
-      groups={(groups as TournamentGroup[] | null) ?? []}
+      initialMatches={realMatches}
+      groups={realGroups}
       participantNames={participantNames}
       initialStations={(stations as TournamentStation[] | null) ?? []}
       initialJudges={initialJudges}
       initialBrackets={(brackets as Bracket[] | null) ?? []}
       judgeNameByJudgeId={judgeNameByJudgeId}
       judgePlayerParticipantIds={[...highlightParticipantIds]}
+      finalSlots={finalSlots}
+      tournamentEnded={tournament.status === "completed"}
+      championName={tournament.champion_name}
     />
   );
 }

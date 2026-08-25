@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, Search } from "lucide-react";
 
+import { PlayerLoadingScreen } from "@/components/tournaments/player/PlayerLoadingScreen";
 import { cn } from "@/lib/utils";
 
 export interface PlayerOption {
@@ -23,6 +24,17 @@ export function PlayerNamePicker({ options, selectedId }: { options: PlayerOptio
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // Switching players navigates to a new `?p=` — a real server round trip,
+  // since page.tsx reads it to re-fetch/recompute everything below. This
+  // route's own loading.tsx handles a *fresh* arrival here reliably, but a
+  // same-page searchParams-only navigation isn't guaranteed to trigger that
+  // boundary the same way (Next.js can treat it as updating the existing
+  // tree rather than a full segment transition). useTransition is the
+  // explicit, guaranteed-to-fire alternative: isPending stays true for the
+  // whole router.push, including the wait on the new page render, so the
+  // overlay below is what actually shows "every changing of players" —
+  // not a maybe.
+  const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -52,9 +64,11 @@ export function PlayerNamePicker({ options, selectedId }: { options: PlayerOptio
   function selectPlayer(id: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("p", id);
-    router.push(`${pathname}?${params.toString()}#player`, { scroll: false });
     setOpen(false);
     setQuery("");
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}#player`, { scroll: false });
+    });
   }
 
   return (
@@ -111,6 +125,12 @@ export function PlayerNamePicker({ options, selectedId }: { options: PlayerOptio
               <p className="px-3 py-2 text-on-surface/40">No matches</p>
             )}
           </div>
+        </div>
+      ) : null}
+
+      {isPending ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/90 backdrop-blur-sm">
+          <PlayerLoadingScreen />
         </div>
       ) : null}
     </div>

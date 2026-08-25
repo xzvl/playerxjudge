@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Clock, Gavel, Maximize2, Minimize2, Radio, RadioTower } from "lucide-react";
+import { Clock, Gavel, Maximize2, Minimize2, Radio, RadioTower, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { FinalResultBoard } from "@/components/tournaments/FinalResultBoard";
 import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
 import { useRealtimeRows } from "@/lib/hooks/use-realtime-rows";
-import { finalStageRoundLabels } from "@/lib/final-stage-placeholder";
+import { computeFinalStandings, finalStageRoundLabels } from "@/lib/final-stage-placeholder";
 import { cn } from "@/lib/utils";
+import type { WorkspaceParticipant } from "@/lib/mock/tournament-workspace";
 import type { Bracket, Judge, Match, TournamentGroup, TournamentStation } from "@/lib/types/database";
 
 // A group match gets "Group A · Round N" (Swiss rounds have no special
@@ -147,6 +149,9 @@ export function SpectatorBoard({
   initialBrackets,
   judgeNameByJudgeId,
   judgePlayerParticipantIds,
+  finalSlots,
+  tournamentEnded,
+  championName,
 }: {
   tournamentId: string;
   tournamentTitle: string;
@@ -169,6 +174,20 @@ export function SpectatorBoard({
   // judgeNameByJudgeId is: who's linked to a judge account doesn't change
   // mid-event, only where they're currently stationed does.
   judgePlayerParticipantIds: string[];
+  // The final-stage seed list (spectator/page.tsx's own qualifiedSlots/
+  // placeholderSlots call, same as final-stage/page.tsx) — only used once
+  // `tournamentEnded`, to recompute the same Final Result tiers
+  // /tournaments/[slug]/player shows (see computeFinalStandings below).
+  // `[]` for a tournament format with no real seeding pipeline yet;
+  // FinalResultBoard falls back to just the champion card in that case.
+  finalSlots: WorkspaceParticipant[];
+  // tournaments.status === "completed" — once true, the grand final (and
+  // any placement matches) are done, so "Playing Now"/"Upcoming" have
+  // nothing left to ever show; the definitive Final Result board replaces
+  // them instead, same swap PlayerStagesSection's own tabs make.
+  tournamentEnded: boolean;
+  // tournaments.champion_name — see FinalResultBoard's own doc comment.
+  championName: string | null;
 }) {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   useRealtimeMatches(tournamentId, setMatches);
@@ -246,6 +265,16 @@ export function SpectatorBoard({
     [matches]
   );
 
+  // Same computeFinalStandings call PlayerStagesSection makes for its own
+  // "Final Result" tab, off this board's own live `matches` — only actually
+  // used once `tournamentEnded` (see the render below), but kept live the
+  // same way everything else here is rather than a static snapshot, in case
+  // a result gets corrected after the tournament's marked complete.
+  const finalRows = useMemo(
+    () => computeFinalStandings(finalSlots, matches.filter((m) => m.group_id === null)),
+    [finalSlots, matches]
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/25 px-6 py-4">
@@ -267,55 +296,71 @@ export function SpectatorBoard({
       </header>
 
       <div className="flex-1 space-y-10 px-6 py-8">
-        <section>
-          <h2 className="label-mono mb-4 flex items-center gap-2 text-primary">
-            <Radio className="h-4 w-4" aria-hidden="true" /> Playing Now ({playing.length})
-          </h2>
-          {playing.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {playing.map((m) => (
-                <MatchCard
-                  key={m.id}
-                  match={m}
-                  meta={matchMeta(m, groupLabelById, finalLabels)}
-                  nameOf={nameOf}
-                  live
-                  score={currentScoreOf(m)}
-                  stationName={matchInfoById.get(m.id)?.stationName}
-                  judgeName={matchInfoById.get(m.id)?.judgeName}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-              No matches in progress right now.
-            </p>
-          )}
-        </section>
+        {tournamentEnded ? (
+          // The grand final (and any placement matches) are done — nothing
+          // "Playing Now"/"Upcoming" could ever show again, so the
+          // definitive result replaces them instead, same board
+          // /tournaments/[slug]/player shows on its own "Final Result" tab
+          // (see FinalResultBoard).
+          <section>
+            <h2 className="label-mono mb-4 flex items-center gap-2 text-primary">
+              <Trophy className="h-4 w-4" aria-hidden="true" /> Final Result
+            </h2>
+            <FinalResultBoard rows={finalRows} championName={championName} showAll />
+          </section>
+        ) : (
+          <>
+            <section>
+              <h2 className="label-mono mb-4 flex items-center gap-2 text-primary">
+                <Radio className="h-4 w-4" aria-hidden="true" /> Playing Now ({playing.length})
+              </h2>
+              {playing.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {playing.map((m) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      meta={matchMeta(m, groupLabelById, finalLabels)}
+                      nameOf={nameOf}
+                      live
+                      score={currentScoreOf(m)}
+                      stationName={matchInfoById.get(m.id)?.stationName}
+                      judgeName={matchInfoById.get(m.id)?.judgeName}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+                  No matches in progress right now.
+                </p>
+              )}
+            </section>
 
-        <section>
-          <h2 className="label-mono mb-4 flex items-center gap-2 text-on-surface/50">
-            <Clock className="h-4 w-4" aria-hidden="true" /> Upcoming ({upcoming.length})
-          </h2>
-          {upcoming.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {upcoming.map((m) => (
-                <MatchCard
-                  key={m.id}
-                  match={m}
-                  meta={matchMeta(m, groupLabelById, finalLabels)}
-                  nameOf={nameOf}
-                  live={false}
-                  judgePlaying={hasJudgePlaying(m)}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-              No upcoming matches queued.
-            </p>
-          )}
-        </section>
+            <section>
+              <h2 className="label-mono mb-4 flex items-center gap-2 text-on-surface/50">
+                <Clock className="h-4 w-4" aria-hidden="true" /> Upcoming ({upcoming.length})
+              </h2>
+              {upcoming.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {upcoming.map((m) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      meta={matchMeta(m, groupLabelById, finalLabels)}
+                      nameOf={nameOf}
+                      live={false}
+                      judgePlaying={hasJudgePlaying(m)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+                  No upcoming matches queued.
+                </p>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </div>
   );

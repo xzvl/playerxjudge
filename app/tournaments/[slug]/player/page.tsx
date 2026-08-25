@@ -45,11 +45,24 @@ export default async function TournamentPlayerPage({
 }) {
   const { slug } = await params;
   const { p: requestedParticipantId } = await searchParams;
-  const { tournament, groups, participants, matches, brackets } = await getPlayerViewData(slug);
-
-  const authUser = await getCurrentUser();
-  const roles = authUser ? await getCurrentUserRoles() : [];
-  const notificationCount = authUser ? await getUnreadNotificationCount() : 0;
+  // getPlayerViewData and getCurrentUser don't depend on each other — this
+  // page (loaded fresh on every "switch player" click, since the picker
+  // navigates to a new `?p=` rather than updating client state) used to
+  // await one, then the other, then — if signed in — roles and unread-count
+  // one after another too: four round trips stacked into one waterfall on
+  // every single switch. Run together wherever there's no real dependency
+  // instead; getCurrentUser is cache()'d (see lib/supabase/get-user.ts) so
+  // this doesn't cost a second Auth round trip even though roles/
+  // notificationCount also call it internally.
+  const [{ tournament, groups, participants, matches, brackets }, authUser] = await Promise.all([
+    getPlayerViewData(slug),
+    getCurrentUser(),
+  ]);
+  let roles: Awaited<ReturnType<typeof getCurrentUserRoles>> = [];
+  let notificationCount = 0;
+  if (authUser) {
+    [roles, notificationCount] = await Promise.all([getCurrentUserRoles(), getUnreadNotificationCount()]);
+  }
   // communityName is always null here — this console header
   // (PlayerViewHeaderActions) has no mobile-menu sheet to show it in,
   // unlike the site-wide Header, so it's not worth an extra query.
@@ -85,25 +98,30 @@ export default async function TournamentPlayerPage({
   // Participants whose linked account is also an approved judge on this
   // tournament (see getJudgeParticipantIds) — surfaced as a yellow
   // highlight in the Stages/Standings tables below, same as the organizer
-  // and backend workspaces.
-  const highlightParticipantIds = await getJudgeParticipantIds(await createClient(), tournament.id);
-
-  // "Link Me" state (see LinkPlayerControls) — only meaningful in the real
-  // Swiss branch, where `participants` are actual `tournament_participants`
-  // rows; the preview branch above returns mock-derived ids that don't
-  // exist in that table at all. At most one row per (profile, tournament),
-  // enforced by participant_links' own unique constraint.
-  let myLink: { id: string; participantId: string; status: "pending" | "approved" } | null = null;
-  if (authUser) {
-    const supabase = await createClient();
-    const { data: linkRow } = await supabase
-      .from("participant_links")
-      .select("id, participant_id, status")
-      .eq("tournament_id", tournament.id)
-      .eq("profile_id", authUser.id)
-      .maybeSingle();
-    if (linkRow) myLink = { id: linkRow.id, participantId: linkRow.participant_id, status: linkRow.status };
-  }
+  // and backend workspaces. Independent of the "Link Me" lookup right below
+  // (neither reads the other's result), so run them together rather than
+  // as two more stops in the waterfall every switch already pays for.
+  const supabase = await createClient();
+  const [highlightParticipantIds, linkRow] = await Promise.all([
+    getJudgeParticipantIds(supabase, tournament.id),
+    // "Link Me" state (see LinkPlayerControls) — only meaningful in the real
+    // Swiss branch, where `participants` are actual `tournament_participants`
+    // rows; the preview branch above returns mock-derived ids that don't
+    // exist in that table at all. At most one row per (profile, tournament),
+    // enforced by participant_links' own unique constraint.
+    authUser
+      ? supabase
+          .from("participant_links")
+          .select("id, participant_id, status")
+          .eq("tournament_id", tournament.id)
+          .eq("profile_id", authUser.id)
+          .maybeSingle()
+          .then((r) => r.data)
+      : Promise.resolve(null),
+  ]);
+  const myLink: { id: string; participantId: string; status: "pending" | "approved" } | null = linkRow
+    ? { id: linkRow.id, participantId: linkRow.participant_id, status: linkRow.status }
+    : null;
 
   const tieBreakMetrics: [typeof TIE_BREAK_OPTIONS[number]["value"], typeof TIE_BREAK_OPTIONS[number]["value"], typeof TIE_BREAK_OPTIONS[number]["value"]] = [
     settings.groupTieBreaks.tieBreak1,
@@ -170,7 +188,9 @@ export default async function TournamentPlayerPage({
     : null;
   let currentStationName: string | null = null;
   if (selectedOngoingMatch) {
-    const supabase = await createClient();
+    // Reuses the same client created above rather than another
+    // createClient() call — construction itself is cheap (no network I/O
+    // until a query actually runs), but there's no reason to make a new one.
     const { data: stationRow } = await supabase
       .from("tournament_stations")
       .select("name")
@@ -221,7 +241,7 @@ export default async function TournamentPlayerPage({
   }
 
   return (
-    <PlayerViewShell tournamentTitle={tournament.title} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
+    <PlayerViewShell tournamentTitle={tournament.title} tournamentSlug={slug} organizedBy={organizedBy} user={user} notificationCount={notificationCount}>
       <div className="grid items-start gap-8 lg:grid-cols-3">
         <div className="space-y-12 lg:col-span-2 overflow-hidden">
           <PlayerCurrentStats
