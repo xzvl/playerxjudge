@@ -5,14 +5,15 @@ import {
   DollarSign,
   Download,
   FileText,
+  Flag,
   Gavel,
   Trophy,
   Users,
   Users2,
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { KpiCard, KpiGrid, PageHeader, Panel } from "@/components/dashboard/erp";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -101,70 +102,56 @@ export default async function OrganizerDashboardPage() {
     }
   }
 
+  const pendingJudges = assignments.filter((a) => a.status === "pending").length;
+
   return (
-    <div className="space-y-10">
-      <div>
-        <h1 className="heading text-2xl">Organizer Dashboard</h1>
-        <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-          Manage your tournaments, communities, and revenue from one place.
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Organizer"
+        title="Organizer Dashboard"
+        description="Manage your tournaments, communities, and revenue from one place."
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="/account/organizer/tournament" className="block">
-          <Card className="h-full transition-colors hover:border-primary/40">
-            <CardContent className="p-5">
-              <p className="label-mono text-on-surface/40">Tournaments</p>
-              <p className="mt-2 font-mono text-2xl font-bold text-primary">{totalTournaments}</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/account/organizer/participants" className="block">
-          <Card className="h-full transition-colors hover:border-primary/40">
-            <CardContent className="p-5">
-              <p className="label-mono text-on-surface/40">Participants</p>
-              <p className="mt-2 font-mono text-2xl font-bold text-on-surface">{formatCompactNumber(totalParticipants)}</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/account/organizer/revenue" className="block">
-          <Card className="h-full transition-colors hover:border-primary/40">
-            <CardContent className="p-5">
-              <p className="label-mono text-on-surface/40">Revenue Collected</p>
-              <p className="mt-2 font-mono text-2xl font-bold text-on-surface">{formatCurrency(totalRevenue)}</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/account/organizer/reports" className="block">
-          <Card className="h-full transition-colors hover:border-primary/40">
-            <CardContent className="p-5">
-              <p className="label-mono text-on-surface/40">Open Reports</p>
-              <p className="mt-2 font-mono text-2xl font-bold text-on-surface">{openReports}</p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
+      <KpiGrid>
+        <KpiCard label="Tournaments" value={totalTournaments} icon={Trophy} href="/account/organizer/tournament" emphasis hint="Created by you" />
+        <KpiCard
+          label="Participants"
+          value={formatCompactNumber(totalParticipants)}
+          icon={Users}
+          href="/account/organizer/participants"
+          hint="Across all your tournaments"
+        />
+        <KpiCard
+          label="Revenue Collected"
+          value={formatCurrency(totalRevenue)}
+          icon={DollarSign}
+          href="/account/organizer/revenue"
+          hint="Confirmed advance payments"
+        />
+        <KpiCard label="Open Reports" value={openReports} icon={Flag} href="/account/organizer/reports" hint="Awaiting your action" />
+      </KpiGrid>
 
-      <section>
-        <h2 className="label-mono mb-4 flex items-center gap-2 text-primary">
-          <Gavel className="h-4 w-4" aria-hidden="true" /> Judge Requests
-        </h2>
-        {assignments.length === 0 ? (
-          <p className="border border-outline-variant/25 bg-surface-container-low p-6 text-sm text-on-surface/50">
-            No judges have requested to judge your communities yet.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {assignments.map((assignment) => (
-              <Card key={assignment.id}>
-                <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
-                  <div>
-                    <p className="text-sm font-bold text-on-surface">
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Panel
+          title="Judge Requests"
+          icon={Gavel}
+          meta={assignments.length > 0 ? `${pendingJudges} pending` : undefined}
+          className="lg:col-span-2"
+          bodyClassName="p-0"
+        >
+          {assignments.length === 0 ? (
+            <p className="p-4 text-sm text-on-surface/50">No judges have requested to judge your communities yet.</p>
+          ) : (
+            <ul className="divide-y divide-outline-variant/15">
+              {assignments.map((assignment) => (
+                <li key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-primary/[0.04]">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-on-surface">
                       {assignment.profiles?.display_name ?? "Unknown"}{" "}
-                      <span className="text-on-surface/40">@{assignment.profiles?.username}</span>
+                      <span className="font-normal text-on-surface/40">@{assignment.profiles?.username}</span>
                     </p>
-                    <p className="label-mono mt-1 text-on-surface/40">
-                      {assignment.communities?.name} &middot; {assignment.status}
+                    <p className="mt-0.5 font-mono text-[11px] text-on-surface/40">
+                      {assignment.communities?.name} &middot; <span className={assignment.status === "pending" ? "text-primary" : undefined}>{assignment.status}</span>
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -183,29 +170,27 @@ export default async function OrganizerDashboardPage() {
                       </form>
                     ) : null}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
 
-      <section>
-        <h2 className="label-mono mb-4 text-on-surface/40">More Tools</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {OTHER_FEATURES.map((feature) => (
-            <Link key={feature.href} href={feature.href} className="block">
-              <Card className="h-full transition-colors hover:border-primary/40">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <feature.icon className="h-4 w-4 text-primary" aria-hidden="true" /> {feature.label}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
+        <Panel title="Quick Access" icon={BarChart3} bodyClassName="p-2">
+          <nav className="flex flex-col">
+            {OTHER_FEATURES.map((feature) => (
+              <Link
+                key={feature.href}
+                href={feature.href}
+                className="group flex items-center gap-2.5 border-l-2 border-transparent px-3 py-2 text-[13px] text-on-surface/75 transition-colors hover:border-primary hover:bg-primary/[0.06] hover:text-on-surface"
+              >
+                <feature.icon className="h-4 w-4 text-on-surface/40 transition-colors group-hover:text-primary" aria-hidden="true" />
+                {feature.label}
+              </Link>
+            ))}
+          </nav>
+        </Panel>
+      </div>
     </div>
   );
 }

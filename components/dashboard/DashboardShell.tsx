@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, CircleUserRound, LogOut, Menu, UserRound } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleUserRound, LogOut, Menu, UserRound } from "lucide-react";
 
 import { signOut } from "@/app/(auth)/actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +17,7 @@ import type { NavUser } from "@/components/layout/ProfileMenu";
 // theme/notifications/profile cluster, nothing player-view-specific about
 // its logic (see the standalone header below).
 import { PlayerViewHeaderActions } from "@/components/tournaments/player/PlayerViewHeaderActions";
+import { ErpScope } from "@/components/dashboard/ErpScope";
 import { cn } from "@/lib/utils";
 
 export interface DashboardNavItem {
@@ -37,6 +38,50 @@ function hasActiveDescendant(children: DashboardNavItem[] | undefined, pathname:
   );
 }
 
+function humanizeSegment(segment: string): string {
+  return decodeURIComponent(segment)
+    .split("-")
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}
+
+// Where-am-I trail for the top bar, straight from the URL. Only the root
+// (/account, /backend) links — intermediate segments like /account/player
+// aren't pages of their own.
+function Breadcrumbs() {
+  const pathname = usePathname() ?? "";
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length === 0) return <span />;
+
+  return (
+    <nav aria-label="Breadcrumb" className="min-w-0">
+      <ol className="flex min-w-0 items-center gap-1.5 text-xs">
+        {segments.map((segment, index) => {
+          const last = index === segments.length - 1;
+          const label = humanizeSegment(segment);
+          return (
+            <li key={`${segment}-${index}`} className="flex min-w-0 items-center gap-1.5">
+              {index > 0 ? <ChevronRight className="h-3 w-3 shrink-0 text-on-surface/25" aria-hidden="true" /> : null}
+              {index === 0 && !last ? (
+                <Link href={`/${segment}`} className="label-mono !text-[10px] text-on-surface/45 transition-colors hover:text-primary">
+                  {label}
+                </Link>
+              ) : (
+                <span
+                  aria-current={last ? "page" : undefined}
+                  className={cn("truncate", last ? "font-semibold text-on-surface" : "text-on-surface/45", index === 0 && "label-mono !text-[10px]")}
+                >
+                  {label}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 function NavList({
   items,
   onNavigate,
@@ -50,7 +95,7 @@ function NavList({
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
 
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className="flex flex-col gap-0.5">
       {items.map(({ label, href, icon, children }) => {
         const key = href ?? label;
         const hasChildren = !!children && children.length > 0;
@@ -65,10 +110,10 @@ function NavList({
                 onClick={hasChildren ? toggle : undefined}
                 aria-expanded={hasChildren ? isOpen : undefined}
                 className={cn(
-                  "label-mono flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left transition-colors",
-                  nested && "py-2 text-[11px]",
+                  "flex h-9 w-full items-center gap-2.5 border-l-2 px-3 text-left text-[13px] font-medium transition-colors",
+                  nested && "h-8 text-xs",
                   hasChildren
-                    ? "border-transparent text-on-surface/60 hover:border-outline-variant/60 hover:text-on-surface"
+                    ? "border-transparent text-on-surface/60 hover:bg-surface-container hover:text-on-surface"
                     : "cursor-default border-transparent text-on-surface/30"
                 )}
               >
@@ -79,11 +124,11 @@ function NavList({
                     className={cn("h-3.5 w-3.5 shrink-0 text-on-surface/40 transition-transform", !isOpen && "-rotate-90")}
                   />
                 ) : (
-                  <span className="text-[9px] text-on-surface/20">Soon</span>
+                  <span className="label-mono !text-[8px] !tracking-widest text-on-surface/25">Soon</span>
                 )}
               </button>
               {hasChildren && isOpen && (
-                <div className="pl-6">
+                <div className="ml-5 border-l border-outline-variant/20 pl-1">
                   <NavList items={children} onNavigate={onNavigate} nested />
                 </div>
               )}
@@ -99,11 +144,11 @@ function NavList({
                 href={href}
                 onClick={onNavigate}
                 className={cn(
-                  "label-mono flex flex-1 items-center gap-3 border-l-2 px-4 py-3 transition-colors",
-                  nested && "py-2 text-[11px]",
+                  "flex h-9 flex-1 items-center gap-2.5 border-l-2 px-3 text-[13px] font-medium transition-colors [&>svg]:transition-colors",
+                  nested && "h-8 text-xs",
                   active
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-transparent text-on-surface/60 hover:border-outline-variant/60 hover:text-on-surface"
+                    ? "border-primary bg-gradient-to-r from-primary/15 to-transparent text-on-surface [&>svg]:text-primary"
+                    : "border-transparent text-on-surface/60 hover:bg-surface-container hover:text-on-surface [&>svg]:text-on-surface/40"
                 )}
               >
                 {icon}
@@ -115,14 +160,14 @@ function NavList({
                   onClick={toggle}
                   aria-expanded={isOpen}
                   aria-label={`Toggle ${label} submenu`}
-                  className="px-3 py-3 text-on-surface/40 transition-colors hover:text-on-surface"
+                  className="flex h-9 items-center px-3 text-on-surface/40 transition-colors hover:text-on-surface"
                 >
                   <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", !isOpen && "-rotate-90")} />
                 </button>
               )}
             </div>
             {hasChildren && isOpen && (
-              <div className="pl-6">
+              <div className="ml-5 border-l border-outline-variant/20 pl-1">
                 <NavList items={children} onNavigate={onNavigate} nested />
               </div>
             )}
@@ -249,16 +294,17 @@ export function DashboardShell({
     // the sidebar's `sticky left-0` lands flush against the browser's
     // actual left edge on windows wider than 1440px, instead of floating
     // alongside the content in the middle of the page.
-    <div className="flex">
+    <div className="erp flex min-h-screen bg-background text-on-surface">
+      <ErpScope />
       <aside
         className={cn(
-          "sticky z-30 hidden w-64 shrink-0 flex-col border-r border-outline-variant/25 bg-surface-container-lowest lg:flex",
+          "sticky z-30 hidden w-60 shrink-0 flex-col border-r border-outline-variant/25 bg-surface-container-lowest lg:flex",
           standalone ? "top-0 h-screen" : "top-16 h-[calc(100vh-4rem)]"
         )}
       >
-        <div className="p-4">
+        <div className="border-b border-outline-variant/20 px-4 pb-4 pt-5">
           {standalone && (
-            <Link href="/" className="heading text-lg">
+            <Link href="/" className="heading block text-lg" aria-label="PlayerXJudge home">
               <svg xmlns="http://www.w3.org/2000/svg" width="200" height="25" viewBox="0 0 2102 226">
               <g>
               <path d="M 1748.82 181.70 L 1737.50 192.90 L 1678.18 193.20 C1645.55,193.37 1618.21,193.14 1617.43,192.70 C1616.21,192.02 1616.00,180.71 1616.00,116.01 C1616.00,56.39 1616.27,39.94 1617.25,39.31 C1617.94,38.86 1645.24,38.37 1677.93,38.22 L 1737.35 37.94 L 1763.00 63.58 L 1763.00 114.34 C1763.00,156.43 1762.76,165.56 1761.57,167.80 C1760.78,169.28 1755.05,175.54 1748.82,181.70 ZM 892.54 191.94 C891.82,193.11 861.81,193.48 860.67,192.33 C860.30,191.97 860.00,171.04 860.00,145.83 L 860.00 100.00 L 862.80 100.00 C864.34,100.00 866.03,99.60 866.55,99.10 C868.40,97.36 892.23,94.76 893.12,96.20 C893.48,96.78 894.08,100.00 894.46,103.36 C894.84,106.72 895.68,109.81 896.33,110.22 C896.97,110.63 915.16,110.98 936.75,110.98 L 975.99 111.00 L 984.00 103.77 L 984.00 77.39 L 977.40 71.00 L 876.19 71.00 L 872.35 65.40 C870.23,62.32 867.83,58.82 867.00,57.63 C866.17,56.44 863.47,52.82 861.00,49.60 C860.62,49.11 860.27,48.65 859.93,48.20 C854.98,41.77 853.85,40.31 854.21,39.60 C854.34,39.34 854.67,39.18 855.07,38.92 C855.91,38.39 885.34,38.11 926.19,38.25 L 995.88 38.50 L 1006.94 49.49 L 1018.00 60.47 L 1018.00 119.61 L 1006.16 131.30 L 994.31 143.00 L 987.72 143.00 C984.09,143.00 980.85,143.43 980.53,143.95 C980.21,144.47 983.11,148.63 986.97,153.20 C1015.38,186.76 1018.38,190.57 1017.51,191.99 C1017.12,192.62 1009.28,193.00 996.84,193.00 L 976.80 193.00 L 973.65 189.74 C971.92,187.94 969.15,184.70 967.50,182.53 C965.85,180.36 960.22,173.54 955.00,167.36 C949.78,161.18 943.04,153.17 940.03,149.56 L 934.56 143.00 L 914.84 143.00 C900.16,143.00 894.91,143.32 894.31,144.25 C893.86,144.94 893.43,155.71 893.35,168.19 C893.26,180.67 892.90,191.35 892.54,191.94 ZM 380.73 192.19 C379.23,193.14 349.61,193.27 348.67,192.33 C348.30,191.97 348.00,171.62 348.00,147.12 L 348.00 102.58 L 350.75 100.28 C352.26,99.02 357.08,95.18 361.45,91.75 C365.83,88.31 371.99,83.09 375.14,80.15 C378.30,77.21 381.30,75.07 381.81,75.38 C382.35,75.72 382.53,82.59 382.23,91.96 C381.84,104.00 382.03,108.33 382.98,109.48 C384.07,110.79 389.69,111.00 424.65,111.00 L 465.05 111.00 L 466.12 108.25 C466.75,106.62 467.02,100.89 466.78,94.22 L 466.37 82.93 L 460.47 76.97 L 454.56 71.00 L 366.24 71.00 L 363.62 67.57 C362.18,65.68 361.00,63.87 361.00,63.56 C361.00,63.24 359.34,60.62 357.30,57.74 C350.06,47.48 345.83,40.83 346.27,40.39 C347.58,39.09 391.84,37.91 429.55,38.19 L 472.60 38.50 L 482.05 48.36 C487.25,53.79 491.67,58.69 491.88,59.26 C492.09,59.82 494.23,62.36 496.63,64.89 L 500.99 69.50 L 500.99 130.64 C501.00,185.48 500.84,191.85 499.42,192.39 C497.09,193.28 469.71,193.10 468.27,192.19 C467.36,191.61 466.97,185.08 466.77,167.45 L 466.50 143.50 L 382.50 143.50 L 382.23 167.45 C382.03,185.08 381.64,191.61 380.73,192.19 ZM 1890.59 193.34 C1870.84,194.11 1813.19,194.09 1811.00,193.31 C1810.18,193.02 1803.99,187.32 1797.25,180.65 L 1785.00 168.53 L 1785.00 61.47 L 1808.03 38.50 L 1866.27 38.21 C1898.29,38.05 1925.51,38.17 1926.75,38.48 C1929.76,39.23 1929.51,40.66 1925.44,46.00 C1923.55,48.47 1920.94,52.08 1919.64,54.01 C1918.34,55.95 1916.54,58.14 1915.64,58.89 C1914.74,59.63 1914.00,60.67 1914.00,61.18 C1914.00,61.70 1912.33,64.12 1910.29,66.56 L 1906.58 71.00 L 1827.41 71.00 L 1823.70 74.79 L 1820.00 78.58 L 1820.00 153.59 L 1823.79 157.30 L 1827.58 161.00 L 1888.59 161.00 L 1892.30 157.21 L 1896.00 153.42 L 1896.00 132.00 L 1884.56 132.00 C1877.92,132.00 1872.86,131.58 1872.49,130.99 C1871.91,130.05 1872.62,128.93 1878.75,121.09 C1879.99,119.51 1881.00,117.78 1881.00,117.26 C1881.00,116.74 1881.90,115.50 1883.00,114.50 C1884.10,113.50 1885.00,112.19 1885.00,111.58 C1885.00,110.97 1886.59,108.11 1888.54,105.21 L 1892.08 99.96 L 1910.79 100.23 L 1929.50 100.50 L 1929.76 135.10 L 1930.03 169.70 L 1918.76 181.19 L 1907.50 192.68 ZM 40.50 191.83 C39.18,193.06 13.15,193.97 10.24,192.89 L 7.98 192.06 L 8.24 146.86 L 8.50 101.67 L 11.50 100.76 C13.15,100.26 15.40,99.49 16.50,99.04 C20.76,97.31 27.50,95.78 37.11,94.35 L 40.72 93.82 L 41.45 101.16 C41.84,105.20 42.64,109.06 43.21,109.75 C44.00,110.71 53.10,111.00 82.42,111.00 L 120.59 111.00 L 124.30 107.21 L 128.00 103.42 L 128.00 71.00 L 24.35 71.00 L 22.36 68.75 C21.26,67.51 17.64,62.45 14.32,57.50 C10.99,52.55 6.89,46.48 5.21,44.01 C3.08,40.86 2.51,39.29 3.33,38.77 C5.38,37.47 146.72,37.85 151.38,39.17 C153.65,39.81 156.74,41.47 158.25,42.85 L 161.00 45.37 L 161.00 120.53 L 149.74 131.76 L 138.49 142.98 L 90.49 143.24 L 42.50 143.50 L 42.00 167.20 C41.71,181.03 41.08,191.29 40.50,191.83 ZM 1557.46 193.10 L 1547.43 193.19 C1478.37,193.80 1475.25,193.83 1473.01,192.44 C1472.80,192.31 1472.60,192.16 1472.35,192.01 C1470.78,191.02 1464.91,185.55 1459.30,179.86 L 1449.10 169.50 L 1448.88 112.31 C1448.64,53.94 1448.75,52.00 1452.27,52.00 C1452.84,52.00 1454.85,50.40 1456.74,48.45 C1462.74,42.28 1466.89,40.27 1475.32,39.48 L 1483.00 38.77 L 1483.00 152.42 L 1487.21 156.71 L 1491.42 161.00 L 1549.42 161.00 L 1558.00 152.58 L 1558.00 96.35 C1558.00,52.46 1558.27,39.94 1559.25,39.32 C1561.48,37.90 1590.85,37.63 1592.52,39.02 C1593.80,40.08 1594.00,48.94 1594.00,104.33 L 1594.00 168.41 L 1581.71 180.71 L 1569.41 193.00 ZM 585.77 214.60 C583.72,215.92 581.82,217.00 581.55,217.00 C581.28,217.00 580.93,195.95 580.78,170.22 C580.50,123.96 580.48,123.42 578.33,120.69 C574.86,116.28 540.39,77.42 530.52,66.79 C508.22,42.77 505.74,39.93 506.43,39.24 C506.83,38.83 516.82,38.50 528.63,38.50 L 550.09 38.50 L 557.30 46.11 C561.26,50.30 565.14,54.58 565.92,55.61 C567.25,57.38 570.16,60.50 590.29,81.77 C594.58,86.30 598.42,90.00 598.82,90.00 C599.82,90.00 613.26,76.34 616.70,71.82 C620.16,67.28 643.68,40.97 645.82,39.25 C646.79,38.48 650.54,38.00 655.67,38.00 C663.20,38.00 664.08,38.21 665.30,40.25 C666.04,41.49 668.03,44.82 669.73,47.66 C671.42,50.50 673.11,53.77 673.47,54.92 C674.19,57.17 674.00,57.44 661.50,71.67 C657.65,76.06 651.12,83.64 647.00,88.52 C642.88,93.40 636.80,100.43 633.50,104.14 C630.20,107.85 625.14,113.57 622.25,116.83 L 617.00 122.78 L 617.00 191.82 L 614.07 194.16 C612.46,195.45 609.64,197.53 607.82,198.79 C605.99,200.05 601.12,203.58 597.00,206.64 C592.88,209.70 587.82,213.28 585.77,214.60 ZM 1413.22 181.28 L 1401.44 193.03 L 1360.97 193.29 C1338.71,193.43 1314.56,193.31 1307.29,193.02 L 1294.09 192.50 L 1289.96 188.50 C1284.32,183.03 1282.81,179.74 1281.96,171.05 C1281.28,164.18 1281.39,163.48 1283.36,161.93 C1287.08,159.01 1302.28,149.00 1303.00,149.00 C1303.38,149.00 1304.50,148.10 1305.50,147.00 C1306.50,145.90 1307.85,145.00 1308.50,145.00 C1309.15,145.00 1310.50,144.10 1311.50,143.00 C1315.09,139.03 1315.91,140.37 1316.21,150.75 L 1316.50 160.50 L 1349.45 160.76 L 1382.40 161.03 L 1386.70 156.81 L 1391.00 152.58 L 1391.12 29.50 L 1396.66 25.00 C1401.92,20.73 1409.48,14.37 1418.61,6.53 C1420.87,4.59 1423.23,3.00 1423.86,3.00 C1424.70,3.00 1425.00,24.57 1425.00,86.27 L 1425.00 169.53 ZM 819.03 190.75 L 816.92 193.00 L 752.13 193.00 C716.49,193.00 687.03,192.70 686.67,192.33 C686.30,191.97 686.00,171.04 686.00,145.83 L 686.00 100.00 L 752.50 100.00 C794.91,100.00 819.00,100.35 819.00,100.97 C819.00,101.51 816.19,106.04 812.75,111.04 C809.31,116.05 805.83,121.14 805.00,122.36 C804.17,123.58 802.21,126.25 800.63,128.29 L 797.76 132.00 L 720.16 132.00 L 719.81 145.25 C719.62,152.54 719.86,159.06 720.35,159.75 C721.05,160.73 734.16,161.00 780.12,161.00 C829.47,161.00 839.00,161.22 839.00,162.38 C839.00,163.14 838.31,164.33 837.47,165.02 C836.63,165.72 832.61,171.29 828.54,177.40 C824.47,183.50 820.19,189.51 819.03,190.75 ZM 2079.85 190.64 C2077.51,192.78 2077.20,192.79 2016.27,193.20 C1982.60,193.42 1954.36,193.22 1953.52,192.75 C1952.20,192.01 1952.00,186.53 1952.00,150.50 C1952.00,122.64 1952.36,108.31 1953.09,106.69 C1953.77,105.21 1956.16,103.47 1959.36,102.14 C1964.45,100.04 1965.51,100.00 2022.27,100.00 C2066.18,100.00 2080.00,100.28 2080.00,101.19 C2080.00,102.44 2079.80,102.77 2069.52,118.42 C2065.93,123.87 2063.00,128.72 2063.00,129.19 C2063.00,131.50 2055.60,132.00 2021.43,132.00 L 1985.00 132.00 L 1985.00 161.00 L 2042.00 161.00 C2078.14,161.00 2099.00,161.35 2099.00,161.97 C2099.00,163.35 2095.24,169.88 2092.07,174.00 C2090.60,175.93 2087.77,179.98 2085.79,183.00 C2083.82,186.02 2081.14,189.47 2079.85,190.64 ZM 304.50 192.47 C300.03,193.56 184.51,193.31 183.25,192.22 C183.11,192.10 183.00,157.61 183.00,115.57 L 183.00 39.13 L 185.25 38.48 C186.49,38.12 191.20,36.05 195.71,33.88 C202.31,30.72 214.82,26.00 216.63,26.00 C216.83,26.00 217.00,55.66 217.00,91.92 C217.00,128.17 217.27,158.55 217.61,159.42 C218.15,160.83 223.93,161.00 272.61,161.00 C302.52,161.00 327.00,161.35 327.00,161.78 C327.00,162.61 318.78,174.53 314.79,179.50 C313.46,181.15 311.05,184.64 309.44,187.24 C307.82,189.85 305.60,192.21 304.50,192.47 ZM 1652.33 159.75 C1652.93,160.71 1660.73,161.00 1685.77,161.00 L 1718.42 161.00 L 1727.00 152.58 L 1727.00 78.88 L 1720.64 70.97 L 1686.10 71.24 L 1651.55 71.50 L 1651.55 115.00 C1651.55,138.93 1651.90,159.06 1652.33,159.75 ZM 823.67 66.00 L 820.33 70.50 L 702.25 71.02 L 699.62 67.57 C698.18,65.68 697.00,63.72 697.00,63.22 C697.00,62.72 696.04,61.45 694.87,60.40 C693.70,59.36 690.01,54.90 686.66,50.50 C683.32,46.10 679.95,41.85 679.18,41.06 C677.97,39.83 678.09,39.51 680.05,38.79 C682.70,37.80 840.51,38.17 841.50,39.16 C842.67,40.33 840.20,44.16 831.42,54.77 C829.72,56.82 828.03,59.17 827.67,60.00 C827.30,60.83 825.50,63.53 823.67,66.00 ZM 2081.67 66.63 L 2077.83 71.00 L 1968.17 71.00 L 1965.29 67.25 C1963.70,65.19 1961.53,62.20 1960.45,60.61 C1959.38,59.02 1957.60,56.49 1956.50,54.99 C1947.64,42.89 1945.81,39.74 1947.13,38.90 C1949.08,37.66 2099.72,37.74 2100.49,38.98 C2100.82,39.52 2099.37,42.33 2097.27,45.23 C2095.17,48.13 2091.66,53.15 2089.48,56.38 C2087.29,59.62 2083.77,64.23 2081.67,66.63 Z" className="fill-on-surface"></path>
@@ -267,26 +313,47 @@ export function DashboardShell({
               </svg>
             </Link>
           )}
-          <p className={cn("label-mono text-primary", standalone && "mt-4")}>{roleLabel} Dashboard</p>
+          <div className={cn("flex items-center gap-2", standalone && "mt-4")}>
+            <span className="h-1.5 w-1.5 bg-primary shadow-[0_0_8px_rgb(var(--m3-primary))]" aria-hidden="true" />
+            <p className="label-mono !text-[10px] text-on-surface/70">{roleLabel} Dashboard</p>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-2 py-3">
+          <p className="label-mono mb-1.5 px-3 !text-[9px] text-on-surface/30">Navigation</p>
           <NavList items={navItems} />
         </div>
         {settingsItem && (
-          <div className="border-t border-outline-variant/25">
+          <div className="border-t border-outline-variant/20 px-2 py-2">
             <NavList items={[settingsItem]} />
           </div>
         )}
-        <div className="border-t border-outline-variant/25">
+        <div className="flex items-center gap-2.5 border-t border-outline-variant/20 px-3 py-3">
+          {user ? (
+            <>
+              <Avatar className="h-8 w-8 shrink-0">
+                {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
+                <AvatarFallback>
+                  <UserRound className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-on-surface">{user.displayName}</p>
+                <p className="truncate font-mono text-[10px] text-on-surface/40">{user.communityName ?? "Individual"}</p>
+              </div>
+            </>
+          ) : (
+            <span className="flex-1" />
+          )}
           <form action={signOut}>
             <Button
               type="submit"
               variant="ghost"
-              size="sm"
+              size="icon"
               tooltip="Sign out of your account"
-              className="w-full border-l-2 transition-colors border-transparent hover:border-outline-variant/60 hover:text-on-surface gap-2 justify-start h-11"
+              aria-label="Sign out"
+              className="h-8 w-8 text-on-surface/50 hover:text-primary"
             >
-              <LogOut className="h-4 w-4" /> Sign Out
+              <LogOut className="h-4 w-4" />
             </Button>
           </form>
         </div>
@@ -297,9 +364,13 @@ export function DashboardShell({
             <>
               {/* lg and up: search box + theme/notifications/profile —
                   same content-area header as before. */}
-              <header className="hidden items-center justify-between gap-4 border-b border-outline-variant/25 px-4 py-4 md:px-8 lg:flex">
-                <SearchBar className="w-full max-w-md" />
-                <PlayerViewHeaderActions user={user ?? null} notificationCount={notificationCount} />
+              <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-outline-variant/25 bg-background/85 px-6 backdrop-blur-md lg:flex">
+                <Breadcrumbs />
+                <div className="flex items-center gap-3">
+                  <SearchBar className="w-72" />
+                  <span className="h-6 w-px bg-outline-variant/30" aria-hidden="true" />
+                  <PlayerViewHeaderActions user={user ?? null} notificationCount={notificationCount} />
+                </div>
               </header>
 
               {/* Below lg: centered wordmark, theme/notifications/account
@@ -330,7 +401,7 @@ export function DashboardShell({
             </div>
           )}
         <div className="mx-auto max-w-[1440px]">
-          <div className="p-6">{children}</div>
+          <div className="px-4 py-5 lg:px-6 lg:py-6">{children}</div>
         </div>
       </div>
     </div>

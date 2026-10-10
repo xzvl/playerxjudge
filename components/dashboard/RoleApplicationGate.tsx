@@ -29,7 +29,7 @@ export function RoleApplicationGate({
       : "An admin is reviewing your application. You'll get access as soon as it's approved.";
 
   return (
-    <div className="min-h-screen">
+    <div className="erp min-h-screen bg-background text-on-surface">
       {/* This renders instead of DashboardShell (no approved role yet, so no
           sidebar to navigate with) — but the global site Header hides
           itself on every /account route (see Header.tsx / isAccountRoute)

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BadgeCheck, ListChecks, Settings } from "lucide-react";
+import { BadgeCheck, Building2, CheckCircle2, Clock3, ListChecks, Settings } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { KpiCard, KpiGrid, PageHeader, Panel } from "@/components/dashboard/erp";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -43,38 +43,37 @@ export default async function JudgeDashboardPage() {
     assignments = (assignmentsData as CommunityJudge[] | null) ?? [];
   }
 
-  return (
-    <div className="space-y-10">
-      <div>
-        <h1 className="heading text-2xl">Judge Dashboard</h1>
-        <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-          Your assigned tournaments and scoring tools will appear here.
-        </p>
-      </div>
+  const approvedCount = assignments.filter((a) => a.status === "approved").length;
+  const pendingCount = assignments.filter((a) => a.status === "pending").length;
 
-      <section>
-        <h2 className="label-mono mb-4 flex items-center gap-2 text-primary">
-          <Settings className="h-4 w-4" aria-hidden="true" /> Communities to Judge
-        </h2>
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            {communities.length === 0 ? (
-              <p className="text-sm text-on-surface/50">No communities are registered yet.</p>
-            ) : (
-              communities.map((community) => {
+  return (
+    <div className="space-y-5">
+      <PageHeader eyebrow="Judge" title="Judge Dashboard" description="Your assigned tournaments and scoring tools will appear here." />
+
+      <KpiGrid className="xl:grid-cols-3">
+        <KpiCard label="Approved communities" value={approvedCount} icon={CheckCircle2} emphasis hint="You can judge their events" />
+        <KpiCard label="Pending requests" value={pendingCount} icon={Clock3} hint="Awaiting organizer approval" />
+        <KpiCard label="Registered communities" value={communities.length} icon={Building2} hint="Available to request" />
+      </KpiGrid>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Panel title="Communities to Judge" icon={Settings} meta={`${communities.length} total`} className="lg:col-span-2" bodyClassName="p-0">
+          {communities.length === 0 ? (
+            <p className="p-4 text-sm text-on-surface/50">No communities are registered yet.</p>
+          ) : (
+            <ul className="divide-y divide-outline-variant/15">
+              {communities.map((community) => {
                 const assignment = assignments.find((a) => a.community_id === community.id);
                 return (
-                  <div
+                  <li
                     key={community.id}
-                    className="flex flex-wrap items-center justify-between gap-3 border border-outline-variant/25 p-4"
+                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-primary/[0.04]"
                   >
                     <span className="text-sm text-on-surface">{community.name}</span>
                     <div className="flex items-center gap-3">
                       {assignment ? (
                         <>
-                          <RoleStatusBadge
-                            status={assignment.status === "removed" ? "rejected" : assignment.status}
-                          />
+                          <RoleStatusBadge status={assignment.status === "removed" ? "rejected" : assignment.status} />
                           <form action={withdrawCommunityJudgeRequest.bind(null, community.id)}>
                             <Button type="submit" size="sm" variant="outline" tooltip="Withdraw this judge request">
                               Withdraw
@@ -89,31 +88,31 @@ export default async function JudgeDashboardPage() {
                         </form>
                       )}
                     </div>
-                  </div>
+                  </li>
                 );
-              })
-            )}
-          </CardContent>
-        </Card>
-      </section>
+              })}
+            </ul>
+          )}
+        </Panel>
 
-      <section>
-        <h2 className="label-mono mb-4 text-on-surface/40">More Tools</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {TOOLS.map((tool) => (
-            <Link key={tool.href} href={tool.href} className="block">
-              <Card className="h-full transition-colors hover:border-primary/40">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <tool.icon className="h-4 w-4 text-primary" aria-hidden="true" /> {tool.label}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs text-on-surface/50">{tool.description}</CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
+        <Panel title="More Tools" icon={ListChecks} bodyClassName="p-2">
+          <nav className="flex flex-col">
+            {TOOLS.map((tool) => (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                className="group border-l-2 border-transparent px-3 py-2.5 transition-colors hover:border-primary hover:bg-primary/[0.06]"
+              >
+                <span className="flex items-center gap-2.5 text-[13px] font-medium text-on-surface/85 group-hover:text-on-surface">
+                  <tool.icon className="h-4 w-4 text-on-surface/40 transition-colors group-hover:text-primary" aria-hidden="true" />
+                  {tool.label}
+                </span>
+                <span className="mt-0.5 block pl-[26px] text-xs text-on-surface/45">{tool.description}</span>
+              </Link>
+            ))}
+          </nav>
+        </Panel>
+      </div>
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Swords } from "lucide-react";
+import { Disc3, Plus, Swords, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { KpiCard, KpiGrid, Meter, PageHeader } from "@/components/dashboard/erp";
 import { ComboMatchStats, ComboPartsLine, ComboThumbnails } from "@/components/dashboard/beyblade/combo-ui";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { EMPTY_COMBO_MATCH_STATS, getComboMatchStatsForProfile, listUserCombos } from "@/app/account/beyblade/data";
@@ -28,14 +29,24 @@ export default async function BeybladeDashboardPage() {
   const byWinRate = combos.filter((c) => statsFor(c.id).matches > 0).sort((a, b) => statsFor(b.id).winRate - statsFor(a.id).winRate);
   const bestCombos = (byWinRate.length > 0 ? byWinRate : combos).slice(0, 3);
 
+  const totalBattles = combos.reduce((sum, c) => sum + statsFor(c.id).matches, 0);
+  const totalWins = combos.reduce((sum, c) => sum + statsFor(c.id).wins, 0);
+  const overallWinRate = totalBattles > 0 ? Math.round((totalWins / totalBattles) * 100) : 0;
+
   return (
     <div>
-      <p className="label-mono text-primary">Beyblade Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Overview</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Your saved combos, deck, and match usage at a glance.</p>
+      <PageHeader eyebrow="Beyblade Dashboard" title="Overview" description="Your saved combos, deck, and match usage at a glance." />
+
+      <KpiGrid className="mt-5 xl:grid-cols-3">
+        <KpiCard label="Saved combos" value={combos.length} icon={Disc3} href="/account/beyblade/combos" hint="In your library" />
+        <KpiCard label="Battles recorded" value={totalBattles} icon={Swords} hint="Judge-scored, across all combos" />
+        <KpiCard label="Overall win rate" value={`${overallWinRate}%`} icon={Trophy} emphasis hint={`${totalWins} battle wins`}>
+          <Meter value={overallWinRate} label="Overall combo win rate" />
+        </KpiCard>
+      </KpiGrid>
 
       {combos.length === 0 ? (
-        <Card className="mt-8">
+        <Card className="mt-5">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
             <Swords className="h-8 w-8 text-on-surface/30" aria-hidden="true" />
             <p className="text-sm text-on-surface/60">You haven&apos;t saved any combos yet.</p>
@@ -48,7 +59,7 @@ export default async function BeybladeDashboardPage() {
         </Card>
       ) : (
         <>
-          <Card className="relative mt-8 overflow-hidden">
+          <Card className="relative mt-5 overflow-hidden">
             {mostUsed && mostUsed.blade.imageUrl ? (
               <div className="pointer-events-none absolute inset-y-0 right-0 w-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -70,9 +81,9 @@ export default async function BeybladeDashboardPage() {
             </CardContent>
           </Card>
 
-          <div className="mt-8">
-            <h2 className="heading text-lg">Best Combo</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5">
+            <h2 className="label-mono !text-[10px] text-on-surface/60">Best Combo</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {bestCombos.map((combo) => (
                 <Card key={combo.id}>
                   <CardContent className="p-5">

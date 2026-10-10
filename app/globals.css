@@ -13,7 +13,7 @@
      Tailwind's `rgb(var(...) / <alpha-value>)` opacity-modifier trick works. */
   :root {
     /* shadcn/ui semantic slots mapped onto the xzvlstore-derived palette (HSL, no hsl() wrapper) */
-    --background: 0 0% 7%;
+    --background: 240 11% 4%;
     --foreground: 0 0% 89%;
     --card: 0 0% 10%;
     --card-foreground: 0 0% 89%;
@@ -49,9 +49,9 @@
     --m3-secondary-fixed: 226 226 226;
     --m3-surface-bright: 57 57 57;
     --m3-secondary-container: 69 71 71;
-    --m3-background: 19 19 19;
+    --m3-background: 8 8 10;
     --m3-inverse-surface: 226 226 226;
-    --m3-surface: 19 19 19;
+    --m3-surface: 8 8 10;
     --m3-on-surface: 226 226 226;
     --m3-on-tertiary-fixed: 0 26 64;
     --m3-error-container: 147 0 10;
@@ -70,7 +70,7 @@
     --m3-on-background: 226 226 226;
     --m3-surface-tint: 237 13 17;
     --m3-error: 255 180 171;
-    --m3-surface-dim: 19 19 19;
+    --m3-surface-dim: 8 8 10;
     --m3-on-tertiary: 0 47 103;
     --m3-tertiary-container: 72 143 255;
     --m3-surface-container-high: 42 42 42;
@@ -161,6 +161,37 @@
 }
 
 @layer base {
+  /* "Enterprise" dashboard palette — every app-shell surface (/account,
+     /backend, the player view and judge console) carries `.erp` on its
+     root, and ErpScope mirrors it onto <body> so Radix portals (dialogs,
+     sheets, dropdowns) rendered outside the shell match too. Dark-only:
+     near-black neutral surfaces and cool neutral hairlines instead of the
+     marketing site's warm reddish ones. The page background and the brand
+     red (#ED0D11) come from :root unchanged. Light mode deliberately keeps the base light palette — the
+     `:not([data-theme="light"])` guard lets ThemeToggle still win. */
+  :root:not([data-theme="light"]) .erp {
+    --card: 240 10% 6%;
+    --popover: 240 10% 6%;
+    --muted: 240 8% 8%;
+    --muted-foreground: 240 5% 64%;
+    --accent: 240 7% 11%;
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+
+    --m3-surface-container-lowest: 5 5 6;
+    --m3-surface-container-low: 14 14 17;
+    --m3-surface-container: 19 19 22;
+    --m3-surface-container-high: 26 26 30;
+    --m3-surface-container-highest: 36 36 41;
+    --m3-surface-bright: 46 46 52;
+    --m3-surface-variant: 36 36 41;
+    --m3-outline: 120 120 130;
+    --m3-outline-variant: 82 82 92;
+    --m3-on-surface: 232 232 236;
+    --m3-on-background: 232 232 236;
+    --m3-on-surface-variant: 165 165 175;
+  }
+
   * {
     @apply border-border;
   }
@@ -206,6 +237,54 @@
     @apply font-mono uppercase tracking-[0.2em] text-[11px];
   }
 }
+
+/* Enterprise dashboard density — scoped to `.erp` (see the token block
+   above) so the marketing site keeps its roomier editorial layout. These
+   tighten the dozens of existing panels in one place instead of
+   re-classing each one. */
+@layer components {
+  .erp h1.heading {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  /* Section anchors (the player view's sidebar links) land below the
+     shells' sticky top bars instead of underneath them. */
+  .erp [id] {
+    scroll-margin-top: 5rem;
+  }
+
+  /* Cards get a faint top-lit sheen + inner hairline, the "raised module"
+     look, without adding weight to the border itself. */
+  .erp [data-slot="card"] {
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.025), transparent 48px);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  /* Data tables: compact rows, a tinted header band, and a red-tinted row
+     hover. Overrides the panels' own `p-4` cell padding. */
+  .erp table thead tr {
+    background-color: rgb(var(--m3-surface-container) / 0.7);
+  }
+  .erp table th {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+    font-size: 10px;
+  }
+  .erp table td {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+  .erp table tbody tr {
+    transition: background-color 120ms ease;
+  }
+  .erp table tbody tr:hover {
+    background-color: rgb(var(--m3-primary) / 0.05);
+  }
+  .erp table td {
+    font-variant-numeric: tabular-nums;
+  }
+}
 .bg-color-white{
   background-color: #ffffff;
 }
@@ -230,7 +309,7 @@
   background: #2a2a2a !important;
 }
 .map-tiles-dark .leaflet-control-attribution {
-  background: rgba(19, 19, 19, 0.75) !important;
+  background: rgba(8, 8, 10, 0.75) !important;
   color: rgba(226, 226, 226, 0.5) !important;
   border-radius: 0 !important;
 }
@@ -261,7 +340,7 @@
 }
 ::-webkit-scrollbar-thumb {
   background-color: #ed0d11;
-  border: 2px solid #131313;
+  border: 2px solid #08080a;
 }
 
 @media (prefers-reduced-motion: reduce) {

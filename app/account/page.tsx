@@ -5,6 +5,7 @@ import { Gavel, Handshake, LayoutDashboard, Trophy } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/dashboard/erp";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ACCOUNT_SETTINGS_NAV_ITEM, getAccountNavItems } from "@/components/dashboard/accountNavItems";
 import {
@@ -80,14 +81,10 @@ export default async function AccountPage() {
       user={navUser}
       notificationCount={notificationCount}
     >
-      <div className="mx-auto max-w-3xl space-y-8">
-        <div>
-          <p className="label-mono text-primary">Account</p>
-          <h1 className="heading mt-2 text-3xl">Your Dashboards</h1>
-          <p className="mt-2 text-sm text-on-surface/60">Pick a dashboard to continue.</p>
-        </div>
+      <div className="space-y-5">
+        <PageHeader eyebrow="Account" title="Your Dashboards" description="Pick a dashboard to continue." />
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {dashboards.map((dashboard) => (
             <Card key={dashboard.role}>
               <CardHeader>

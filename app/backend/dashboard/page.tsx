@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { BadgeCheck, Building2, ClipboardList, Handshake, ListChecks } from "lucide-react";
+import { BadgeCheck, Building2, ClipboardList, Handshake, Inbox, ListChecks } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { BarList } from "@/components/dashboard/charts";
+import { KpiCard, KpiGrid, PageHeader, Panel } from "@/components/dashboard/erp";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Backend", robots: { index: false, follow: false } };
@@ -25,30 +25,34 @@ export default async function BackendDashboardPage() {
     { label: "BeyZ ID Reviews", count: pendingBeyzIds ?? 0, href: "/backend/judges", icon: BadgeCheck },
     { label: "Participant Links", count: pendingLinks ?? 0, href: "/backend/participants", icon: ListChecks },
   ];
+  const totalPending = tiles.reduce((sum, t) => sum + t.count, 0);
+  const busiest = [...tiles].sort((a, b) => b.count - a.count)[0];
 
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Overview</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Everything waiting on your review, across the whole platform.</p>
+    <div className="space-y-5">
+      <PageHeader eyebrow="Backend" title="Overview" description="Everything waiting on your review, across the whole platform." />
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {tiles.map((tile) => (
-          <Link key={tile.href} href={tile.href} className="block">
-            <Card className="h-full transition-colors hover:border-primary/40">
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-outline-variant/40 text-primary">
-                  <tile.icon className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="font-mono text-2xl font-bold text-on-surface">{tile.count}</p>
-                  <p className="label-mono text-on-surface/50">{tile.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <KpiCard
+          label="Total pending"
+          value={totalPending.toLocaleString()}
+          icon={Inbox}
+          emphasis
+          hint={totalPending > 0 && busiest ? `Largest queue: ${busiest.label}` : "All queues are clear"}
+        />
+        <Panel title="Review queue" icon={ListChecks} meta={`${tiles.length} queues`} className="lg:col-span-2">
+          <BarList
+            items={tiles.map((t) => ({ label: t.label, value: t.count, href: t.href }))}
+            emptyLabel="Nothing waiting."
+          />
+        </Panel>
       </div>
+
+      <KpiGrid className="xl:grid-cols-5">
+        {tiles.map((tile) => (
+          <KpiCard key={tile.href} label={tile.label} value={tile.count} icon={tile.icon} href={tile.href} hint="Pending review" />
+        ))}
+      </KpiGrid>
     </div>
   );
 }

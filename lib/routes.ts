@@ -7,8 +7,7 @@
 // (/tournaments/[slug]/judge) both render their own full app-shell — see
 // PlayerViewShell / JudgeConsole — including their own header content, so
 // the global site Header hides itself on both rather than stacking two
-// headers. The Footer only hides on mobile, where each page's own fixed
-// bottom nav already occupies that space.
+// headers. The Footer hides there too, at every breakpoint.
 export function isTournamentConsoleRoute(pathname: string | null): boolean {
   if (!pathname) return false;
   return /^\/tournaments\/[^/]+\/(player|judge)(?:\/|$)/.test(pathname);
