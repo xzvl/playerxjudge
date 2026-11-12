@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { SPONSORS_CACHE_TAG } from "@/lib/sponsors/queries";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import type { RoleActionState } from "@/lib/validations/roles";
 import type { SponsorDonationTier } from "@/lib/types/database";
@@ -17,6 +18,7 @@ export async function deleteSponsorListing(sponsorId: string): Promise<RoleActio
   const { error } = await supabase.from("sponsors").delete().eq("id", sponsorId).eq("profile_id", user.id);
   if (error) return { status: "error", message: error.message };
 
+  revalidateTag(SPONSORS_CACHE_TAG);
   revalidatePath("/account/sponsor/dashboard");
   return { status: "success" };
 }
@@ -40,6 +42,7 @@ export async function renewSponsorListing(sponsorId: string, tier: SponsorDonati
 
   if (error) return { status: "error", message: error.message };
 
+  revalidateTag(SPONSORS_CACHE_TAG);
   revalidatePath("/account/sponsor/dashboard");
   return { status: "success", message: "Renewal submitted — we'll activate it once your donation is confirmed." };
 }

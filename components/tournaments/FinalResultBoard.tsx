@@ -133,7 +133,7 @@ export function FinalResultBoard({
   if (rows.length === 0) {
     if (!championName) {
       return (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+        <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
           Results are being finalized.
         </p>
       );

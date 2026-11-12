@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { CreateCommunityWizard } from "@/components/dashboard/organizer/CreateCommunityWizard";
 import { getCurrentUser } from "@/lib/supabase/get-user";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = {
   title: "Create Community",
@@ -15,11 +16,11 @@ export default async function NewCommunityPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="label-mono text-primary">Organizer</p>
-      <h1 className="heading mt-2 text-3xl">Create Community</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Set up your community&apos;s branding, headquarters, and social links.
-      </p>
+      <PageHeader
+        eyebrow="Organizer"
+        title="Create Community"
+        description={<>Set up your community&apos;s branding, headquarters, and social links.</>}
+      />
       <div className="mt-10">
         <CreateCommunityWizard />
       </div>

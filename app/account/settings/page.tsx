@@ -11,6 +11,7 @@ import { getCurrentUser, getCurrentProfile } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { ProfileCommunity } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = {
   title: "Account Settings",
@@ -43,8 +44,10 @@ export default async function AccountSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="label-mono text-primary">Account</p>
-        <h1 className="heading mt-2 text-3xl">Account Settings</h1>
+        <PageHeader
+          eyebrow="Account"
+          title="Account Settings"
+        />
       </div>
 
       <Card>

@@ -6,26 +6,29 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap font-mono uppercase tracking-[0.15em] text-[11px] font-medium transition-all disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  // `erp:` classes are the dashboard look (compact, sentence case, rounded);
+  // the unprefixed ones stay the marketing site's look.
+  "inline-flex items-center justify-center whitespace-nowrap font-mono uppercase tracking-[0.15em] text-[11px] font-medium transition-all disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 erp:gap-1.5 erp:rounded-md erp:font-sans erp:text-[13px] erp:normal-case erp:tracking-normal erp:transition-colors erp:focus-visible:ring-offset-1 erp:[&_svg]:size-3.5",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-on-primary hover:brightness-110 active:scale-95",
+          "bg-primary text-on-primary hover:brightness-110 active:scale-95 erp:active:scale-100 erp:hover:brightness-100 erp:hover:bg-primary/90",
         destructive:
-          "bg-destructive text-destructive-foreground hover:brightness-110",
+          "bg-destructive text-destructive-foreground hover:brightness-110 erp:hover:brightness-100 erp:hover:bg-destructive/90",
         outline:
-          "border border-outline-variant/60 text-on-surface/70 hover:border-primary hover:text-primary bg-transparent",
+          "border border-outline-variant/60 text-on-surface/70 hover:border-primary hover:text-primary bg-transparent erp:border-outline-variant/35 erp:bg-surface-container-low erp:text-on-surface erp:hover:border-outline-variant/60 erp:hover:bg-surface-container erp:hover:text-on-surface",
         secondary:
           "bg-surface-container text-on-surface hover:bg-surface-container-high",
-        ghost: "hover:bg-white/5 text-on-surface/70 hover:text-on-surface",
+        ghost:
+          "hover:bg-white/5 text-on-surface/70 hover:text-on-surface erp:hover:bg-surface-container",
         link: "text-primary underline-offset-4 hover:underline normal-case tracking-normal",
       },
       size: {
-        default: "h-11 px-4 lg:px-6 py-2",
-        sm: "h-9 px-4",
-        lg: "h-14 px-8 text-xs",
-        icon: "h-10 w-10",
+        default: "h-11 px-4 lg:px-6 py-2 erp:h-8 erp:px-3 erp:py-0 erp:lg:px-3",
+        sm: "h-9 px-4 erp:h-7 erp:px-2.5 erp:text-xs",
+        lg: "h-14 px-8 text-xs erp:h-9 erp:px-4 erp:text-sm",
+        icon: "h-10 w-10 erp:h-8 erp:w-8",
       },
     },
     defaultVariants: {

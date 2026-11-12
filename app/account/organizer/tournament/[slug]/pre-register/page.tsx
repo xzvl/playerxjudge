@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { TournamentPreregistration } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Pre-Registrations", robots: { index: false, follow: false } };
 
@@ -25,12 +26,13 @@ export default async function TournamentPreRegisterPage({ params }: { params: Pr
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Pre-Registrations</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Everyone who submitted the public Pre-register form, before they&apos;re on the actual roster.
-      </p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Pre-Registrations"
+        description={<>Everyone who submitted the public Pre-register form, before they&apos;re on the actual roster.</>}
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentPreRegisterWorkspace
           tournamentId={tournament.id}
           slug={tournament.slug}

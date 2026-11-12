@@ -87,7 +87,7 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
   const hasPin = tournament.latitude !== 0 || tournament.longitude !== 0;
 
   return (
-    <div className="mx-auto max-w-[1200px] px-4 py-10 md:px-16">
+    <div className="mx-auto max-w-[1200px] px-4 py-10 md:px-6">
       <TournamentThumbnail
         color={tournament.thumbnailColor}
         title={tournament.title}
@@ -107,14 +107,15 @@ export default async function TournamentDetailsPage({ params }: { params: Promis
               <BattleTypeBadge type={tournament.battleType} />
               <TournamentTypeBadge type={tournament.tournamentType} />
               <span
-                className={`label-mono px-2 py-1 ${
-                  tournament.liveStatus === "ongoing" ? "animate-blink text-primary" : "text-on-surface/50"
+                className={`inline-flex items-center gap-1.5 rounded px-1.5 py-px text-[11px] font-medium ${
+                  tournament.liveStatus === "ongoing" ? "bg-primary/10 text-primary" : "bg-surface-container-high text-on-surface/60"
                 }`}
               >
+                {tournament.liveStatus === "ongoing" ? <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" /> : null}
                 {LIVE_STATUS_LABEL[tournament.liveStatus]}
               </span>
             </div>
-            <h1 className="heading text-3xl md:text-4xl">{tournament.title}</h1>
+            <h1 className="heading text-2xl md:text-3xl">{tournament.title}</h1>
             {tournament.description ? (
               <div
                 className="prose-editor max-w-2xl text-sm text-on-surface/60 [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"

@@ -53,13 +53,13 @@ export function FindTournamentSectionClient({
 
   return (
     <section
-      className="mx-auto max-w-[1440px] px-4 py-16 md:px-16"
+      className="mx-auto max-w-[1280px] px-4 py-10 md:px-6"
       aria-labelledby="find-tournament-heading"
     >
       <div className="mb-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
         <div>
           <p className="label-mono text-primary">Explore</p>
-          <h2 id="find-tournament-heading" className="heading mt-2 text-3xl md:text-4xl">
+          <h2 id="find-tournament-heading" className="heading mt-1 text-2xl md:text-3xl">
             Find a Tournament Near You
           </h2>
           <p className="mt-3 max-w-xl text-sm text-on-surface/60">
@@ -142,7 +142,7 @@ export function FindTournamentSectionClient({
           <TournamentMap tournaments={tournaments} onSelect={setSelectedId} userPosition={userPosition} radiusKm={userPosition ? rangeKm : null} />
         </div>
       ) : (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+        <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
           No upcoming tournaments have a pinned location yet.
         </p>
       )}

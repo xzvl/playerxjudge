@@ -36,17 +36,17 @@ function SearchResults() {
   const selectedTournament = MOCK_TOURNAMENTS.find((t) => t.id === selectedId) ?? null;
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-16 md:px-16">
+    <div className="mx-auto max-w-[1280px] px-4 py-10 md:px-6">
       <div className="mb-10 flex items-center gap-3">
         <Search className="h-6 w-6 text-primary" aria-hidden="true" />
         <div>
           <p className="label-mono text-primary">Search Results</p>
-          <h1 className="heading text-3xl">{query ? `"${query}"` : "Search PlayerXJudge"}</h1>
+          <h1 className="heading text-2xl">{query ? `"${query}"` : "Search PlayerXJudge"}</h1>
         </div>
       </div>
 
       {query && results.length === 0 ? (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+        <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
           No tournaments found for &quot;{query}&quot;. Try a different keyword.
         </p>
       ) : null}

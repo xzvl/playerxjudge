@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { TournamentAnnouncementsPanel, type AnnouncementItem } from "@/components/dashboard/organizer/TournamentAnnouncementsPanel";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournamentForStaff } from "@/app/account/organizer/tournament/[slug]/data";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Announcement", robots: { index: false, follow: false } };
 
@@ -32,10 +33,13 @@ export default async function BackendAnnouncementsPage({ params }: { params: Pro
 
   return (
     <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h2 className="heading mt-2 text-2xl">Announcement</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Keep every registered participant in the loop.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Backend"
+        title="Announcement"
+        description="Keep every registered participant in the loop."
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentAnnouncementsPanel tournamentId={tournament.id} slug={tournament.slug} announcements={announcements} />
       </div>
     </div>

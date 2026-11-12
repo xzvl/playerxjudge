@@ -16,6 +16,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { Bracket, Match, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Final Stage", robots: { index: false, follow: false } };
 
@@ -46,12 +47,12 @@ export default async function FinalStagePage({ params }: { params: Promise<{ slu
 
     return (
       <div>
-        <p className="label-mono text-primary">Tournament Management</p>
-        <h2 className="heading mt-2 text-2xl">Final Stage</h2>
-        <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-          {formatLabel}
-          {grandFinalsLabel ? ` · Grand Finals: ${grandFinalsLabel}` : ""}
-        </p>
+        <PageHeader
+          eyebrow="Tournament Management"
+          title="Final Stage"
+          description={<>{formatLabel}{grandFinalsLabel ? ` · Grand Finals: ${grandFinalsLabel}` : ""}</>}
+          as="h2"
+        />
 
         {workspace.champion ? (
           <div className="mt-4 flex items-center gap-2 border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary">
@@ -127,12 +128,12 @@ export default async function FinalStagePage({ params }: { params: Promise<{ slu
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Final Stage</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        {finalFormatLabel}
-        {grandFinalsLabel ? ` · Grand Finals: ${grandFinalsLabel}` : ""}
-      </p>
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Final Stage"
+        description={<>{finalFormatLabel}{grandFinalsLabel ? ` · Grand Finals: ${grandFinalsLabel}` : ""}</>}
+        as="h2"
+      />
       {!finalStageStarted ? (
         <p className="mt-1 text-xs text-on-surface/40">
           {groupStageEnded

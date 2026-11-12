@@ -101,7 +101,7 @@ export default async function JudgeDashboardPage() {
               <Link
                 key={tool.href}
                 href={tool.href}
-                className="group border-l-2 border-transparent px-3 py-2.5 transition-colors hover:border-primary hover:bg-primary/[0.06]"
+                className="group rounded-md px-2 py-2 transition-colors hover:bg-surface-container"
               >
                 <span className="flex items-center gap-2.5 text-[13px] font-medium text-on-surface/85 group-hover:text-on-surface">
                   <tool.icon className="h-4 w-4 text-on-surface/40 transition-colors group-hover:text-primary" aria-hidden="true" />

@@ -28,10 +28,10 @@ export function StatCounter({ label, value }: { label: string; value: number }) 
 
   return (
     <div ref={ref}>
-      <p className="heading text-3xl text-primary md:text-4xl" aria-hidden="true">
+      <p className="heading text-2xl tabular-nums text-primary md:text-3xl" aria-hidden="true">
         {display.toLocaleString()}+
       </p>
-      <p className="label-mono mt-1 text-on-surface/50">{label}</p>
+      <p className="label-mono mt-0.5 text-on-surface/50">{label}</p>
       <span className="sr-only">{`${value.toLocaleString()} ${label}`}</span>
     </div>
   );

@@ -14,11 +14,13 @@ import {
   LayoutDashboard,
   ListChecks,
   Settings,
+  Shield,
   Star,
   Swords,
   Trophy,
   Users,
   Users2,
+  UsersRound,
 } from "lucide-react";
 
 // Sponsor "Tournament Sponsor" and Judge's own children below reuse
@@ -140,6 +142,17 @@ const BEYBLADE_DASHBOARD_SUB_ITEMS: DashboardNavItem[] = [
   { label: "Beyblade Combo", href: "/account/beyblade/combos", icon: <Swords className="h-4 w-4 shrink-0" /> },
 ];
 
+// Like Beyblade Dashboard, open to every signed-in account: anyone can
+// create a team or be invited to one.
+const TEAM_DASHBOARD_NAV_ITEM: DashboardNavItem = {
+  label: "Team Dashboard",
+  icon: <Shield className="h-4 w-4 shrink-0" />,
+  children: [
+    { label: "Overview", href: "/account/team/dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
+    { label: "Teams", href: "/account/team/teams", icon: <UsersRound className="h-4 w-4 shrink-0" /> },
+  ],
+};
+
 const BEYBLADE_DASHBOARD_NAV_ITEM: DashboardNavItem = {
   label: "Beyblade Dashboard",
   icon: <Disc3 className="h-4 w-4 shrink-0" />,
@@ -206,11 +219,11 @@ export function getAccountNavItems(roles: ProfileRole[]): DashboardNavItem[] {
   // it, regardless of which other role dashboards (Judge/Organizer/
   // Sponsor) also show up beneath.
   const [playerItem, ...otherRoleItems] = ROLE_NAV_ITEMS.filter(({ role }) => approvedRoles.has(role)).map(({ item }) => item);
-  const items = [playerItem, BEYBLADE_DASHBOARD_NAV_ITEM, ...otherRoleItems];
+  const items = [playerItem, TEAM_DASHBOARD_NAV_ITEM, BEYBLADE_DASHBOARD_NAV_ITEM, ...otherRoleItems];
 
-  // Not an approved judge yet — offer the apply link right under Beyblade
+  // Not an approved judge yet: offer the apply link right under Beyblade
   // Dashboard rather than making them find /become/judge.
-  if (!approvedRoles.has("judge")) items.splice(2, 0, APPLY_JUDGE_NAV_ITEM);
+  if (!approvedRoles.has("judge")) items.splice(3, 0, APPLY_JUDGE_NAV_ITEM);
 
   return items;
 }

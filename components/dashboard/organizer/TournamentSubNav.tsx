@@ -150,7 +150,7 @@ export function TournamentSubNavMobileBar({ baseHref, isTwoStage }: { baseHref: 
   const currentLabel = allItems.find((item) => isActiveItem(item, pathname))?.label ?? "Menu";
 
   return (
-    <div className="sticky top-16 z-20 -mx-6 border-b border-outline-variant/25 bg-surface-container-lowest/95 px-6 backdrop-blur-md lg:hidden">
+    <div className="sticky top-16 z-20 -mx-6 border-b border-outline-variant/25 bg-surface-container-lowest px-6 lg:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <button

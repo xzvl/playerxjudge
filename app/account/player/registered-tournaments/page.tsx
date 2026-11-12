@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPublicTournamentListings } from "@/lib/tournaments/public-listings";
 import { fetchLinkedTournaments } from "@/lib/player/linked-participants";
 import type { TournamentPreregistration } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Registered Tournaments", robots: { index: false, follow: false } };
 
@@ -60,12 +61,12 @@ export default async function RegisteredTournamentsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Player Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Registered Tournaments</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Tournaments where you&apos;re a confirmed, linked player — past and present.
-      </p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Player Dashboard"
+        title="Registered Tournaments"
+        description={<>Tournaments where you&apos;re a confirmed, linked player — past and present.</>}
+      />
+      <div className="mt-5">
         <RegisteredTournamentsPanel entries={entries} />
       </div>
     </div>

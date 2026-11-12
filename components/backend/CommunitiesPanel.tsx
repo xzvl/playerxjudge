@@ -233,7 +233,7 @@ export function CommunitiesPanel({ pending: pendingItems, communities }: { pendi
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                  <tr key={c.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                     <td className="p-4 font-medium text-on-surface">{c.name}</td>
                     <td className="p-4 text-on-surface/60">{c.ownerName}</td>
                     <td className="p-4 text-on-surface/60">{c.memberCount}</td>

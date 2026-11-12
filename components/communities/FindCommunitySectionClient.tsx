@@ -44,12 +44,12 @@ export function FindCommunitySectionClient({ communities }: { communities: Publi
 
   return (
     <section
-      className="mx-auto max-w-[1440px] px-4 py-16 md:px-16"
+      className="mx-auto max-w-[1280px] px-4 py-10 md:px-6"
       aria-labelledby="find-community-heading"
     >
       <div className="mb-8">
         <p className="label-mono text-primary">Explore</p>
-        <h2 id="find-community-heading" className="heading mt-2 text-3xl md:text-4xl">
+        <h2 id="find-community-heading" className="heading mt-1 text-2xl md:text-3xl">
           Find a Community Near You
         </h2>
         <p className="mt-3 max-w-xl text-sm text-on-surface/60">
@@ -124,7 +124,7 @@ export function FindCommunitySectionClient({ communities }: { communities: Publi
           />
         </div>
       ) : (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+        <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
           No approved communities have a pinned location yet.
         </p>
       )}

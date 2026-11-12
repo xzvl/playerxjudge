@@ -1,10 +1,6 @@
+// A centered, wrapping row of logos/chips. (Formerly an auto-scrolling
+// marquee; kept under the same name so callers don't change. Static rows
+// read faster and drop the edge-fade and continuous motion.)
 export function Marquee({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="scrollbar-none relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
-      <div className="flex w-max animate-marquee items-center gap-16 motion-reduce:animate-none">
-        {children}
-        {children}
-      </div>
-    </div>
-  );
+  return <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">{children}</div>;
 }

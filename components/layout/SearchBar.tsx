@@ -22,7 +22,7 @@ export function SearchBar({ className }: { className?: string }) {
       <div className="relative">
         <Search
           aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface/40"
+          className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-on-surface/40"
         />
         <input
           id="site-search"
@@ -30,7 +30,7 @@ export function SearchBar({ className }: { className?: string }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search tournaments, communities, players..."
-          className="h-11 w-full border border-outline-variant/30 bg-surface-container-low pl-10 pr-4 text-sm text-on-surface placeholder:text-on-surface/40 transition-colors focus-visible:outline-none focus-visible:border-primary"
+          className="h-8 w-full rounded-md border border-outline-variant/30 bg-surface-container-low pl-8 pr-3 text-[13px] text-on-surface placeholder:text-on-surface/40 transition-colors focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/15"
         />
       </div>
     </form>

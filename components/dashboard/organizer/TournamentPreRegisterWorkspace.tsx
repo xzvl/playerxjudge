@@ -341,7 +341,7 @@ export function TournamentPreRegisterWorkspace({
                 {visible.map((e, i) => {
                   const added = addedIds.has(e.id);
                   return (
-                    <tr key={e.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                    <tr key={e.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                       <td className="p-4 py-2 text-on-surface/40">{i + 1}</td>
                       <td className="p-4 py-2 text-on-surface/80">{e.full_name}</td>
                       <td className="p-4 py-2 text-on-surface/70">{e.facebook_name}</td>

@@ -508,7 +508,16 @@ export interface TournamentListItem
 // DB itself only accepts these (see 20250101000026_notification_type_judge_events.sql,
 // which added the last two — the app inserting an out-of-enum `type` fails
 // the write outright, so a mismatch here is a real live bug, not a lint nit).
-export type NotificationType = "tournament_update" | "registration" | "match_result" | "announcement" | "system" | "judge_invite" | "judge_response";
+export type NotificationType =
+  | "tournament_update"
+  | "registration"
+  | "match_result"
+  | "announcement"
+  | "system"
+  | "judge_invite"
+  | "judge_response"
+  // 20250101000058_notification_type_team_invite.sql
+  | "team_invite";
 
 export type NotificationRow = {
   id: string;
@@ -732,6 +741,88 @@ export type BeybladeDeck = {
   updated_at: string;
 };
 
+// Mirrors supabase/migrations/20250101000059_teams_and_leagues.sql.
+export type TeamRole = "captain" | "sub_captain" | "member" | "filler";
+export type TeamInviteStatus = "pending" | "accepted" | "declined" | "cancelled";
+export type LeagueRosterSlot = "elite" | "sub";
+export type BattleOutcome = "win" | "loss";
+
+export type Team = {
+  id: string;
+  slug: string;
+  name: string;
+  tag: string | null;
+  description: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TeamMember = {
+  team_id: string;
+  profile_id: string;
+  role: TeamRole;
+  joined_at: string;
+};
+
+export type TeamInvite = {
+  id: string;
+  team_id: string;
+  invitee_id: string;
+  invited_by: string | null;
+  role: TeamRole;
+  status: TeamInviteStatus;
+  created_at: string;
+  responded_at: string | null;
+};
+
+export type TeamLeague = {
+  id: string;
+  team_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  elite_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TeamLeagueRosterEntry = {
+  league_id: string;
+  profile_id: string;
+  slot: LeagueRosterSlot;
+  position: number;
+  added_at: string;
+};
+
+export type TeamLeagueMatch = {
+  id: string;
+  league_id: string;
+  profile_id: string;
+  opponent_name: string;
+  opponent_team: string | null;
+  player_points: number;
+  opponent_points: number;
+  played_on: string;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TeamLeagueBattle = {
+  id: string;
+  match_id: string;
+  battle_no: number;
+  outcome: BattleOutcome;
+  finish: FinishType;
+  player_beyblade_id: string | null;
+  opponent_beyblade_id: string | null;
+  created_at: string;
+};
+
 type TableDef<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 
 // Minimal Supabase Database type shape so `@supabase/ssr` generics compile
@@ -767,6 +858,13 @@ export interface Database {
       beyblades: TableDef<Beyblade>;
       beyblade_combos: TableDef<BeybladeCombo>;
       beyblade_decks: TableDef<BeybladeDeck>;
+      teams: TableDef<Team>;
+      team_members: TableDef<TeamMember>;
+      team_invites: TableDef<TeamInvite>;
+      team_leagues: TableDef<TeamLeague>;
+      team_league_roster: TableDef<TeamLeagueRosterEntry>;
+      team_league_matches: TableDef<TeamLeagueMatch>;
+      team_league_battles: TableDef<TeamLeagueBattle>;
     };
     Views: {
       public_preregistrations: TableDef<PublicPreregistration>;
@@ -780,6 +878,10 @@ export interface Database {
       // — bumps tournaments.view_count by 1, bypassing RLS so anonymous
       // visitors to the player view can count too (see getPlayerViewData).
       increment_tournament_view_count: { Args: { target_tournament_id: string }; Returns: void };
+      // 20250101000059_teams_and_leagues.sql
+      accept_team_invite: { Args: { target_invite_id: string }; Returns: string };
+      decline_team_invite: { Args: { target_invite_id: string }; Returns: void };
+      transfer_team_captaincy: { Args: { target_team_id: string; new_captain_id: string }; Returns: void };
     };
     Enums: {
       app_role: AppRole;

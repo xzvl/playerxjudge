@@ -6,6 +6,7 @@ import { updateSponsorListing } from "@/app/account/sponsor/[id]/edit/actions";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Sponsor } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = {
   title: "Edit Sponsor Listing",
@@ -30,9 +31,11 @@ export default async function EditSponsorListingPage({ params }: { params: Promi
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="label-mono text-primary">Sponsor</p>
-      <h1 className="heading mt-2 text-3xl">Edit Sponsor Listing</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Update this listing&apos;s branding, socials, and donation tier.</p>
+      <PageHeader
+        eyebrow="Sponsor"
+        title="Edit Sponsor Listing"
+        description={<>Update this listing&apos;s branding, socials, and donation tier.</>}
+      />
       <div className="mt-10">
         <SponsorListingForm
           sponsorId={row.id}

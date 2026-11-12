@@ -106,7 +106,7 @@ export function CommunityMembersPanel({ slug, members }: { slug: string; members
             </thead>
             <tbody>
               {filtered.map((r, i) => (
-                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                   <td className="p-4 text-on-surface/60">{i + 1}</td>
                   <td className="p-4 font-medium text-on-surface">{r.playerName}</td>
                   <td className="p-4 text-on-surface/60">{r.fullName}</td>

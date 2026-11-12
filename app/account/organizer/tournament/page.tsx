@@ -5,6 +5,7 @@ import { TournamentManagementPanel } from "@/components/dashboard/organizer/Tour
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Tournament } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Tournament Management", robots: { index: false, follow: false } };
 
@@ -35,10 +36,12 @@ export default async function TournamentManagementPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Organizer Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Tournament Management</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Every tournament you organize, from draft to completed.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Organizer Dashboard"
+        title="Tournament Management"
+        description="Every tournament you organize, from draft to completed."
+      />
+      <div className="mt-5">
         <TournamentManagementPanel tournaments={tournaments} startedTournamentIds={[...startedTournamentIds]} />
       </div>
     </div>

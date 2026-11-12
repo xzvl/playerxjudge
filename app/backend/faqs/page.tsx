@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { FaqsPanel, type FaqItem } from "@/components/backend/FaqsPanel";
 import { createClient } from "@/lib/supabase/server";
 import type { Faq } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "FAQs", robots: { index: false, follow: false } };
 
@@ -21,10 +22,12 @@ export default async function BackendFaqsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">FAQs</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Manage the frequently asked questions shown on the public FAQs page.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Backend"
+        title="FAQs"
+        description="Manage the frequently asked questions shown on the public FAQs page."
+      />
+      <div className="mt-5">
         <FaqsPanel faqs={faqs} />
       </div>
     </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { StaticPageEditor } from "@/components/backend/StaticPageEditor";
 import { getStaticPage } from "@/lib/static-pages";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Privacy Policy", robots: { index: false, follow: false } };
 
@@ -10,10 +11,12 @@ export default async function BackendPrivacyPolicyPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Privacy Policy</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Edits are live on /privacy as soon as you save.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Backend"
+        title="Privacy Policy"
+        description="Edits are live on /privacy as soon as you save."
+      />
+      <div className="mt-5">
         <StaticPageEditor slug="privacy-policy" initialTitle={page.title} initialBody={page.body} updatedAt={page.updated_at} />
       </div>
     </div>

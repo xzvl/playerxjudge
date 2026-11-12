@@ -222,7 +222,7 @@ export function SponsorsPanel({ sponsors }: { sponsors: SponsorItem[] }) {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                <tr key={s.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                   <td className="p-4 font-medium text-on-surface">{s.companyName}</td>
                   <td className="p-4 text-on-surface/60">{s.ownerName}</td>
                   <td className="p-4 text-on-surface/60">{tierLabel(s.donationTier)}</td>

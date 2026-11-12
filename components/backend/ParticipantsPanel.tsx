@@ -248,7 +248,7 @@ export function ParticipantsPanel({
               </thead>
               <tbody>
                 {links.map((item) => (
-                  <tr key={item.link.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                  <tr key={item.link.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                     <td className="p-4 font-medium text-on-surface">{item.participantLabel}</td>
                     <td className="p-4 text-on-surface/60">{item.tournamentTitle}</td>
                     <td className="p-4">
@@ -306,7 +306,7 @@ export function ParticipantsPanel({
               </thead>
               <tbody>
                 {pageRows.map((p) => (
-                  <tr key={p.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                  <tr key={p.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                     <td className="p-4 font-medium text-on-surface">{p.name}</td>
                     <td className="p-4 text-on-surface/60">{p.teamName ?? "—"}</td>
                     <td className="p-4 text-on-surface/60">{p.tournamentTitle}</td>

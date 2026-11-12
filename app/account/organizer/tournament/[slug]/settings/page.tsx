@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { TournamentPrize } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -32,10 +33,13 @@ export default async function TournamentSettingsPage({ params }: { params: Promi
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Settings</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Edit the details players see.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Settings"
+        description="Edit the details players see."
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentSettingsPanel
           tournament={tournament}
           communities={communities ?? []}

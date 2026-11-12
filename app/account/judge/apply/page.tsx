@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { JudgeApplyForm } from "@/components/dashboard/judge/JudgeApplyForm";
 import { RoleStatusBadge } from "@/components/roles/RoleStatusBadge";
 import { getCurrentProfile, getCurrentUser, getCurrentUserRoles } from "@/lib/supabase/get-user";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Apply Judge", robots: { index: false, follow: false } };
 
@@ -24,11 +25,11 @@ export default async function JudgeApplyPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Account</p>
-      <h1 className="heading mt-2 text-3xl">Apply Judge</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Help officiate community tournaments — an admin reviews every judge request.
-      </p>
+      <PageHeader
+        eyebrow="Account"
+        title="Apply Judge"
+        description="Help officiate community tournaments — an admin reviews every judge request."
+      />
 
       {existing ? (
         <Card className="mt-8 max-w-xl">

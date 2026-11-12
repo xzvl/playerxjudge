@@ -25,23 +25,27 @@ export default async function TournamentJudgePage({ params }: { params: Promise<
   if (!user) redirect(`/login?redirectTo=/tournaments/${slug}/judge`);
 
   const supabase = await createClient();
-  const { data: tournament } = await supabase
-    .from("tournaments")
-    .select("id, title, organizer_id, organizer_station_id")
-    .eq("slug", slug)
-    .not("status", "in", `(${PUBLIC_STATUS_EXCLUDES.join(",")})`)
-    .maybeSingle();
+  // The tournament and the caller's judge row load together: the judge row
+  // is matched by the tournament's slug (inner join) instead of waiting
+  // for the tournament's id first.
+  const [{ data: tournament }, { data: judgeRow }] = await Promise.all([
+    supabase
+      .from("tournaments")
+      .select("id, title, organizer_id, organizer_station_id")
+      .eq("slug", slug)
+      .not("status", "in", `(${PUBLIC_STATUS_EXCLUDES.join(",")})`)
+      .maybeSingle(),
+    supabase
+      .from("judges")
+      .select("*, tournaments!inner(slug)")
+      .eq("tournaments.slug", slug)
+      .eq("judge_id", user.id)
+      .maybeSingle(),
+  ]);
   if (!tournament) notFound();
 
   const isOrganizer = tournament.organizer_id === user.id;
-
-  const { data: judgeRow } = await supabase
-    .from("judges")
-    .select("*")
-    .eq("tournament_id", tournament.id)
-    .eq("judge_id", user.id)
-    .maybeSingle();
-  const judge = judgeRow as Judge | null;
+  const judge = (judgeRow as unknown as Judge | null) ?? null;
   const isConfirmedJudge = judge?.status === "approved";
 
   if (!isOrganizer && !isConfirmedJudge) {

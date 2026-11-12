@@ -55,7 +55,7 @@ export function AnalyticsPanel({ tournaments }: { tournaments: AnalyticsTourname
           </thead>
           <tbody>
             {byViews.map((t) => (
-              <tr key={t.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+              <tr key={t.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                 <td className="p-4 font-medium text-on-surface">{t.title}</td>
                 <td className="p-4 text-on-surface/60">
                   {t.participantCount}/{t.maxParticipants ?? "∞"}

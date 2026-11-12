@@ -5,40 +5,50 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Profile, ProfileRole } from "@/lib/types/database";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
-// Wrapped in React's cache() — supabase.auth.getUser() is a real network
-// round trip to Supabase's Auth server (it validates the token there,
-// unlike a local cookie read), and this is the single most-called helper in
-// the app: nearly every page and action needs "who's signed in", and it's
-// common for several of those to run within the same request (a page
-// reading its own user directly, then also calling a couple of helpers below
-// — getCurrentUserRoles, getUnreadNotificationCount, ... — that each used to
-// call this again from scratch). Each of those used to be its own separate
-// Auth round trip; cache() dedupes repeat calls into the one already in
-// flight/resolved for this request, not one per call site. This is what was
-// actually behind /tournaments/[slug]/player feeling slow just to switch
-// which participant's stats were showing: every switch re-runs the whole
-// page, and the page's own handful of getCurrentUser()-calling helpers were
-// each paying for a redundant Auth round trip on top of the unavoidable one.
-// Scoped to a single request by Next's per-request cache() context, so this
-// can never leak a signed-in user across requests or between visitors.
-export const getCurrentUser = cache(async () => {
+// Every helper here is wrapped in React's cache(): the root layout, the
+// dashboard layouts and the page itself all ask for the same "who's signed
+// in / their roles / their unread count" within one request, and cache()
+// collapses those into one query each (scoped to the request, so nothing
+// leaks between visitors).
+
+// The signed-in user, as the fields the app actually reads.
+export interface CurrentUser {
+  id: string;
+  email: string | null;
+  user_metadata: Record<string, unknown>;
+  app_metadata: Record<string, unknown>;
+}
+
+// getClaims() verifies the session's access token locally against the
+// project's cached public signing key (ES256), so this costs no Auth
+// server round trip (the old getUser() call paid one on every request).
+// The middleware has already refreshed the session cookie for this request.
+// Claims carry user_metadata as of token issue; the app only writes
+// metadata at sign-up, so that's the same data getUser() returned.
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!isSupabaseConfigured) return null;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) return null;
+
+  return {
+    id: claims.sub,
+    email: (claims.email as string | undefined) ?? null,
+    user_metadata: (claims.user_metadata as Record<string, unknown> | undefined) ?? {},
+    app_metadata: (claims.app_metadata as Record<string, unknown> | undefined) ?? {},
+  };
 });
 
-export async function getCurrentProfile(): Promise<Profile | null> {
+export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
 
   const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
   return (data as Profile | null) ?? null;
-}
+});
 
 // Mirrors the Postgres `is_admin()` helper (role in ('admin', 'super_admin'))
 // — the app-layer check for gating things like app/account/admin, since
@@ -53,23 +63,20 @@ export function isAdminProfile(profile: Profile | null): boolean {
 // (20250101000008_role_approvals.sql) — the app-layer gate for /backend.
 // That function checks `profile_roles.role in ('admin', 'manager')`, i.e.
 // an approved `profile_roles` row of *either* kind counts as staff — not
-// just manager. This previously only checked for 'manager' here and relied
-// on isAdminProfile (the `profiles.role` platform column) to catch the
-// admin case, which silently locks out an account admin'd only via
-// `profile_roles` (e.g. on a database where `profiles.role` doesn't exist
-// at all — see the /backend access investigation this fixes).
+// just manager. isAdminProfile additionally covers the `profiles.role`
+// platform column.
 export function isStaffProfile(profile: Profile | null, roles: ProfileRole[]): boolean {
   return isAdminProfile(profile) || roles.some((r) => (r.role === "manager" || r.role === "admin") && r.status === "approved");
 }
 
-export async function getCurrentUserRoles(): Promise<ProfileRole[]> {
+export const getCurrentUserRoles = cache(async (): Promise<ProfileRole[]> => {
   const user = await getCurrentUser();
   if (!user) return [];
 
   const supabase = await createClient();
   const { data } = await supabase.from("profile_roles").select("*").eq("profile_id", user.id);
   return (data as ProfileRole[] | null) ?? [];
-}
+});
 
 // One-call convenience over isStaffProfile for server actions that need to
 // decide "is the caller staff" without a profile/roles pair already in
@@ -81,33 +88,27 @@ export async function isCurrentUserStaff(): Promise<boolean> {
   return isStaffProfile(profile, roles);
 }
 
-// Backs the mobile nav's "Community/Individual" line under the player's
-// name (Header.tsx) — profiles.community_id is the "main community" a
-// player picked in Account Settings (see app/account/settings/actions.ts),
-// distinct from profile_communities (their full, possibly-pending
-// membership list). No community picked at all reads as "Individual".
-export async function getCurrentUserCommunityName(): Promise<string | null> {
+// Backs the "Community/Individual" line under the player's name in the
+// navs — profiles.community_id is the "main community" a player picked in
+// Account Settings, distinct from profile_communities (their full,
+// possibly-pending membership list). None picked reads as "Individual".
+export const getCurrentUserCommunityName = cache(async (): Promise<string | null> => {
   const user = await getCurrentUser();
   if (!user) return null;
 
   const supabase = await createClient();
-  // communities(...) alone is ambiguous — profiles has two FKs to
-  // communities (profiles.community_id for this "home community" lookup,
-  // and communities.owner_id); disambiguate to the former.
+  // profiles has two FKs to communities (profiles.community_id for this
+  // "home community" lookup, and communities.owner_id); disambiguate.
   const { data } = await supabase
     .from("profiles")
     .select("communities!profiles_community_id_fkey(name)")
     .eq("id", user.id)
     .single();
   return (data as unknown as { communities: { name: string } | null } | null)?.communities?.name ?? null;
-}
+});
 
-// Assembles the NavUser object every header (the global Header, and now
-// every /account layout's own standalone DashboardShell header) needs —
-// pulled out so the same displayName/avatar fallback logic doesn't drift
-// across call sites. Takes the auth user and roles as params rather than
-// fetching them itself since callers (RootLayout, the /account layouts)
-// already need both for other reasons and would otherwise re-fetch them.
+// Assembles the NavUser object every header needs, so the same
+// displayName/avatar fallback logic doesn't drift across call sites.
 export function buildNavUser(
   authUser: { email?: string | null; user_metadata?: Record<string, unknown> | null },
   roles: readonly ProfileRole[],
@@ -125,9 +126,8 @@ export function buildNavUser(
   };
 }
 
-// Backs the header bell's badge count — see components/layout/Header.tsx
-// and PlayerViewHeaderActions, both of which show it next to the bell icon.
-export async function getUnreadNotificationCount(): Promise<number> {
+// Backs the header bell's badge count (Header.tsx, PlayerViewHeaderActions).
+export const getUnreadNotificationCount = cache(async (): Promise<number> => {
   const user = await getCurrentUser();
   if (!user) return 0;
 
@@ -138,4 +138,29 @@ export async function getUnreadNotificationCount(): Promise<number> {
     .eq("profile_id", user.id)
     .eq("is_read", false);
   return count ?? 0;
+});
+
+export interface ShellData {
+  user: CurrentUser;
+  roles: ProfileRole[];
+  notificationCount: number;
+  communityName: string | null;
+  navUser: NavUser;
 }
+
+// Everything a dashboard shell (and the root layout's header) needs, in
+// one parallel batch: one auth check, then roles + unread count + community
+// together, instead of the layouts' old auth → roles → (count, community)
+// chain. Shared through cache(), so the root layout and a dashboard layout
+// rendering in the same request pay for it once.
+export const getShellData = cache(async (): Promise<ShellData | null> => {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const [roles, notificationCount, communityName] = await Promise.all([
+    getCurrentUserRoles(),
+    getUnreadNotificationCount(),
+    getCurrentUserCommunityName(),
+  ]);
+  return { user, roles, notificationCount, communityName, navUser: buildNavUser(user, roles, communityName) };
+});

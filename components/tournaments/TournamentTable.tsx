@@ -15,7 +15,7 @@ export function TournamentTable({
 }) {
   if (tournaments.length === 0) {
     return (
-      <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+      <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
         No recent tournaments match your filters.
       </p>
     );

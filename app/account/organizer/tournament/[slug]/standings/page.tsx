@@ -13,6 +13,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { Match, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Standings", robots: { index: false, follow: false } };
 
@@ -32,12 +33,13 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
     const workspace = getTournamentWorkspace(tournament);
     return (
       <div>
-        <p className="label-mono text-primary">Tournament Management</p>
-        <h2 className="heading mt-2 text-2xl">Standings</h2>
-        <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-          Overall placement across the whole tournament, updated as matches are reported.
-        </p>
-        <div className="mt-8">
+        <PageHeader
+          eyebrow="Tournament Management"
+          title="Standings"
+          description="Overall placement across the whole tournament, updated as matches are reported."
+          as="h2"
+        />
+        <div className="mt-5">
           <WorkspaceStandingsTable standings={workspace.overallStandings} />
         </div>
       </div>
@@ -88,13 +90,14 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Standings</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Overall placement across the whole tournament, updated as matches are reported.
-      </p>
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Standings"
+        description="Overall placement across the whole tournament, updated as matches are reported."
+        as="h2"
+      />
 
-      <div className="mt-8">
+      <div className="mt-5">
         <Tabs defaultValue={finalStageStarted ? "final" : "group"}>
           <TabsList>
             <TabsTrigger value="group" className="gap-1.5">

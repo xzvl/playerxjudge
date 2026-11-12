@@ -134,7 +134,7 @@ export function PlayersPanel({ players }: { players: PlayerRow[] }) {
             </thead>
             <tbody>
               {pageRows.map((r) => (
-                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                   <td className="p-4">
                     <p className="font-medium text-on-surface">{r.displayName}</p>
                     <p className="text-xs text-on-surface/40">@{r.username}</p>

@@ -58,7 +58,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[10rem] overflow-hidden border border-outline-variant/40 bg-surface-container-lowest p-1 text-on-surface shadow-2xl",
+        "z-50 min-w-[10rem] overflow-hidden border border-outline-variant/40 bg-surface-container-lowest p-1 text-on-surface shadow-2xl erp:rounded-md erp:border-outline-variant/30 erp:bg-surface-container-low",
         className
       )}
       {...props}
@@ -76,7 +76,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center px-3 py-2 text-sm outline-none transition-colors focus:bg-primary/15 focus:text-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center px-3 py-2 text-sm outline-none transition-colors focus:bg-primary/15 focus:text-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-50 erp:gap-2 erp:rounded erp:px-2 erp:py-1.5 erp:text-[13px] erp:focus:bg-surface-container-high erp:focus:text-on-surface",
       inset && "pl-8",
       className
     )}
@@ -139,7 +139,7 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-on-surface/50",
+      "px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-on-surface/50 erp:px-2 erp:py-1.5 erp:font-sans erp:text-xs erp:font-medium erp:normal-case erp:tracking-normal",
       inset && "pl-8",
       className
     )}

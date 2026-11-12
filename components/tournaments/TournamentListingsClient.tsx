@@ -49,11 +49,11 @@ export function TournamentListingsClient({ tournaments }: { tournaments: MockTou
   const selectedTournament = tournaments.find((t) => t.id === selectedId) ?? null;
 
   return (
-    <section className="mx-auto max-w-[1440px] px-4 py-16 md:px-16" aria-labelledby="listings-heading">
+    <section className="mx-auto max-w-[1280px] px-4 py-10 md:px-6" aria-labelledby="listings-heading">
       <div className="mb-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
         <div>
           <p className="label-mono text-primary">Tournaments</p>
-          <h2 id="listings-heading" className="heading mt-2 text-3xl md:text-4xl">
+          <h2 id="listings-heading" className="heading mt-1 text-2xl md:text-3xl">
             Find Your Next Battle
           </h2>
         </div>
@@ -104,7 +104,7 @@ export function TournamentListingsClient({ tournaments }: { tournaments: MockTou
             ))}
           </div>
         ) : (
-          <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+          <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
             No upcoming tournaments match your filters.
           </p>
         )

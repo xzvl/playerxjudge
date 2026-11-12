@@ -11,6 +11,7 @@ import { computeGroupStandings } from "@/lib/swiss";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournamentForStaff } from "@/app/account/organizer/tournament/[slug]/data";
 import type { Match, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Standings", robots: { index: false, follow: false } };
 
@@ -24,12 +25,13 @@ export default async function BackendStandingsPage({ params }: { params: Promise
     const workspace = getTournamentWorkspace(tournament);
     return (
       <div>
-        <p className="label-mono text-primary">Backend</p>
-        <h2 className="heading mt-2 text-2xl">Standings</h2>
-        <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-          Overall placement across the whole tournament, updated as matches are reported.
-        </p>
-        <div className="mt-8">
+        <PageHeader
+          eyebrow="Backend"
+          title="Standings"
+          description="Overall placement across the whole tournament, updated as matches are reported."
+          as="h2"
+        />
+        <div className="mt-5">
           <WorkspaceStandingsTable standings={workspace.overallStandings} />
         </div>
       </div>
@@ -80,13 +82,14 @@ export default async function BackendStandingsPage({ params }: { params: Promise
 
   return (
     <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h2 className="heading mt-2 text-2xl">Standings</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Overall placement across the whole tournament, updated as matches are reported.
-      </p>
+      <PageHeader
+        eyebrow="Backend"
+        title="Standings"
+        description="Overall placement across the whole tournament, updated as matches are reported."
+        as="h2"
+      />
 
-      <div className="mt-8">
+      <div className="mt-5">
         <Tabs defaultValue={finalStageStarted ? "final" : "group"}>
           <TabsList>
             <TabsTrigger value="group" className="gap-1.5">

@@ -19,7 +19,7 @@ const SheetOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-fade-in",
+      "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-fade-in erp:bg-black/60 erp:backdrop-blur-none",
       className
     )}
     {...props}
@@ -28,7 +28,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 border-outline-variant/30 bg-surface p-6 shadow-2xl transition ease-in-out",
+  "fixed z-50 gap-4 border-outline-variant/30 bg-surface p-6 shadow-2xl transition ease-in-out erp:bg-surface-container-lowest erp:p-4",
   {
     variants: {
       side: {
@@ -60,7 +60,7 @@ const SheetContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center border border-outline-variant/40 text-on-surface/70 hover:border-primary hover:text-primary focus:outline-none">
+      <DialogPrimitive.Close className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center border border-outline-variant/40 text-on-surface/70 hover:border-primary hover:text-primary focus:outline-none erp:right-3 erp:top-3 erp:h-7 erp:w-7 erp:rounded-md erp:border-transparent erp:hover:border-transparent erp:hover:bg-surface-container erp:hover:text-on-surface">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -80,7 +80,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("heading text-lg", className)}
+    className={cn("heading text-lg erp:text-sm", className)}
     {...props}
   />
 ));

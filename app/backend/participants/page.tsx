@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Clock3, Link2, ListChecks, Trophy } from "lucide-react";
 
 import { ParticipantsPanel, type ParticipantItem, type PendingLinkItem } from "@/components/backend/ParticipantsPanel";
 import { createClient } from "@/lib/supabase/server";
 import type { ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
 import type { ParticipantLinkStatus } from "@/lib/types/database";
+import { KpiCard, KpiGrid, PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Participants", robots: { index: false, follow: false } };
 
@@ -77,12 +79,23 @@ export default async function BackendParticipantsPage() {
     link: linkByParticipantId.get(p.id) ?? null,
   }));
 
+  const linkedCount = participants.filter((p) => p.link?.status === "approved").length;
+  const tournamentCount = new Set(participants.map((p) => p.tournamentId)).size;
+
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Participants</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Player-link requests waiting for review, and every tournament roster entry.</p>
-      <div className="mt-8">
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Backend"
+        title="Participants"
+        description="Player-link requests waiting for review, and every tournament roster entry."
+      />
+      <KpiGrid>
+        <KpiCard label="Roster entries" value={participants.length.toLocaleString()} icon={ListChecks} emphasis hint="Across all tournaments" />
+        <KpiCard label="Pending links" value={pendingLinks.length} icon={Clock3} hint="Waiting for review" />
+        <KpiCard label="Linked accounts" value={linkedCount.toLocaleString()} icon={Link2} hint="Entries tied to a player" />
+        <KpiCard label="Tournaments" value={tournamentCount} icon={Trophy} hint="With at least one entry" />
+      </KpiGrid>
+      <div>
         <ParticipantsPanel pendingLinks={pendingLinks} participants={participants} />
       </div>
     </div>

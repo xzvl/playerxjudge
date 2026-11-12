@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { FinishType, Match, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Top Finishers", robots: { index: false, follow: false } };
 
@@ -106,13 +107,14 @@ export default async function TopFinishersPage({ params }: { params: Promise<{ s
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Top Finishers</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Top 5 across the whole tournament — group stage and final stage together.
-      </p>
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Top Finishers"
+        description="Top 5 across the whole tournament — group stage and final stage together."
+        as="h2"
+      />
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-5 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {(Object.keys(FINISH_CARD_META) as FinishType[]).map((type) => (
           <LeaderboardCard key={type} title={FINISH_CARD_META[type].label} icon={FINISH_CARD_META[type].icon} color={FINISH_CARD_META[type].color} entries={finishers[type]} />
         ))}

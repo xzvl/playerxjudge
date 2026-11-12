@@ -50,7 +50,7 @@ export default async function CommunityProfilePage({ params }: { params: Promise
             <Users2 className="h-8 w-8" aria-hidden="true" />
           )}
         </div>
-        <h1 className="heading text-3xl">{community.name}</h1>
+        <h1 className="heading text-2xl">{community.name}</h1>
         {locationLine ? (
           <p className="flex items-center gap-1.5 text-sm text-on-surface/60">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" /> {locationLine}
@@ -104,7 +104,7 @@ export default async function CommunityProfilePage({ params }: { params: Promise
             ))}
           </div>
         ) : (
-          <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+          <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
             This community hasn&apos;t hosted any tournaments yet.
           </p>
         )}

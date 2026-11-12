@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { BadgeCheck, Clock3, FileQuestion, Gavel } from "lucide-react";
 
 import { JudgesPanel, type JudgeRow } from "@/components/backend/JudgesPanel";
 import { createClient } from "@/lib/supabase/server";
 import type { BeyzIdStatus } from "@/lib/types/database";
+import { KpiCard, KpiGrid, PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Judges", robots: { index: false, follow: false } };
 
@@ -30,12 +32,24 @@ export default async function JudgesPage() {
       beyzIdStatus: r.profiles.beyz_id_status,
     }));
 
+  const certifiedCount = judges.filter((j) => j.beyzIdStatus === "approved").length;
+  const reviewCount = judges.filter((j) => j.beyzIdStatus === "pending").length;
+  const missingCount = judges.filter((j) => !j.beyzIdUrl).length;
+
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Judges</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Approved judges and their BeyZ ID certification status.</p>
-      <div className="mt-8">
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Backend"
+        title="Judges"
+        description="Approved judges and their BeyZ ID certification status."
+      />
+      <KpiGrid>
+        <KpiCard label="Judges" value={judges.length} icon={Gavel} emphasis hint="Approved judge roles" />
+        <KpiCard label="Certified" value={certifiedCount} icon={BadgeCheck} hint="BeyZ ID approved" />
+        <KpiCard label="Awaiting review" value={reviewCount} icon={Clock3} hint="BeyZ ID submitted" />
+        <KpiCard label="No BeyZ ID" value={missingCount} icon={FileQuestion} hint="Nothing uploaded yet" />
+      </KpiGrid>
+      <div>
         <JudgesPanel judges={judges} />
       </div>
     </div>

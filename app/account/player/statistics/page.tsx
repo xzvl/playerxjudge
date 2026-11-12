@@ -6,6 +6,7 @@ import { getCurrentProfile, getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { fetchLinkedTournaments, fetchPlayerMatches } from "@/lib/player/linked-participants";
 import { computePlayerStats } from "@/lib/player/stats";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Statistics", robots: { index: false, follow: false } };
 
@@ -20,10 +21,12 @@ export default async function StatisticsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Player Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Statistics</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Your battle record, broken down by finish type.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Player Dashboard"
+        title="Statistics"
+        description="Your battle record, broken down by finish type."
+      />
+      <div className="mt-5">
         <StatisticsPanel fullBodyPhotoUrl={profile?.full_body_photo_url ?? null} stats={stats} />
       </div>
     </div>

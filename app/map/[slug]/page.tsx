@@ -44,7 +44,7 @@ export default async function TournamentMapPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-8 md:px-16">
+    <div className="mx-auto max-w-[1280px] px-4 py-8 md:px-6">
       <Link
         href={`/tournaments/${tournament.slug}`}
         className="label-mono flex items-center gap-1.5 text-on-surface/50 hover:text-primary"

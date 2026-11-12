@@ -10,6 +10,7 @@ import {
   listOrCreateUserDecks,
   listUserCombos,
 } from "@/app/account/beyblade/data";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Build Your Deck", robots: { index: false, follow: false } };
 
@@ -27,13 +28,13 @@ export default async function BuildDeckPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Beyblade Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Build Your Deck</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Rename, select, or customize any of your decks — each one holds 3 combo slots.
-      </p>
+      <PageHeader
+        eyebrow="Beyblade Dashboard"
+        title="Build Your Deck"
+        description="Rename, select, or customize any of your decks — each one holds 3 combo slots."
+      />
 
-      <div className="mt-8">
+      <div className="mt-5">
         <DeckRows decks={deckSummaries} availableCombos={combos} pickerOptions={pickerOptions} comboStats={comboStats} />
       </div>
     </div>

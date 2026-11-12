@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Building2, CircleCheck, Clock3, Users } from "lucide-react";
 
 import { CommunitiesPanel, type CommunityItem, type PendingCommunityItem } from "@/components/backend/CommunitiesPanel";
 import { createClient } from "@/lib/supabase/server";
 import type { CommunityRow } from "@/lib/types/database";
+import { KpiCard, KpiGrid, PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Communities", robots: { index: false, follow: false } };
 
@@ -50,12 +52,23 @@ export default async function BackendCommunitiesPage() {
       ownerName: c.profiles?.display_name ?? "Unknown",
     }));
 
+  const activeCount = communities.filter((c) => c.status === "active").length;
+  const totalMembers = communities.reduce((sum, c) => sum + (c.memberCount ?? 0), 0);
+
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Communities</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Applications waiting for review, and every community on the platform.</p>
-      <div className="mt-8">
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Backend"
+        title="Communities"
+        description="Applications waiting for review, and every community on the platform."
+      />
+      <KpiGrid>
+        <KpiCard label="Communities" value={communities.length} icon={Building2} emphasis hint="Approved on the platform" />
+        <KpiCard label="Pending applications" value={pending.length} icon={Clock3} hint="Waiting for review" />
+        <KpiCard label="Active" value={activeCount} icon={CircleCheck} hint={`${communities.length - activeCount} inactive`} />
+        <KpiCard label="Total members" value={totalMembers.toLocaleString()} icon={Users} hint="Across all communities" />
+      </KpiGrid>
+      <div>
         <CommunitiesPanel pending={pending} communities={communities} />
       </div>
     </div>

@@ -21,21 +21,21 @@ export default async function BecomeOrganizerPage() {
   const existing = roles.find((r) => r.role === "organizer");
 
   return (
-    <div className="cyber-grid px-4 py-20 md:px-16">
+    <div className="px-4 py-12 md:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="text-center">
-          <div className="glass-panel mx-auto flex h-16 w-16 items-center justify-center">
-            <ClipboardList className="h-7 w-7 text-primary" aria-hidden="true" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-md border border-outline-variant/25 bg-surface-container-low">
+            <ClipboardList className="h-4 w-4 text-on-surface/70" aria-hidden="true" />
           </div>
-          <p className="label-mono mt-6 text-primary">Organize</p>
-          <h1 className="heading mt-3 text-4xl md:text-5xl">Become an Organizer</h1>
+          <p className="label-mono mt-4 text-on-surface/50">Organize</p>
+          <h1 className="heading mt-1 text-2xl md:text-3xl">Become an Organizer</h1>
           <p className="mx-auto mt-4 max-w-xl text-on-surface/60">
             Pick a tier and apply — an admin reviews every organizer application before it goes live.
           </p>
         </div>
 
         {existing ? (
-          <Card className="mt-12">
+          <Card className="mt-8">
             <CardHeader>
               <CardTitle className="flex flex-wrap items-center gap-3">
                 Application status <RoleStatusBadge status={existing.status} />
@@ -58,7 +58,7 @@ export default async function BecomeOrganizerPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="mt-12">
+          <div className="mt-8">
             <OrganizerApplicationForm />
           </div>
         )}

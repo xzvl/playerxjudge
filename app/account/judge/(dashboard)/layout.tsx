@@ -1,50 +1,12 @@
-import { redirect } from "next/navigation";
+import { AccountShell } from "@/components/dashboard/AccountShell";
 
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { ACCOUNT_SETTINGS_NAV_ITEM, getAccountNavItems } from "@/components/dashboard/accountNavItems";
-import { RoleApplicationGate } from "@/components/dashboard/RoleApplicationGate";
-import {
-  buildNavUser,
-  getCurrentUser,
-  getCurrentUserCommunityName,
-  getCurrentUserRoles,
-  getUnreadNotificationCount,
-} from "@/lib/supabase/get-user";
-
-export default async function JudgeLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login?redirectTo=/account/judge/dashboard");
-
-  const roles = await getCurrentUserRoles();
-  const judgeRole = roles.find((r) => r.role === "judge");
-
-  if (judgeRole?.status !== "approved") {
-    return (
-      <RoleApplicationGate
-        roleLabel="Judge"
-        status={judgeRole?.status === "rejected" ? "rejected" : judgeRole ? "pending" : null}
-        applyHref="/account/judge/apply"
-        applyLabel="Apply to be a Judge"
-      />
-    );
-  }
-
-  const navItems = getAccountNavItems(roles);
-  const [notificationCount, communityName] = await Promise.all([
-    getUnreadNotificationCount(),
-    getCurrentUserCommunityName(),
-  ]);
-  const navUser = buildNavUser(user, roles, communityName);
-
+export default function JudgeLayout({ children }: { children: React.ReactNode }) {
   return (
-    <DashboardShell
-      roleLabel="Account"
-      navItems={navItems}
-      settingsItem={ACCOUNT_SETTINGS_NAV_ITEM}
-      user={navUser}
-      notificationCount={notificationCount}
+    <AccountShell
+      redirectTo="/account/judge/dashboard"
+      gate={{ role: "judge", label: "Judge", applyHref: "/account/judge/apply", applyLabel: "Apply to be a Judge" }}
     >
       {children}
-    </DashboardShell>
+    </AccountShell>
   );
 }

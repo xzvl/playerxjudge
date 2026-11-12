@@ -288,7 +288,7 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
               </thead>
               <tbody>
                 {sorted.map((b) => (
-                  <tr key={b.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                  <tr key={b.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                     <td className="p-4">
                       <BeybladeThumbnail imageUrl={b.imageUrl} alt="" />
                     </td>

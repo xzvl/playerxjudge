@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import type { JudgeAssignmentStatus, TournamentStatus } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Assigned Tournaments", robots: { index: false, follow: false } };
 
@@ -41,13 +42,13 @@ export default async function AssignedTournamentsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Judge Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Assigned Tournaments</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Tournaments you&apos;ve been invited to judge, confirmed and pending.
-      </p>
+      <PageHeader
+        eyebrow="Judge Dashboard"
+        title="Assigned Tournaments"
+        description={<>Tournaments you&apos;ve been invited to judge, confirmed and pending.</>}
+      />
 
-      <div className="mt-8">
+      <div className="mt-5">
         {assignments.length === 0 ? (
           <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
             No tournaments assigned yet.

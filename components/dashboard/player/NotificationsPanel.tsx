@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Bell, Check, Gavel, Trash2, X } from "lucide-react";
+import { Bell, Check, Gavel, Shield, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +13,7 @@ import type { NotificationRow } from "@/lib/types/database";
 const TYPE_ICONS: Record<string, typeof Bell> = {
   judge_invite: Gavel,
   judge_response: Gavel,
+  team_invite: Shield,
 };
 
 // A judge-invite notification's link carries the `judges` row id it's

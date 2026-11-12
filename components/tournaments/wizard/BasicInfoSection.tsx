@@ -1,12 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { Input } from "@/components/ui/input";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { RichTextEditor } from "@/components/tournaments/wizard/RichTextEditor";
+
+// Tiptap (ProseMirror) is the heaviest thing on the wizard/settings pages;
+// load it in its own chunk so the rest of the form is interactive first.
+const RichTextEditor = dynamic(
+  () => import("@/components/tournaments/wizard/RichTextEditor").then((mod) => mod.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 animate-pulse rounded-md border border-outline-variant/30 bg-surface-container-low" />,
+  }
+);
 import {
   BATTLE_TYPE_OPTIONS,
   TOURNAMENT_TIER_OPTIONS,

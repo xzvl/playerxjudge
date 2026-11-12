@@ -35,7 +35,7 @@ export function FinalStageStandingsTable({
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={r.participantId} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+            <tr key={r.participantId} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
               <td className="p-4 font-mono text-on-surface/60">{i + 1}</td>
               <td className="p-4 font-medium text-on-surface">
                 <span className={cn(highlightParticipantIds?.has(r.participantId) && "bg-yellow-400/30 px-1")}>{r.teamName ?? r.name}</span>
@@ -48,7 +48,7 @@ export function FinalStageStandingsTable({
                       title={`Round ${m.round}`}
                       className={cn(
                         "flex h-5 w-5 shrink-0 items-center justify-center text-[10px] font-bold",
-                        m.result === "W" && "bg-emerald-600/80 text-white",
+                        m.result === "W" && "bg-emerald-500/15 text-emerald-500",
                         m.result === "L" && "bg-error text-on-error",
                         m.result === "TBD" && "bg-surface-container-high text-on-surface/60",
                         m.result === "BYE" && "border border-outline-variant/40 text-on-surface/40"

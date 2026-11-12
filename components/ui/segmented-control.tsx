@@ -22,7 +22,12 @@ export function SegmentedControl<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={cn("inline-flex flex-wrap border border-outline-variant/30 bg-surface-container-lowest p-1", className)}>
+    <div
+      className={cn(
+        "inline-flex flex-wrap border border-outline-variant/30 bg-surface-container-lowest p-1 erp:gap-0.5 erp:rounded-md erp:border-outline-variant/25 erp:bg-surface-container-low erp:p-0.5",
+        className
+      )}
+    >
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -32,8 +37,10 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             aria-pressed={active}
             className={cn(
-              "px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors",
-              active ? "bg-primary text-on-primary" : "text-on-surface/50 hover:text-on-surface"
+              "px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors erp:rounded-[5px] erp:px-2.5 erp:py-1 erp:font-sans erp:text-[13px] erp:font-medium erp:normal-case erp:tracking-normal",
+              active
+                ? "bg-primary text-on-primary erp:bg-surface-container-highest erp:text-on-surface"
+                : "text-on-surface/50 hover:text-on-surface"
             )}
           >
             {option.label}

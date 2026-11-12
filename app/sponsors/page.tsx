@@ -14,25 +14,25 @@ export default async function SponsorsPage() {
   const sponsors = await getActiveSponsors();
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-12 md:px-16">
-      <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+    <div className="mx-auto max-w-[1280px] px-4 py-12 md:px-6">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="label-mono text-primary">Partners</p>
-          <h1 className="heading mt-2 text-3xl md:text-4xl">Sponsors</h1>
+          <h1 className="heading mt-1 text-2xl md:text-3xl">Sponsors</h1>
           <p className="mt-3 max-w-xl text-sm text-on-surface/60">
             The brands backing PlayerXJudge tournaments and communities.
           </p>
         </div>
-        <Button asChild size="lg" tooltip="Apply to sponsor the community">
+        <Button asChild tooltip="Apply to sponsor the community">
           <Link href="/become/sponsor">Become a Sponsor</Link>
         </Button>
       </div>
 
       {sponsors.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sponsors.map((sponsor) => (
-            <div key={sponsor.id} className="flex flex-col border border-outline-variant/25 bg-surface-container-low">
-              <div className="flex h-60 items-center justify-center border-b border-outline-variant/25 bg-surface-container-lowest p-6">
+            <div key={sponsor.id} className="flex flex-col overflow-hidden rounded-lg border border-outline-variant/25 bg-surface-container-low">
+              <div className="flex h-40 items-center justify-center border-b border-outline-variant/20 bg-surface-container-lowest p-5">
                 {sponsor.logo_url ? (
                   // Fixed image height (not just a fixed container) — object-contain
                   // alone still lets a wide/short logo render much smaller than a
@@ -41,13 +41,13 @@ export default async function SponsorsPage() {
                   // width scale naturally off that fixed height; max-w-full guards
                   // against an extreme-aspect-ratio logo overflowing the card.
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={sponsor.logo_url} alt={sponsor.company_name} className="h-40 w-auto max-w-full object-contain" />
+                  <img src={sponsor.logo_url} alt={sponsor.company_name} className="h-28 w-auto max-w-full object-contain" />
                 ) : (
-                  <span className="heading text-2xl uppercase text-on-surface/20">{sponsor.company_name}</span>
+                  <span className="text-base font-semibold text-on-surface/60">{sponsor.company_name}</span>
                 )}
               </div>
-              <div className="flex flex-1 flex-col gap-2 p-5">
-                <p className="heading text-lg text-on-surface">{sponsor.company_name}</p>
+              <div className="flex flex-1 flex-col gap-2 p-4">
+                <p className="heading text-[15px] text-on-surface">{sponsor.company_name}</p>
                 <div className="mt-auto flex flex-col gap-1.5 pt-2 text-sm">
                   {sponsor.website_url ? (
                     <a

@@ -75,7 +75,7 @@ export function RevenuePanel({ totalTournaments, rows }: { totalTournaments: num
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                   <td className="p-4 font-medium text-on-surface">{r.tournamentTitle}</td>
                   <td className="p-4 font-mono text-on-surface/70">{formatCurrency(r.amount)}</td>
                   <td className="p-4">

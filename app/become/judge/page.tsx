@@ -21,21 +21,21 @@ export default async function BecomeJudgePage() {
   const existing = roles.find((r) => r.role === "judge");
 
   return (
-    <div className="cyber-grid px-4 py-20 md:px-16">
+    <div className="px-4 py-12 md:px-6">
       <div className="mx-auto max-w-xl">
         <div className="text-center">
-          <div className="glass-panel mx-auto flex h-16 w-16 items-center justify-center">
-            <Gavel className="h-7 w-7 text-primary" aria-hidden="true" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-md border border-outline-variant/25 bg-surface-container-low">
+            <Gavel className="h-4 w-4 text-on-surface/70" aria-hidden="true" />
           </div>
-          <p className="label-mono mt-6 text-primary">Officiate</p>
-          <h1 className="heading mt-3 text-4xl md:text-5xl">Become a Judge</h1>
+          <p className="label-mono mt-4 text-on-surface/50">Officiate</p>
+          <h1 className="heading mt-1 text-2xl md:text-3xl">Become a Judge</h1>
           <p className="mx-auto mt-4 max-w-xl text-on-surface/60">
             Help officiate community tournaments — an admin reviews every judge request.
           </p>
         </div>
 
         {existing ? (
-          <Card className="mt-12">
+          <Card className="mt-8">
             <CardHeader>
               <CardTitle className="flex flex-wrap items-center gap-3">
                 Application status <RoleStatusBadge status={existing.status} />
@@ -56,7 +56,7 @@ export default async function BecomeJudgePage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="mt-12">
+          <div className="mt-8">
             <JudgeApplicationForm />
           </div>
         )}

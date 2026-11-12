@@ -16,6 +16,7 @@ import { getCurrentUser, isCurrentUserStaff } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { Match, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -56,12 +57,12 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
       const advancePerGroup = settings.groupStage.participantsAdvancePerGroup;
       return (
         <div>
-          <p className="label-mono text-primary">Tournament Management</p>
-          <h2 className="heading mt-2 text-2xl">Group Stage</h2>
-          <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-            Top {advancePerGroup} from each group advance
-            {workspace.seedingReady ? "" : " once registration closes and groups are seeded"}.
-          </p>
+          <PageHeader
+            eyebrow="Tournament Management"
+            title="Group Stage"
+            description={<>Top {advancePerGroup} from each group advance{workspace.seedingReady ? "" : " once registration closes and groups are seeded"}.</>}
+            as="h2"
+          />
 
           {workspace.groups && workspace.groups.length > 0 ? (
             <div className="mt-8 space-y-8">
@@ -126,11 +127,12 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
 
     return (
       <div>
-        <p className="label-mono text-primary">Tournament Management</p>
-        <h2 className="heading mt-2 text-2xl">Group Stage</h2>
-        <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-          Top {settings.groupStage.participantsAdvancePerGroup} from each group advance.
-        </p>
+        <PageHeader
+          eyebrow="Tournament Management"
+          title="Group Stage"
+          description={<>Top {settings.groupStage.participantsAdvancePerGroup} from each group advance.</>}
+          as="h2"
+        />
 
         {!groupStageEnded ? (
           <SwissGroupStageControls
@@ -176,13 +178,12 @@ export default async function TournamentWorkspaceIndexPage({ params }: { params:
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Final Stage</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        {formatLabel}
-        {grandFinalsLabel ? ` · Grand Finals: ${grandFinalsLabel}` : ""}
-        {workspace.finalUsesBracket && workspace.finalFormat === "double_elimination" ? " (winners bracket shown)" : ""}
-      </p>
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Final Stage"
+        description={<>{formatLabel}{grandFinalsLabel ? ` · Grand Finals: ${grandFinalsLabel}` : ""}{workspace.finalUsesBracket && workspace.finalFormat === "double_elimination" ? " (winners bracket shown)" : ""}</>}
+        as="h2"
+      />
 
       {workspace.champion ? (
         <div className="mt-4 flex items-center gap-2 border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary">

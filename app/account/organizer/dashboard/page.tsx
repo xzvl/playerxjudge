@@ -182,9 +182,9 @@ export default async function OrganizerDashboardPage() {
               <Link
                 key={feature.href}
                 href={feature.href}
-                className="group flex items-center gap-2.5 border-l-2 border-transparent px-3 py-2 text-[13px] text-on-surface/75 transition-colors hover:border-primary hover:bg-primary/[0.06] hover:text-on-surface"
+                className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-on-surface/75 transition-colors hover:bg-surface-container hover:text-on-surface"
               >
-                <feature.icon className="h-4 w-4 text-on-surface/40 transition-colors group-hover:text-primary" aria-hidden="true" />
+                <feature.icon className="h-4 w-4 text-on-surface/40 transition-colors group-hover:text-on-surface" aria-hidden="true" />
                 {feature.label}
               </Link>
             ))}

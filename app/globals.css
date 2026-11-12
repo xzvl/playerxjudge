@@ -161,35 +161,74 @@
 }
 
 @layer base {
-  /* "Enterprise" dashboard palette — every app-shell surface (/account,
-     /backend, the player view and judge console) carries `.erp` on its
-     root, and ErpScope mirrors it onto <body> so Radix portals (dialogs,
-     sheets, dropdowns) rendered outside the shell match too. Dark-only:
-     near-black neutral surfaces and cool neutral hairlines instead of the
-     marketing site's warm reddish ones. The page background and the brand
-     red (#ED0D11) come from :root unchanged. Light mode deliberately keeps the base light palette — the
-     `:not([data-theme="light"])` guard lets ThemeToggle still win. */
+  /* Site palette ("erp"). <body> always carries `.erp` (app/layout.tsx), so
+     every page and every Radix portal (dialogs, sheets, dropdowns) gets it.
+     Neutral zinc surfaces in both themes, replacing the original warm
+     reddish ones; the brand red stays as the single accent. Most
+     borders in the panels are `border-outline-variant/25`, so
+     --m3-outline-variant is a mid grey that reads as a quiet hairline at
+     that opacity on either background. */
   :root:not([data-theme="light"]) .erp {
-    --card: 240 10% 6%;
-    --popover: 240 10% 6%;
-    --muted: 240 8% 8%;
-    --muted-foreground: 240 5% 64%;
-    --accent: 240 7% 11%;
-    --border: 240 5% 18%;
-    --input: 240 5% 18%;
+    --background: 240 6% 4%;
+    --card: 240 5% 7%;
+    --popover: 240 5% 7%;
+    --muted: 240 4% 10%;
+    --muted-foreground: 240 5% 62%;
+    --accent: 240 4% 13%;
+    --border: 240 4% 16%;
+    --input: 240 4% 18%;
+    --radius: 6px;
 
-    --m3-surface-container-lowest: 5 5 6;
-    --m3-surface-container-low: 14 14 17;
-    --m3-surface-container: 19 19 22;
-    --m3-surface-container-high: 26 26 30;
-    --m3-surface-container-highest: 36 36 41;
-    --m3-surface-bright: 46 46 52;
-    --m3-surface-variant: 36 36 41;
-    --m3-outline: 120 120 130;
-    --m3-outline-variant: 82 82 92;
-    --m3-on-surface: 232 232 236;
-    --m3-on-background: 232 232 236;
-    --m3-on-surface-variant: 165 165 175;
+    --m3-background: 10 10 11;
+    --m3-surface: 10 10 11;
+    --m3-surface-dim: 10 10 11;
+    --m3-surface-container-lowest: 10 10 11;
+    --m3-surface-container-low: 17 17 19;
+    --m3-surface-container: 24 24 27;
+    --m3-surface-container-high: 31 31 35;
+    --m3-surface-container-highest: 39 39 42;
+    --m3-surface-bright: 52 52 56;
+    --m3-surface-variant: 39 39 42;
+    --m3-outline: 113 113 122;
+    --m3-outline-variant: 113 113 122;
+    --m3-on-surface: 236 236 238;
+    --m3-on-background: 236 236 238;
+    --m3-on-surface-variant: 161 161 170;
+  }
+
+  :root[data-theme="light"] .erp {
+    --background: 0 0% 98%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 40%;
+    --accent: 240 5% 94%;
+    --border: 240 6% 90%;
+    --input: 240 6% 88%;
+    --radius: 6px;
+
+    --m3-background: 250 250 250;
+    --m3-surface: 250 250 250;
+    --m3-surface-dim: 244 244 245;
+    --m3-surface-container-lowest: 255 255 255;
+    --m3-surface-container-low: 255 255 255;
+    --m3-surface-container: 244 244 245;
+    --m3-surface-container-high: 236 236 238;
+    --m3-surface-container-highest: 228 228 231;
+    --m3-surface-bright: 255 255 255;
+    --m3-surface-variant: 228 228 231;
+    --m3-outline: 113 113 122;
+    --m3-outline-variant: 113 113 122;
+    --m3-on-surface: 24 24 27;
+    --m3-on-background: 24 24 27;
+    --m3-on-surface-variant: 82 82 91;
+  }
+
+  .erp {
+    font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv11";
+    font-size: 0.875rem;
+    line-height: 1.25rem;
   }
 
   * {
@@ -204,21 +243,26 @@
 }
 
 @layer utilities {
+  /* Legacy decorative utilities, kept as names so existing markup still
+     works but restated flat: glass-panel is a plain bordered surface,
+     cyber-grid no longer draws a grid, glitch-hover is a quiet border
+     change. */
   .glass-panel {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: rgb(var(--m3-surface-container-low));
+    border: 1px solid rgb(var(--m3-outline-variant) / 0.25);
+    border-radius: var(--radius);
   }
 
   .cyber-grid {
-    background-image: linear-gradient(rgba(237, 13, 17, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(237, 13, 17, 0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
+    background-image: none;
   }
 
+  .glitch-hover {
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
   .glitch-hover:hover {
-    box-shadow: 0 0 0 1px #ed0d11;
+    border-color: rgb(var(--m3-outline-variant) / 0.5);
+    background-color: rgb(var(--m3-surface-container));
   }
 
   .scrollbar-none {
@@ -238,53 +282,177 @@
   }
 }
 
-/* Enterprise dashboard density — scoped to `.erp` (see the token block
-   above) so the marketing site keeps its roomier editorial layout. These
-   tighten the dozens of existing panels in one place instead of
-   re-classing each one. */
+/* Site-wide typography and density, scoped to `.erp`, which <body> always
+   carries (app/layout.tsx). Pages were written against an older
+   vocabulary (`.heading` = black uppercase Inter, `.label-mono` = tracked
+   uppercase mono); these rules restate it as a compact, sentence-case SaaS
+   UI in one place instead of re-classing every file. Selectors are
+   `.erp .x` (0,2,0), so they beat the single-class utilities they restyle. */
 @layer components {
-  .erp h1.heading {
-    font-size: 1.5rem;
-    line-height: 2rem;
+  /* Headings: Geist semibold, sentence case, tight tracking. */
+  .erp .heading {
+    font-family: inherit;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: -0.02em;
+  }
+
+  /* Inside the app shells (dashboards, player view, judge console; marked
+     `.app-shell`) headings collapse to one fixed data-UI scale, whatever
+     size class the panel used. Public pages keep their own sizes. */
+  .app-shell h1.heading {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+  .app-shell h2.heading {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  .app-shell h3.heading,
+  .app-shell h4.heading {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  /* Labels / eyebrows / table headers: small medium-weight sans in
+     sentence case. `!important` here outranks the many `!text-[10px]`
+     call-site overrides so every label lands on one size. */
+  .erp .label-mono {
+    font-family: inherit;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px !important;
+    line-height: 1rem;
+  }
+
+  /* Marketing display weights read as shouting in a data UI. */
+  .erp .font-black,
+  .erp .font-extrabold {
+    font-weight: 600;
+  }
+  .erp .font-inter {
+    font-family: inherit;
+  }
+  /* Mono stays for codes, ids and figures, but in tabular form. */
+  .erp .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Section anchors (the player view's sidebar links) land below the
      shells' sticky top bars instead of underneath them. */
   .erp [id] {
-    scroll-margin-top: 5rem;
+    scroll-margin-top: 4rem;
   }
 
-  /* Cards get a faint top-lit sheen + inner hairline, the "raised module"
-     look, without adding weight to the border itself. */
+  /* Hand-built panels (a full `border` on a surface background) get the
+     site radius too. `:where()` keeps this at utility specificity, so an
+     explicit `rounded-*` on the element still wins. */
+  .erp :where(.border.bg-surface-container-lowest, .border.bg-surface-container-low, .border.bg-surface-container) {
+    border-radius: var(--radius);
+  }
+
+  /* Flat surfaces: no sheen, no inset highlight, rounded to the scope's
+     radius. Elevation comes from a 1px border only. */
   .erp [data-slot="card"] {
-    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.025), transparent 48px);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    background-image: none;
+    box-shadow: none;
+    border-radius: var(--radius);
   }
 
-  /* Data tables: compact rows, a tinted header band, and a red-tinted row
-     hover. Overrides the panels' own `p-4` cell padding. */
+  /* Popovers keep a minimal shadow so they separate from what's under
+     them; everything else stays flat. */
+  .erp .shadow-lg,
+  .erp .shadow-xl,
+  .erp .shadow-2xl {
+    box-shadow: 0 4px 16px -4px rgb(0 0 0 / 0.25);
+  }
+
+  /* Data tables: compact rows, a quiet header band, neutral row hover. */
   .erp table thead tr {
-    background-color: rgb(var(--m3-surface-container) / 0.7);
+    background-color: rgb(var(--m3-surface-container) / 0.6);
   }
   .erp table th {
-    padding-top: 0.625rem;
-    padding-bottom: 0.625rem;
-    font-size: 10px;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgb(var(--m3-on-surface-variant));
   }
   .erp table td {
-    padding-top: 0.625rem;
-    padding-bottom: 0.625rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-variant-numeric: tabular-nums;
   }
   .erp table tbody tr {
     transition: background-color 120ms ease;
   }
   .erp table tbody tr:hover {
-    background-color: rgb(var(--m3-primary) / 0.05);
+    background-color: rgb(var(--m3-surface-container) / 0.5);
   }
-  .erp table td {
-    font-variant-numeric: tabular-nums;
+
+  /* Scrollbars inside the dashboards: neutral, thin. The page scrollbar
+     belongs to <html>, so it's matched through the body class. */
+  .erp ::-webkit-scrollbar-thumb,
+  .erp::-webkit-scrollbar-thumb,
+  html:has(> body.erp)::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--m3-outline-variant) / 0.45);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
   }
 }
+
+/* Homepage hero (components/home/Hero.tsx): keeps the site's original look
+   (warm palette, uppercase headline and eyebrow, red grid backdrop, glass
+   artwork panel) set in the site-wide Geist type with the standard
+   buttons. Selectors start with `.erp .legacy-hero` (0,3,0) so they
+   outrank the site-wide `.erp .x` rules above. */
+@layer components {
+  :root:not([data-theme="light"]) .erp .legacy-hero {
+    --m3-background: 8 8 10;
+    --m3-on-surface: 226 226 226;
+    --m3-outline: 177 135 128;
+    --m3-outline-variant: 96 62 57;
+    --border: 8 25% 30%;
+  }
+  :root[data-theme="light"] .erp .legacy-hero {
+    --m3-background: 255 248 247;
+    --m3-on-surface: 32 26 25;
+    --m3-outline: 133 115 112;
+    --m3-outline-variant: 216 194 190;
+    --border: 9 25% 80%;
+  }
+  .erp .legacy-hero {
+    background-color: rgb(var(--m3-background));
+    color: rgb(var(--m3-on-surface));
+  }
+  .erp .legacy-hero .heading {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.035em;
+  }
+  .erp .legacy-hero .label-mono {
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11px !important;
+  }
+  .erp .legacy-hero .hero-grid,
+  .erp .legacy-hero.hero-grid {
+    background-image: linear-gradient(rgba(237, 13, 17, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(237, 13, 17, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .erp .legacy-hero .hero-glass {
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
 .bg-color-white{
   background-color: #ffffff;
 }
@@ -296,8 +464,8 @@
   filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.85);
 }
 .map-tiles-dark .leaflet-control-zoom {
-  border: 1px solid rgba(96, 62, 57, 0.35) !important;
-  border-radius: 0 !important;
+  border: 1px solid rgba(113, 113, 122, 0.35) !important;
+  border-radius: 6px !important;
   overflow: hidden;
 }
 .map-tiles-dark .leaflet-control-zoom a {
@@ -317,18 +485,17 @@
   color: rgba(226, 226, 226, 0.7) !important;
 }
 .map-tiles-dark .leaflet-tooltip {
-  border-radius: 0;
-  border: 1px solid rgba(96, 62, 57, 0.4);
-  background: #1b1b1b;
-  color: #e2e2e2;
-  font-family: var(--font-jetbrains), monospace;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  border: 1px solid rgba(113, 113, 122, 0.35);
+  background: #18181b;
+  color: #ececee;
+  font-family: var(--font-geist), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .map-tiles-dark .leaflet-tooltip-top:before {
-  border-top-color: #1b1b1b;
+  border-top-color: #18181b;
 }
 
 ::-webkit-scrollbar {

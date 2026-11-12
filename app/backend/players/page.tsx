@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { Ban, KeyRound, MapPin, UserPlus, Users } from "lucide-react";
 
 import { PlayersPanel, type PlayerRow } from "@/components/backend/PlayersPanel";
 import { createClient } from "@/lib/supabase/server";
+import { KpiCard, KpiGrid, PageHeader, Panel } from "@/components/dashboard/erp";
+import { BarList } from "@/components/dashboard/charts";
 
 export const metadata: Metadata = { title: "Players", robots: { index: false, follow: false } };
 
@@ -40,12 +43,39 @@ export default async function PlayersPage() {
     joinedAt: p.created_at,
   }));
 
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const newThisMonth = players.filter((p) => new Date(p.joinedAt).getTime() >= thirtyDaysAgo).length;
+  const bannedCount = players.filter((p) => p.isBanned).length;
+  const googleCount = players.filter((p) => p.provider === "google").length;
+  const provinceCounts = new Map<string, number>();
+  for (const p of players) {
+    const key = p.province ?? "Not set";
+    provinceCounts.set(key, (provinceCounts.get(key) ?? 0) + 1);
+  }
+  const topProvinces = [...provinceCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([label, value]) => ({ label, value }));
+
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Players</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Every account on the platform — everyone starts as a player.</p>
-      <div className="mt-8">
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Backend"
+        title="Players"
+        description="Every account on the platform — everyone starts as a player."
+      />
+      <div className="grid gap-3 lg:grid-cols-3">
+        <KpiGrid className="sm:grid-cols-2 lg:col-span-2 xl:grid-cols-2">
+          <KpiCard label="Total players" value={players.length.toLocaleString()} icon={Users} emphasis hint="Every account on the platform" />
+          <KpiCard label="Joined last 30 days" value={newThisMonth.toLocaleString()} icon={UserPlus} hint="New sign-ups" />
+          <KpiCard label="Google sign-ins" value={googleCount.toLocaleString()} icon={KeyRound} hint={`${(players.length - googleCount).toLocaleString()} via email`} />
+          <KpiCard label="Banned" value={bannedCount.toLocaleString()} icon={Ban} hint="Accounts currently banned" />
+        </KpiGrid>
+        <Panel title="Top provinces" icon={MapPin} meta={`${provinceCounts.size} total`}>
+          <BarList items={topProvinces} emptyLabel="No players yet." />
+        </Panel>
+      </div>
+      <div>
         <PlayersPanel players={players} />
       </div>
     </div>

@@ -28,15 +28,12 @@ export function TournamentThumbnail({
 
   return (
     <div
-      className={cn(
-        "cyber-grid relative flex items-center justify-center overflow-hidden bg-surface-container-lowest",
-        className,
-      )}
-      style={{ boxShadow: `inset 0 0 60px ${color}22` }}
+      className={cn("relative flex items-center justify-center overflow-hidden bg-surface-container", className)}
       role="img"
       aria-label={`${title} cover artwork`}
     >
-      <Swords className="h-10 w-10" style={{ color }} aria-hidden="true" />
+      {/* Flat placeholder; the tournament's accent color tints only the icon. */}
+      <Swords className="h-7 w-7 opacity-60" style={{ color }} aria-hidden="true" />
     </div>
   );
 }

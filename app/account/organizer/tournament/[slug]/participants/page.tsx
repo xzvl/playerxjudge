@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { ParticipantLinkStatus, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Participants", robots: { index: false, follow: false } };
 
@@ -51,10 +52,13 @@ export default async function TournamentParticipantsPage({ params }: { params: P
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Participants</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Manage the roster, seeding, and group assignments.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Participants"
+        description="Manage the roster, seeding, and group assignments."
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentParticipantsWorkspace
           tournamentId={tournament.id}
           slug={tournament.slug}

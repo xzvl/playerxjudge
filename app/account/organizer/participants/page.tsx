@@ -5,6 +5,7 @@ import { ParticipantsPanel, type ParticipantRow } from "@/components/dashboard/o
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { ParticipantLinkStatus, Tournament, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Participants", robots: { index: false, follow: false } };
 
@@ -76,10 +77,12 @@ export default async function ParticipantsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Organizer Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Participants</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Everyone registered across your tournaments.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Organizer Dashboard"
+        title="Participants"
+        description="Everyone registered across your tournaments."
+      />
+      <div className="mt-5">
         <ParticipantsPanel tournaments={tournaments} participants={participants} />
       </div>
     </div>

@@ -55,14 +55,14 @@ function RuleList({ items }: { items: string[] }) {
 
 export default function RulesPage() {
   return (
-    <div className="cyber-grid px-4 py-20 md:px-16">
+    <div className="px-4 py-12 md:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="text-center">
-          <div className="glass-panel mx-auto flex h-16 w-16 items-center justify-center">
-            <BookOpenCheck className="h-7 w-7 text-primary" aria-hidden="true" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-md border border-outline-variant/25 bg-surface-container-low">
+            <BookOpenCheck className="h-4 w-4 text-on-surface/70" aria-hidden="true" />
           </div>
-          <p className="label-mono mt-6 text-primary">Reference</p>
-          <h1 className="heading mt-3 text-4xl md:text-5xl">Beyblade X Regulations</h1>
+          <p className="label-mono mt-4 text-on-surface/50">Reference</p>
+          <h1 className="heading mt-1 text-2xl md:text-3xl">Beyblade X Regulations</h1>
           <p className="mx-auto mt-4 max-w-xl text-primary">
             (12th Edition, March 2026)
           </p>
@@ -95,7 +95,7 @@ export default function RulesPage() {
           </div>
         </div>
 
-        <div className="mt-12 space-y-10">
+        <div className="mt-8 space-y-8">
           <RuleSection id="about-beyblade" title="About Beyblade">
             <RuleList
               items={[
@@ -245,7 +245,7 @@ export default function RulesPage() {
           </RuleSection>
         </div>
 
-        <p className="mt-12 text-center text-xs text-on-surface/40">
+        <p className="mt-8 text-center text-xs text-on-surface/40">
           This page reflects the 12th Edition (March 2026) official regulations, condensed for
           tournament registration.
         </p>

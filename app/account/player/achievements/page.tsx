@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { computeBirdKing, fetchLinkedTournaments, fetchPlayerMatches } from "@/lib/player/linked-participants";
 import { computeAchievements } from "@/lib/player/achievements";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Achievements", robots: { index: false, follow: false } };
 
@@ -20,12 +21,12 @@ export default async function AchievementsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Player Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Achievements</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Unlocked achievements glow in their color — keep battling to light up the rest.
-      </p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Player Dashboard"
+        title="Achievements"
+        description="Unlocked achievements glow in their color — keep battling to light up the rest."
+      />
+      <div className="mt-5">
         <AchievementsGrid achievements={achievements} />
       </div>
     </div>

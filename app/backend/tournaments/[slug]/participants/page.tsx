@@ -5,6 +5,7 @@ import type { ParticipantLinkInfo } from "@/components/dashboard/organizer/Parti
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournamentForStaff } from "@/app/account/organizer/tournament/[slug]/data";
 import type { ParticipantLinkStatus, TournamentGroup, TournamentParticipant } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Participants", robots: { index: false, follow: false } };
 
@@ -42,10 +43,13 @@ export default async function BackendTournamentParticipantsPage({ params }: { pa
 
   return (
     <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h2 className="heading mt-2 text-2xl">Participants</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Manage the roster, seeding, and group assignments.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Backend"
+        title="Participants"
+        description="Manage the roster, seeding, and group assignments."
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentParticipantsWorkspace
           tournamentId={tournament.id}
           slug={tournament.slug}

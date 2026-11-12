@@ -104,10 +104,10 @@ export function CalendarViewClient({ tournaments }: { tournaments: MockTournamen
   const selectedTournament = tournaments.find((t) => t.id === selectedId) ?? null;
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-16 md:px-16">
+    <div className="mx-auto max-w-[1280px] px-4 py-10 md:px-6">
       <div className="mb-8">
         <p className="label-mono text-primary">Plan Ahead</p>
-        <h1 className="heading mt-2 text-3xl md:text-4xl">Tournament Calendar</h1>
+        <h1 className="heading mt-1 text-2xl md:text-3xl">Tournament Calendar</h1>
       </div>
 
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">

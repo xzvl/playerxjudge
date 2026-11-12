@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
 import type { Judge, Match, TournamentParticipant, TournamentStation } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Stations", robots: { index: false, follow: false } };
 
@@ -77,10 +78,13 @@ export default async function StationsPage({ params }: { params: Promise<{ slug:
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Stations</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Physical play areas and which match is running where.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Stations"
+        description="Physical play areas and which match is running where."
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentStationsPanel
           tournamentId={tournament.id}
           tournamentTitle={tournament.title}

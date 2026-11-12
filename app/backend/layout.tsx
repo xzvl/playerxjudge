@@ -17,15 +17,7 @@ import {
 } from "lucide-react";
 
 import { DashboardShell, type DashboardNavItem } from "@/components/dashboard/DashboardShell";
-import {
-  buildNavUser,
-  getCurrentProfile,
-  getCurrentUser,
-  getCurrentUserCommunityName,
-  getCurrentUserRoles,
-  getUnreadNotificationCount,
-  isStaffProfile,
-} from "@/lib/supabase/get-user";
+import { getCurrentProfile, getShellData, isStaffProfile } from "@/lib/supabase/get-user";
 
 const BACKEND_NAV_ITEMS: DashboardNavItem[] = [
   { label: "Overview", href: "/backend/dashboard", icon: <LayoutDashboard className="h-4 w-4 shrink-0" /> },
@@ -48,22 +40,16 @@ const BACKEND_NAV_ITEMS: DashboardNavItem[] = [
 // retires — staff access (admin/super_admin, or an approved `manager`
 // profile_roles row) is granted directly, never requested through the app.
 export default async function BackendLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login?redirectTo=/backend");
-
-  const [profile, roles] = await Promise.all([getCurrentProfile(), getCurrentUserRoles()]);
-  if (!isStaffProfile(profile, roles)) redirect("/");
+  // Shell data and the staff check's profile load in one parallel batch.
+  const [shell, profile] = await Promise.all([getShellData(), getCurrentProfile()]);
+  if (!shell) redirect("/login?redirectTo=/backend");
+  if (!isStaffProfile(profile, shell.roles)) redirect("/");
 
   // Passing `user` switches DashboardShell into the same "standalone" shell
   // /account uses (full-height branded sidebar, its own search/profile
-  // header) — the global site Header/Footer hide themselves on /backend
-  // for the same reason they do on /account (see Header.tsx / Footer.tsx
-  // and isBackendRoute).
-  const [notificationCount, communityName] = await Promise.all([getUnreadNotificationCount(), getCurrentUserCommunityName()]);
-  const navUser = buildNavUser(user, roles, communityName);
-
+  // header); the global site Header/Footer hide themselves on /backend.
   return (
-    <DashboardShell roleLabel="Backend" navItems={BACKEND_NAV_ITEMS} user={navUser} notificationCount={notificationCount}>
+    <DashboardShell roleLabel="Backend" navItems={BACKEND_NAV_ITEMS} user={shell.navUser} notificationCount={shell.notificationCount}>
       {children}
     </DashboardShell>
   );

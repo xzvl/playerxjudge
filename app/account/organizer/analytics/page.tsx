@@ -5,6 +5,7 @@ import { AnalyticsPanel, type AnalyticsTournamentRow } from "@/components/dashbo
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Tournament } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Analytics", robots: { index: false, follow: false } };
 
@@ -41,12 +42,12 @@ export default async function AnalyticsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Organizer Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Analytics</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        How your tournaments are performing, at a glance.
-      </p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Organizer Dashboard"
+        title="Analytics"
+        description="How your tournaments are performing, at a glance."
+      />
+      <div className="mt-5">
         <AnalyticsPanel tournaments={rows} />
       </div>
     </div>

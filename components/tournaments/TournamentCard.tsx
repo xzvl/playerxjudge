@@ -28,20 +28,20 @@ export function TournamentCard({
   const actionTooltip = completed ? "See the final results" : "Watch this tournament live";
 
   return (
-    <article className="group flex flex-col border border-outline-variant/25 bg-surface-container-low transition-all hover:border-primary/40">
+    <article className="group flex flex-col overflow-hidden rounded-lg border border-outline-variant/25 bg-surface-container-low transition-colors hover:border-outline-variant/50">
       <TournamentThumbnail
         color={tournament.thumbnailColor}
         title={tournament.title}
         imageUrl={tournament.thumbnailUrl}
-        className="aspect-square"
+        className="aspect-square border-b border-outline-variant/20"
       />
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <div className="flex flex-wrap gap-1.5">
           <BattleTypeBadge type={tournament.battleType} />
           <TournamentTypeBadge type={tournament.tournamentType} />
         </div>
-        <h3 className="heading text-lg leading-tight">{tournament.title}</h3>
-        <p className="line-clamp-2 text-sm text-on-surface/60">{tournament.shortDescription}</p>
+        <h3 className="heading text-[15px] leading-snug">{tournament.title}</h3>
+        <p className="line-clamp-2 text-[13px] text-on-surface/60">{tournament.shortDescription}</p>
 
         <dl className="mt-1 space-y-1.5 text-xs text-on-surface/50">
           <div className="flex items-center gap-2">

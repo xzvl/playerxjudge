@@ -318,7 +318,7 @@ function ManageParticipantsTab({
               {visible.map((r) => {
                 const link = links.get(r.id) ?? null;
                 return (
-                  <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                  <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                     <td className="p-4 py-1 font-mono text-on-surface/60">{r.seed}</td>
                     <td className="p-4 py-1 font-medium text-on-surface">{r.teamName ?? r.name}</td>
                     <td className="p-4 py-1">
@@ -667,7 +667,7 @@ function GroupCard({
                 setDraggedId(null);
                 setDragOverId(null);
               }}
-              className={`flex items-center gap-3 border-b border-outline-variant/15 px-4 py-2.5 last:border-0 hover:bg-white/[0.02] ${
+              className={`flex items-center gap-3 border-b border-outline-variant/15 px-4 py-2.5 last:border-0 hover:bg-surface-container/50 ${
                 draggedId === m.id ? "opacity-40" : ""
               } ${dragOverId === m.id && draggedId && draggedId !== m.id ? "bg-primary/10" : ""}`}
             >

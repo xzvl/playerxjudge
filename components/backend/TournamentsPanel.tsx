@@ -118,7 +118,7 @@ export function TournamentsPanel({ tournaments }: { tournaments: TournamentItem[
             </thead>
             <tbody>
               {filtered.map((t) => (
-                <tr key={t.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                <tr key={t.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                   <td className="p-4 font-medium text-on-surface">
                     <Link href={`/backend/tournaments/${t.slug}`} className="hover:text-primary hover:underline">
                       {t.title}

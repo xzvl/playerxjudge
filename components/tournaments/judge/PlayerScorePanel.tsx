@@ -206,7 +206,7 @@ function Stepper({
           type="button"
           aria-label={`Decrease ${label}`}
           onClick={onMinus}
-          className="flex h-6 w-6 items-center justify-center border border-outline-variant/40 text-on-surface/60 transition-colors hover:border-primary hover:text-primary"
+          className="flex h-6 w-6 items-center justify-center rounded border border-outline-variant/35 text-on-surface/60 transition-colors hover:bg-surface-container hover:text-on-surface"
         >
           <Minus className="h-3 w-3" />
         </button>
@@ -215,7 +215,7 @@ function Stepper({
           type="button"
           aria-label={`Increase ${label}`}
           onClick={onPlus}
-          className="flex h-6 w-6 items-center justify-center border border-outline-variant/40 text-on-surface/60 transition-colors hover:border-primary hover:text-primary"
+          className="flex h-6 w-6 items-center justify-center rounded border border-outline-variant/35 text-on-surface/60 transition-colors hover:bg-surface-container hover:text-on-surface"
         >
           <Plus className="h-3 w-3" />
         </button>

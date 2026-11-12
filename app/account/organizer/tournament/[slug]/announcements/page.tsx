@@ -5,6 +5,7 @@ import { TournamentAnnouncementsPanel, type AnnouncementItem } from "@/component
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournament } from "@/app/account/organizer/tournament/[slug]/data";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Announcement", robots: { index: false, follow: false } };
 
@@ -37,10 +38,13 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
 
   return (
     <div>
-      <p className="label-mono text-primary">Tournament Management</p>
-      <h2 className="heading mt-2 text-2xl">Announcement</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Keep every registered participant in the loop.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Tournament Management"
+        title="Announcement"
+        description="Keep every registered participant in the loop."
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentAnnouncementsPanel tournamentId={tournament.id} slug={tournament.slug} announcements={announcements} />
       </div>
     </div>

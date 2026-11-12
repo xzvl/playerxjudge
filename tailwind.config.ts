@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 const config: Config = {
   darkMode: "class",
@@ -104,6 +105,11 @@ const config: Config = {
       },
       keyframes: {
         "fade-up": {
+          from: { opacity: "0", transform: "translateY(6px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        // The homepage hero keeps its original, longer entrance.
+        "hero-fade-up": {
           from: { opacity: "0", transform: "translateY(24px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
@@ -129,20 +135,38 @@ const config: Config = {
         },
       },
       animation: {
-        "fade-up": "fade-up 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both",
-        "fade-in": "fade-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both",
+        "fade-up": "fade-up 0.3s ease-out both",
+        "fade-in": "fade-in 0.2s ease-out both",
+        "hero-fade-up": "hero-fade-up 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both",
+        "hero-fade-in": "fade-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both",
         blink: "blink 1s step-start infinite",
         marquee: "marquee 30s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       fontFamily: {
-        inter: ["var(--font-inter)", "Inter", "sans-serif"],
-        mono: ["var(--font-jetbrains)", "JetBrains Mono", "monospace"],
+        // Legacy alias: `font-inter` now resolves to the site font.
+        inter: ["var(--font-geist)", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Dashboard typeface. The `.erp` scope in globals.css switches
+        // inherited text to Geist on its own; `font-sans` is for the places
+        // that need to say it explicitly (e.g. the `erp:` overrides).
+        sans: ["var(--font-geist)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // `erp:` applies only inside an app-shell surface (/account, /backend,
+    // the player view, the judge console; see `.erp` in globals.css). Lets a
+    // shared primitive keep the marketing site's look by default and switch
+    // to the compact dashboard look in place, e.g. `h-11 erp:h-8`. Emits
+    // `:is(.erp) .erp\:h-8` (specificity 0,2,0), so it beats the unprefixed
+    // default without `!important`.
+    plugin(({ addVariant }) => {
+      addVariant("erp", ":is(.erp) &");
+    }),
+  ],
 };
 
 export default config;

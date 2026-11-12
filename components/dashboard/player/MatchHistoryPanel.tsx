@@ -114,7 +114,7 @@ export function MatchHistoryPanel({ matches }: { matches: PlayerMatch[] }) {
                     className={cn(
                       "label-mono px-2 py-1 text-[10px]",
                       m.result === "won"
-                        ? "bg-emerald-600/80 text-white"
+                        ? "bg-emerald-500/15 text-emerald-500"
                         : m.result === "lost"
                           ? "bg-error text-on-error"
                           : "bg-surface-container-high text-on-surface/60"
@@ -145,7 +145,7 @@ export function MatchHistoryPanel({ matches }: { matches: PlayerMatch[] }) {
               </thead>
               <tbody>
                 {filtered.map((m) => (
-                  <tr key={m.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+                  <tr key={m.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
                     <td className="p-4 font-medium text-on-surface">{m.tournamentTitle}</td>
                     <td className="p-4 text-on-surface/60">{m.opponent}</td>
                     <td className="p-4 text-on-surface/60">

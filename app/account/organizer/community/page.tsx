@@ -8,6 +8,7 @@ import { CommunityManagementPanel, type CommunityListItem } from "@/components/d
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { CommunityRow } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Community Management", robots: { index: false, follow: false } };
 
@@ -48,9 +49,11 @@ export default async function CommunityManagementPage() {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="label-mono text-primary">Organizer Dashboard</p>
-          <h1 className="heading mt-2 text-3xl">Community Management</h1>
-          <p className="mt-2 max-w-xl text-sm text-on-surface/60">Communities you own or help run.</p>
+          <PageHeader
+            eyebrow="Organizer Dashboard"
+            title="Community Management"
+            description="Communities you own or help run."
+          />
         </div>
         <Button asChild size="sm" className="shrink-0 gap-1.5" tooltip="Set up a new community">
           <Link href="/account/organizer/community/new">

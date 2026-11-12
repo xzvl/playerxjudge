@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { CircleCheck, CircleX, Clock3, Handshake } from "lucide-react";
 
 import { SponsorsPanel, type SponsorItem } from "@/components/backend/SponsorsPanel";
 import { createClient } from "@/lib/supabase/server";
 import type { Sponsor } from "@/lib/types/database";
+import { KpiCard, KpiGrid, PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Sponsors", robots: { index: false, follow: false } };
 
@@ -25,12 +27,24 @@ export default async function BackendSponsorsPage() {
     ownerName: s.profiles?.display_name ?? "Unknown",
   }));
 
+  const approvedCount = sponsors.filter((s) => s.approvalStatus === "approved").length;
+  const pendingCount = sponsors.filter((s) => s.approvalStatus === "pending").length;
+  const declinedCount = sponsors.filter((s) => s.approvalStatus === "declined").length;
+
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Sponsors</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Every sponsor listing, pending and active.</p>
-      <div className="mt-8">
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Backend"
+        title="Sponsors"
+        description="Every sponsor listing, pending and active."
+      />
+      <KpiGrid>
+        <KpiCard label="Listings" value={sponsors.length} icon={Handshake} emphasis hint="All sponsor listings" />
+        <KpiCard label="Approved" value={approvedCount} icon={CircleCheck} hint="Live on the marquee" />
+        <KpiCard label="Pending" value={pendingCount} icon={Clock3} hint="Waiting for review" />
+        <KpiCard label="Declined" value={declinedCount} icon={CircleX} hint="Not approved" />
+      </KpiGrid>
+      <div>
         <SponsorsPanel sponsors={sponsors} />
       </div>
     </div>

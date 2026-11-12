@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Crown, UserPlus, Users2 } from "lucide-react";
 
 import { OrganizersPanel, type OrganizerRow } from "@/components/backend/OrganizersPanel";
 import { createClient } from "@/lib/supabase/server";
 import type { SubscriptionPlan } from "@/lib/types/database";
+import { KpiCard, KpiGrid, PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Organizers", robots: { index: false, follow: false } };
 
@@ -32,12 +34,23 @@ export default async function OrganizersPage() {
       approvedAt: r.decided_at,
     }));
 
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const premiumCount = organizers.filter((o) => o.tier === "premium").length;
+  const recentCount = organizers.filter((o) => o.approvedAt && new Date(o.approvedAt).getTime() >= thirtyDaysAgo).length;
+
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Organizers</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Everyone with an approved organizer role.</p>
-      <div className="mt-8">
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Backend"
+        title="Organizers"
+        description="Everyone with an approved organizer role."
+      />
+      <KpiGrid className="xl:grid-cols-3">
+        <KpiCard label="Organizers" value={organizers.length} icon={Users2} emphasis hint="Approved organizer roles" />
+        <KpiCard label="Premium" value={premiumCount} icon={Crown} hint={`${organizers.length - premiumCount} on the free plan`} />
+        <KpiCard label="Approved last 30 days" value={recentCount} icon={UserPlus} hint="Newly onboarded" />
+      </KpiGrid>
+      <div>
         <OrganizersPanel organizers={organizers} />
       </div>
     </div>

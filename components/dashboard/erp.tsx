@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronLeft } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-// Building blocks for the enterprise dashboard look (see `.erp` in
-// globals.css): a compact page header, KPI summary tiles, titled panels,
-// and a single-hue meter. Server-safe — no hooks — so dashboard pages can
-// use them directly; the one interactive chart lives in ./charts.tsx.
+// Building blocks for the dashboard look (see `.erp` in globals.css): a
+// compact page header, KPI tiles, titled panels, a single-hue meter and an
+// empty state. Server-safe (no hooks), so pages can use them directly; the
+// one interactive chart lives in ./charts.tsx.
 
 type IconType = ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
 
@@ -16,20 +16,38 @@ export function PageHeader({
   title,
   description,
   actions,
+  back,
+  as: Heading = "h1",
 }: {
+  // Small context line above the title (e.g. the dashboard name).
   eyebrow?: string;
-  title: string;
-  description?: string;
+  title: ReactNode;
+  description?: ReactNode;
   actions?: ReactNode;
+  // Optional "back to parent" link shown in place of the eyebrow.
+  back?: { href: string; label: string };
+  // "h2" for a sub-page whose layout already renders the page's <h1>
+  // (e.g. the tournament workspace tabs).
+  as?: "h1" | "h2";
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4 border-b border-outline-variant/25 pb-5">
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-outline-variant/20 pb-4">
       <div className="min-w-0">
-        {eyebrow ? <p className="label-mono !text-[10px] text-primary">{eyebrow}</p> : null}
-        <h1 className="heading mt-1">{title}</h1>
-        {description ? <p className="mt-1 max-w-2xl text-sm text-on-surface/55">{description}</p> : null}
+        {back ? (
+          <Link
+            href={back.href}
+            className="mb-1 inline-flex items-center gap-1 text-xs text-on-surface/50 transition-colors hover:text-on-surface"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            {back.label}
+          </Link>
+        ) : eyebrow ? (
+          <p className="mb-0.5 text-xs font-medium text-on-surface/45">{eyebrow}</p>
+        ) : null}
+        <Heading className="heading truncate">{title}</Heading>
+        {description ? <p className="mt-0.5 max-w-2xl text-[13px] text-on-surface/55">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }
@@ -52,7 +70,7 @@ export function KpiCard({
   hint?: ReactNode;
   icon?: IconType;
   href?: string;
-  // Tints the value in the accent — reserve for the one figure a view leads with.
+  // Tints the value in the accent: reserve for the one figure a view leads with.
   emphasis?: boolean;
   // Optional compact visual under the value (e.g. a <Meter />).
   children?: ReactNode;
@@ -61,34 +79,27 @@ export function KpiCard({
     <div
       data-slot="card"
       className={cn(
-        "group relative h-full overflow-hidden border border-outline-variant/25 bg-surface-container-low p-4 transition-colors",
-        href && "hover:border-primary/50"
+        "group relative h-full rounded-lg border border-outline-variant/25 bg-surface-container-low px-4 py-3 transition-colors",
+        href && "hover:border-outline-variant/50 hover:bg-surface-container"
       )}
     >
-      {/* Accent rail — lights up on hover for linked tiles. */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary/70 via-primary/20 to-transparent transition-opacity",
-          emphasis ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-        )}
-      />
-      <div className="flex items-start justify-between gap-3">
-        <p className="label-mono !text-[10px] !tracking-[0.16em] text-on-surface/50">{label}</p>
-        {Icon ? (
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-outline-variant/30 bg-surface-container text-on-surface/50 transition-colors group-hover:text-primary">
-            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-          </span>
-        ) : null}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium text-on-surface/55">{label}</p>
+        {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 text-on-surface/35" aria-hidden="true" /> : null}
       </div>
-      <p className={cn("mt-2 font-inter text-[28px] font-bold leading-none tracking-tight", emphasis ? "text-primary" : "text-on-surface")}>
+      <p
+        className={cn(
+          "mt-1.5 text-2xl font-semibold leading-none tracking-tight tabular-nums",
+          emphasis ? "text-primary" : "text-on-surface"
+        )}
+      >
         {value}
       </p>
-      {hint ? <p className="mt-2 text-xs text-on-surface/50">{hint}</p> : null}
-      {children ? <div className="mt-3">{children}</div> : null}
+      {hint ? <p className="mt-1.5 text-xs text-on-surface/45">{hint}</p> : null}
+      {children ? <div className="mt-2.5">{children}</div> : null}
       {href ? (
         <ArrowUpRight
-          className="absolute bottom-3 right-3 h-3.5 w-3.5 text-on-surface/20 transition-colors group-hover:text-primary"
+          className="absolute bottom-3 right-3 h-3.5 w-3.5 text-on-surface/20 transition-colors group-hover:text-on-surface/60"
           aria-hidden="true"
         />
       ) : null}
@@ -96,7 +107,7 @@ export function KpiCard({
   );
 
   return href ? (
-    <Link href={href} className="block h-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
+    <Link href={href} className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
       {body}
     </Link>
   ) : (
@@ -113,29 +124,41 @@ export function Panel({
   className,
   bodyClassName,
 }: {
-  title: string;
+  title: ReactNode;
   icon?: IconType;
-  action?: { href: string; label: string };
+  // A link ({ href, label }) or any node (e.g. a <Button>).
+  action?: { href: string; label: string } | ReactNode;
   // Small right-aligned text in the header bar (e.g. a count).
   meta?: ReactNode;
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
 }) {
+  const isLinkAction = (a: unknown): a is { href: string; label: string } =>
+    typeof a === "object" && a !== null && "href" in a && "label" in a;
+
   return (
-    <section data-slot="card" className={cn("border border-outline-variant/25 bg-surface-container-low", className)}>
-      <header className="flex items-center justify-between gap-3 border-b border-outline-variant/20 px-4 py-2.5">
-        <h2 className="label-mono flex items-center gap-2 !text-[10px] text-on-surface/70">
-          {Icon ? <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> : null}
-          {title}
+    <section
+      data-slot="card"
+      className={cn("rounded-lg border border-outline-variant/25 bg-surface-container-low", className)}
+    >
+      <header className="flex min-h-10 items-center justify-between gap-3 border-b border-outline-variant/20 px-4 py-2">
+        <h2 className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-on-surface">
+          {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 text-on-surface/45" aria-hidden="true" /> : null}
+          <span className="truncate">{title}</span>
         </h2>
-        <div className="flex items-center gap-3">
-          {meta ? <span className="font-mono text-[11px] text-on-surface/40">{meta}</span> : null}
-          {action ? (
-            <Link href={action.href} className="label-mono flex items-center gap-1 !text-[10px] text-primary hover:underline">
+        <div className="flex shrink-0 items-center gap-3">
+          {meta ? <span className="text-xs tabular-nums text-on-surface/45">{meta}</span> : null}
+          {isLinkAction(action) ? (
+            <Link
+              href={action.href}
+              className="flex items-center gap-1 text-xs font-medium text-on-surface/60 transition-colors hover:text-on-surface"
+            >
               {action.label} <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
-          ) : null}
+          ) : (
+            action ?? null
+          )}
         </div>
       </header>
       <div className={cn("p-4", bodyClassName)}>{children}</div>
@@ -154,9 +177,41 @@ export function Meter({ value, label }: { value: number; label: string }) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(pct)}
-      className="h-1.5 w-full bg-primary/15"
+      className="h-1.5 w-full overflow-hidden rounded-full bg-primary/15"
     >
-      <div className="h-full rounded-r-[4px] bg-primary transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  className,
+}: {
+  icon?: IconType;
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-lg border border-dashed border-outline-variant/30 px-6 py-10 text-center",
+        className
+      )}
+    >
+      {Icon ? (
+        <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-md border border-outline-variant/25 bg-surface-container-low">
+          <Icon className="h-4 w-4 text-on-surface/50" aria-hidden="true" />
+        </span>
+      ) : null}
+      <p className="text-sm font-medium text-on-surface">{title}</p>
+      {description ? <p className="mt-1 max-w-sm text-[13px] text-on-surface/55">{description}</p> : null}
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { ReportsPanel, type OrganizerReportItem } from "@/components/dashboard/o
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Tournament, TournamentReportStatus } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Reports", robots: { index: false, follow: false } };
 
@@ -56,10 +57,12 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <p className="label-mono text-primary">Organizer Dashboard</p>
-      <h1 className="heading mt-2 text-3xl">Reports</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Moderation reports filed against your tournaments and communities.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Organizer Dashboard"
+        title="Reports"
+        description="Moderation reports filed against your tournaments and communities."
+      />
+      <div className="mt-5">
         <ReportsPanel reports={reports} />
       </div>
     </div>

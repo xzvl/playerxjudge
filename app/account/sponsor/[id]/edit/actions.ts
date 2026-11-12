@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { SPONSORS_CACHE_TAG } from "@/lib/sponsors/queries";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { sponsorListingSchema, type SponsorListingInput, type RoleActionState } from "@/lib/validations/roles";
 
@@ -30,6 +31,7 @@ export async function updateSponsorListing(sponsorId: string, input: SponsorList
 
   if (error) return { status: "error", message: error.message };
 
+  revalidateTag(SPONSORS_CACHE_TAG);
   revalidatePath("/account/sponsor/dashboard");
   return { status: "success", message: "Sponsor listing updated." };
 }

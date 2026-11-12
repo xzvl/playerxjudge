@@ -37,7 +37,7 @@ export function WorkspaceStandingsTable({
         </thead>
         <tbody>
           {standings.map((p, i) => (
-            <tr key={p.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-white/[0.02]">
+            <tr key={p.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
               <td className="p-4 font-mono text-on-surface/60">{i + 1}</td>
               <td className="p-4 font-medium text-on-surface">
                 <span className={cn(highlightParticipantIds?.has(p.id) && "bg-yellow-400/30 px-1")}>{p.teamName ?? p.name}</span>

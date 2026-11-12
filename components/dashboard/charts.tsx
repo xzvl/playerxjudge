@@ -51,7 +51,7 @@ export function BarList({
               <div className="relative h-2.5 flex-1">
                 <div
                   className={cn(
-                    "h-full rounded-r-[4px] bg-primary transition-[opacity,width] duration-300",
+                    "h-full rounded-r-[3px] bg-primary/85 transition-[opacity,width] duration-300",
                     dimmed ? "opacity-35" : "opacity-100",
                     item.value === 0 && "bg-transparent"
                   )}
@@ -60,7 +60,7 @@ export function BarList({
                 {active ? (
                   <div
                     role="tooltip"
-                    className="pointer-events-none absolute -top-9 z-10 whitespace-nowrap border border-outline-variant/40 bg-surface-container-highest px-2 py-1 text-[11px] text-on-surface shadow-lg"
+                    className="pointer-events-none absolute -top-9 z-10 whitespace-nowrap rounded-md border border-outline-variant/30 bg-surface-container-highest px-2 py-1 text-[11px] text-on-surface"
                     style={{ left: `min(${pct}%, calc(100% - 8rem))` }}
                   >
                     <span className="text-on-surface/60">{item.label}:</span> {formatValue(item.value)}

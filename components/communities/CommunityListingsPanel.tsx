@@ -27,7 +27,7 @@ function primarySocialLink(community: PublicCommunityListing) {
 export function CommunityListingsPanel({ communities }: { communities: PublicCommunityListing[] }) {
   if (communities.length === 0) {
     return (
-      <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
+      <p className="rounded-lg border border-dashed border-outline-variant/30 p-6 text-center text-sm text-on-surface/50">
         No approved communities yet.
       </p>
     );

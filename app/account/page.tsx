@@ -8,13 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/erp";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ACCOUNT_SETTINGS_NAV_ITEM, getAccountNavItems } from "@/components/dashboard/accountNavItems";
-import {
-  buildNavUser,
-  getCurrentUser,
-  getCurrentUserCommunityName,
-  getCurrentUserRoles,
-  getUnreadNotificationCount,
-} from "@/lib/supabase/get-user";
+import { getShellData } from "@/lib/supabase/get-user";
 
 export const metadata: Metadata = {
   title: "Account",
@@ -53,10 +47,10 @@ const ROLE_DASHBOARDS = [
 ];
 
 export default async function AccountPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login?redirectTo=/account");
+  const shell = await getShellData();
+  if (!shell) redirect("/login?redirectTo=/account");
 
-  const roles = await getCurrentUserRoles();
+  const { roles } = shell;
   const approvedRoles = new Set(roles.filter((r) => r.status === "approved").map((r) => r.role));
   approvedRoles.add("player");
 
@@ -66,20 +60,13 @@ export default async function AccountPage() {
     redirect(dashboards[0].href);
   }
 
-  const navItems = getAccountNavItems(roles);
-  const [notificationCount, communityName] = await Promise.all([
-    getUnreadNotificationCount(),
-    getCurrentUserCommunityName(),
-  ]);
-  const navUser = buildNavUser(user, roles, communityName);
-
   return (
     <DashboardShell
       roleLabel="Account"
-      navItems={navItems}
+      navItems={getAccountNavItems(roles)}
       settingsItem={ACCOUNT_SETTINGS_NAV_ITEM}
-      user={navUser}
-      notificationCount={notificationCount}
+      user={shell.navUser}
+      notificationCount={shell.notificationCount}
     >
       <div className="space-y-5">
         <PageHeader eyebrow="Account" title="Your Dashboards" description="Pick a dashboard to continue." />

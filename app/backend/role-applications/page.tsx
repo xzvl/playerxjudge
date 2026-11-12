@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { ClipboardList, Gavel, Handshake, Users2 } from "lucide-react";
 
 import { RoleApplicationsPanel, type RoleApplicationItem } from "@/components/backend/RoleApplicationsPanel";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/lib/types/database";
+import { KpiCard, KpiGrid, PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Role Applications", robots: { index: false, follow: false } };
 
@@ -31,12 +33,22 @@ export default async function RoleApplicationsPage() {
     applicantUsername: r.profiles?.username ?? "unknown",
   }));
 
+  const countFor = (role: AppRole) => items.filter((i) => i.role === role).length;
+
   return (
-    <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h1 className="heading mt-2 text-3xl">Role Applications</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Organizer, judge, and sponsor applications waiting for review.</p>
-      <div className="mt-8">
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Backend"
+        title="Role Applications"
+        description="Organizer, judge, and sponsor applications waiting for review."
+      />
+      <KpiGrid>
+        <KpiCard label="Pending applications" value={items.length} icon={ClipboardList} emphasis hint="Waiting for review" />
+        <KpiCard label="Organizer" value={countFor("organizer")} icon={Users2} hint="Applications" />
+        <KpiCard label="Judge" value={countFor("judge")} icon={Gavel} hint="Applications" />
+        <KpiCard label="Sponsor" value={countFor("sponsor")} icon={Handshake} hint="Applications" />
+      </KpiGrid>
+      <div>
         <RoleApplicationsPanel items={items} />
       </div>
     </div>

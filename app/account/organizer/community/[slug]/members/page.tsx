@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedCommunity } from "@/app/account/organizer/community/[slug]/data";
 import type { ProfileCommunityStatus } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Members", robots: { index: false, follow: false } };
 
@@ -40,10 +41,13 @@ export default async function CommunityMembersPage({ params }: { params: Promise
 
   return (
     <div>
-      <p className="label-mono text-primary">Community Management</p>
-      <h2 className="heading mt-2 text-2xl">{community.name} — Members</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Everyone who&apos;s joined or requested to join this community.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Community Management"
+        title={<>{community.name} — Members</>}
+        description={<>Everyone who&apos;s joined or requested to join this community.</>}
+        as="h2"
+      />
+      <div className="mt-5">
         <CommunityMembersPanel slug={slug} members={members} />
       </div>
     </div>

@@ -5,6 +5,7 @@ import type { ComboboxOption } from "@/components/ui/combobox";
 import { createClient } from "@/lib/supabase/server";
 import { getManagedTournamentForStaff } from "@/app/account/organizer/tournament/[slug]/data";
 import type { Judge, Match, TournamentParticipant, TournamentStation } from "@/lib/types/database";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = { title: "Stations", robots: { index: false, follow: false } };
 
@@ -69,10 +70,13 @@ export default async function BackendStationsPage({ params }: { params: Promise<
 
   return (
     <div>
-      <p className="label-mono text-primary">Backend</p>
-      <h2 className="heading mt-2 text-2xl">Stations</h2>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">Physical play areas and which match is running where.</p>
-      <div className="mt-8">
+      <PageHeader
+        eyebrow="Backend"
+        title="Stations"
+        description="Physical play areas and which match is running where."
+        as="h2"
+      />
+      <div className="mt-5">
         <TournamentStationsPanel
           tournamentId={tournament.id}
           tournamentTitle={tournament.title}

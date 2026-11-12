@@ -1,32 +1,26 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 import { Providers } from "@/app/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import {
-  buildNavUser,
-  getCurrentUser,
-  getCurrentUserCommunityName,
-  getCurrentUserRoles,
-  getUnreadNotificationCount,
-} from "@/lib/supabase/get-user";
+import { getShellData } from "@/lib/supabase/get-user";
 import { getActiveSponsors } from "@/lib/sponsors/queries";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
-const inter = Inter({
+// The site's one type family: Geist for text, Geist Mono for codes and
+// figures (`font-mono`).
+const geist = Geist({
   subsets: ["latin"],
-  weight: ["400", "700", "800", "900"],
-  variable: "--font-inter",
+  variable: "--font-geist",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-jetbrains",
+  variable: "--font-geist-mono",
   display: "swap",
 });
 
@@ -62,21 +56,18 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#08080a",
+  themeColor: "#0a0a0b",
   colorScheme: "dark",
 };
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const authUser = await getCurrentUser();
-  const [[roles, notificationCount, communityName], sponsors] = await Promise.all([
-    authUser
-      ? Promise.all([getCurrentUserRoles(), getUnreadNotificationCount(), getCurrentUserCommunityName()])
-      : Promise.resolve([[], 0, null] as const),
-    getActiveSponsors(),
-  ]);
-  const user: NavUser | null = authUser ? buildNavUser(authUser, roles, communityName) : null;
+  // getShellData is cache()'d, so the dashboard layouts reuse this same
+  // batch instead of querying again. Sponsors are cached across requests.
+  const [shell, sponsors] = await Promise.all([getShellData(), getActiveSponsors()]);
+  const user: NavUser | null = shell?.navUser ?? null;
+  const notificationCount = shell?.notificationCount ?? 0;
 
   return (
     // suppressHydrationWarning is scoped to this element's own attributes
@@ -86,7 +77,7 @@ export default async function RootLayout({
     // Same caveat every "apply a saved theme via a pre-hydration script"
     // approach has (next-themes included).
     <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
-      <body className={`${inter.variable} ${jetbrainsMono.variable} font-inter`}>
+      <body className={`${geist.variable} ${geistMono.variable} erp font-sans`}>
         {/* Applies a saved light-theme preference before first paint — see
             ThemeToggle. Runs as the first thing in <body> (before anything
             else is parsed) so there's no flash of the wrong theme; the

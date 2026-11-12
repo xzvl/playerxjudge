@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SponsorListingForm } from "@/components/dashboard/sponsor/SponsorListingForm";
 import { createSponsorListing } from "@/app/account/sponsor/new/actions";
 import { getCurrentUser } from "@/lib/supabase/get-user";
+import { PageHeader } from "@/components/dashboard/erp";
 
 export const metadata: Metadata = {
   title: "New Sponsor Listing",
@@ -16,11 +17,11 @@ export default async function NewSponsorListingPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="label-mono text-primary">Sponsor</p>
-      <h1 className="heading mt-2 text-3xl">New Sponsor Listing</h1>
-      <p className="mt-2 max-w-xl text-sm text-on-surface/60">
-        Set up a sponsor listing&apos;s branding, socials, and donation tier.
-      </p>
+      <PageHeader
+        eyebrow="Sponsor"
+        title="New Sponsor Listing"
+        description={<>Set up a sponsor listing&apos;s branding, socials, and donation tier.</>}
+      />
       <div className="mt-10">
         <SponsorListingForm sponsorId={null} action={createSponsorListing} submitLabel="Submit Listing" />
       </div>

@@ -157,7 +157,7 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
               const judgeRowId = respondJudgeRowId(n);
               const awaitingResponse = judgeRowId !== null && !respondedIds.has(n.id);
               return (
-                <div key={n.id} className="border-b border-outline-variant/15 px-3 py-2.5 last:border-0 hover:bg-white/[0.02]">
+                <div key={n.id} className="border-b border-outline-variant/15 px-3 py-2.5 last:border-0 hover:bg-surface-container/50">
                   <button type="button" onClick={() => handleTitleClick(n)} className="block w-full text-left">
                     <span className="flex items-center gap-2">
                       {!n.is_read ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /> : null}
@@ -176,14 +176,14 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
                       <button
                         type="button"
                         onClick={() => respond(n, judgeRowId, "approved")}
-                        className="label-mono flex items-center gap-1 bg-primary px-2 py-1 text-[10px] text-on-primary transition-colors hover:brightness-110"
+                        className="label-mono flex items-center gap-1 rounded bg-primary px-2 py-1 text-[10px] text-on-primary transition-colors hover:brightness-110"
                       >
                         <Check className="h-3 w-3" /> Accept
                       </button>
                       <button
                         type="button"
                         onClick={() => respond(n, judgeRowId, "removed")}
-                        className="label-mono flex items-center gap-1 border border-outline-variant/40 px-2 py-1 text-[10px] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
+                        className="label-mono flex items-center gap-1 rounded border border-outline-variant/40 px-2 py-1 text-[10px] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
                       >
                         <X className="h-3 w-3" /> Decline
                       </button>
@@ -192,7 +192,7 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
                     <Link
                       href={n.link}
                       onClick={() => setOpen(false)}
-                      className="label-mono mt-1.5 inline-flex items-center gap-1 border border-outline-variant/40 px-2 py-1 text-[10px] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
+                      className="label-mono mt-1.5 inline-flex items-center gap-1 rounded border border-outline-variant/40 px-2 py-1 text-[10px] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
                     >
                       Open
                     </Link>

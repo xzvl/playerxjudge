@@ -149,7 +149,7 @@ export function PreviousMatchCard({
       </div>
       <FinishTags counts={playerFinishes} compact />
       <div className="flex items-center justify-between border-t border-outline-variant/15 pt-3">
-        <span className={`label-mono px-2 py-1 text-[10px] ${won ? "bg-emerald-600/80 text-white" : "bg-error text-on-error"}`}>
+        <span className={`label-mono px-2 py-1 text-[10px] ${won ? "bg-emerald-500/15 text-emerald-500" : "bg-error text-on-error"}`}>
           {won ? "Win" : "Lost"}
         </span>
         {score ? (
