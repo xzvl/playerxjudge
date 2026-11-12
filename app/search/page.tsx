@@ -37,10 +37,12 @@ function SearchResults() {
 
   return (
     <div className="mx-auto max-w-[1280px] px-4 py-10 md:px-6">
-      <div className="mb-10 flex items-center gap-3">
-        <Search className="h-6 w-6 text-primary" aria-hidden="true" />
+      <div className="mb-6 flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-outline-variant/25 bg-surface-container-low">
+          <Search className="h-4 w-4 text-on-surface/60" aria-hidden="true" />
+        </span>
         <div>
-          <p className="label-mono text-primary">Search Results</p>
+          <p className="label-mono text-on-surface/50">Search results</p>
           <h1 className="heading text-2xl">{query ? `"${query}"` : "Search PlayerXJudge"}</h1>
         </div>
       </div>

@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Search, UserPlus } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 
 import { inviteToTeam, searchPlayersToInvite, type InviteCandidate } from "@/app/account/team/actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { PlayerCell } from "@/components/dashboard/team/team-ui";
 import { FormStatus } from "@/components/dashboard/team/FormField";
@@ -67,12 +67,10 @@ export function InvitePlayerForm({ teamId, canAppointSubCaptain }: { teamId: str
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-on-surface/40" aria-hidden="true" />
-          <Input
+          <SearchInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by username or name"
-            className="pl-8 erp:pl-8"
             aria-label="Search players to invite"
           />
           {searching ? (

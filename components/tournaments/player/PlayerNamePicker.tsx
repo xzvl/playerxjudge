@@ -88,9 +88,9 @@ export function PlayerNamePicker({ options, selectedId }: { options: PlayerOptio
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-full z-50 mt-2 w-full max-w-md border border-outline-variant/40 bg-surface-container-lowest shadow-2xl">
-          <div className="flex items-center gap-2 border-b border-outline-variant/25 px-3 py-2">
-            <Search className="h-4 w-4 shrink-0 text-on-surface/40" aria-hidden="true" />
+        <div className="absolute left-0 top-full z-50 mt-2 w-full max-w-md overflow-hidden rounded-md border border-outline-variant/30 bg-surface-container-low shadow-2xl">
+          <div className="flex items-center gap-2 border-b border-outline-variant/20 px-2.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-on-surface/40" aria-hidden="true" />
             <input
               ref={inputRef}
               role="combobox"
@@ -100,7 +100,7 @@ export function PlayerNamePicker({ options, selectedId }: { options: PlayerOptio
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by Blader Name..."
-              className="w-full bg-transparent py-1 text-sm text-on-surface outline-none placeholder:text-on-surface/40"
+              className="h-8 w-full bg-transparent text-[13px] text-on-surface outline-none placeholder:text-on-surface/40"
             />
           </div>
           <div id={listboxId} role="listbox" className="max-h-72 overflow-auto p-1 text-sm">

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Pagination } from "@/components/ui/pagination";
 import { LinkedAccountCell, ParticipantLinkActions, type ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
 import { formatDate } from "@/lib/format";
@@ -145,8 +145,8 @@ export function ParticipantsPanel({
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            className="w-full max-w-xs"
+          <SearchInput
+            wrapperClassName="w-full max-w-xs"
             placeholder="Search by player or team name..."
             aria-label="Search by player name"
             value={playerQuery}

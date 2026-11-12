@@ -5,8 +5,8 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { BeybladeTypeBadge } from "@/components/backend/beyblade-badges";
 import { ExportBeybladesButton } from "@/components/backend/ExportBeybladesButton";
@@ -212,8 +212,8 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
     <div>
       <div className="mb-6 flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <Input
-            className="w-full sm:w-64"
+          <SearchInput
+            wrapperClassName="w-full sm:w-64"
             placeholder="Search code, name, short name..."
             aria-label="Search beyblades"
             value={query}

@@ -1,7 +1,3 @@
-import Link from "next/link";
-
-import { BrandLogo } from "@/components/layout/BrandLogo";
-
 export function AuthCard({
   title,
   subtitle,
@@ -16,10 +12,7 @@ export function AuthCard({
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
-        <Link href="/" aria-label="PlayerXJudge home" className="inline-block">
-          <BrandLogo width={128} height={14} />
-        </Link>
-        <div className="mt-5 rounded-lg border border-outline-variant/25 bg-surface-container-low p-6">
+        <div className="rounded-lg border border-outline-variant/25 bg-surface-container-low p-6">
           <h1 className="heading text-xl">{title}</h1>
           <p className="mt-1 text-[13px] text-on-surface/60">{subtitle}</p>
           <div className="mt-6">{children}</div>

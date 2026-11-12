@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Link2, Pencil, Trash2, Unlink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
@@ -276,8 +277,8 @@ export function ParticipantsPanel({
       <section>
         <h2 className="label-mono mb-4 text-on-surface/40">All Participants</h2>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <Input
-            className="w-full max-w-xs"
+          <SearchInput
+            wrapperClassName="w-full max-w-xs"
             placeholder="Search by name, team, or tournament..."
             aria-label="Search participants"
             value={query}

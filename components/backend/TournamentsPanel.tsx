@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { adminDeleteTournament, adminUpdateTournamentStatus } from "@/app/backend/tournaments/actions";
 import { formatDate } from "@/lib/format";
 import type { TournamentStatus } from "@/lib/types/database";
@@ -79,8 +79,8 @@ export function TournamentsPanel({ tournaments }: { tournaments: TournamentItem[
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Input
-          className="w-full max-w-xs"
+        <SearchInput
+          wrapperClassName="w-full max-w-xs"
           placeholder="Search by title or organizer..."
           aria-label="Search tournaments"
           value={query}

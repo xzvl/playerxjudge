@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -108,19 +108,21 @@ export function Combobox({
         aria-expanded={open}
         aria-controls={listboxId}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 w-full items-center justify-between gap-2 border border-outline-variant/40 bg-surface-container-low px-2 py-2 text-sm text-on-surface transition-colors focus:outline-none focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-primary"
+        className="flex h-8 w-full items-center justify-between gap-2 rounded-md border border-outline-variant/30 bg-surface-container-low px-2.5 text-[13px] text-on-surface transition-colors focus:outline-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-primary/70"
         data-state={open ? "open" : "closed"}
       >
-        <span className="line-clamp-1 text-left text-xs font-medium text-on-surface">
-          {hideLabel ? null : <span className="text-on-surface/40">{label}: </span>}
+        <span className="line-clamp-1 text-left text-[13px] text-on-surface">
+          {hideLabel ? null : <span className="text-on-surface/45">{label}: </span>}
           <span className={cn(hideLabel && !selectedOption && "text-on-surface/40")}>{selectedLabel}</span>
         </span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-50 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 opacity-50 transition-transform", open && "rotate-180")} />
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full border border-outline-variant/40 bg-surface-container-lowest shadow-2xl">
-          <div className="border-b border-outline-variant/25 p-2">
+        <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-md border border-outline-variant/30 bg-surface-container-low shadow-2xl">
+          {/* Same search affordance as the site's SearchInput: 14px icon, 13px text. */}
+          <div className="flex items-center gap-2 border-b border-outline-variant/20 px-2.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-on-surface/40" aria-hidden="true" />
             <input
               ref={inputRef}
               role="combobox"
@@ -132,10 +134,10 @@ export function Combobox({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search..."
-              className="w-full bg-transparent px-2 py-1.5 text-sm text-on-surface outline-none placeholder:text-on-surface/40"
+              className="h-8 w-full bg-transparent text-[13px] text-on-surface outline-none placeholder:text-on-surface/40"
             />
           </div>
-          <div id={listboxId} role="listbox" className="max-h-64 overflow-auto p-1 text-sm">
+          <div id={listboxId} role="listbox" className="max-h-64 overflow-auto p-1 text-[13px]">
             {filtered.length > 0 ? (
               filtered.map((option, i) => (
                 <button
@@ -148,11 +150,11 @@ export function Combobox({
                   onClick={() => selectOption(option)}
                   onMouseEnter={() => setActiveIndex(i)}
                   className={cn(
-                    "flex w-full items-center gap-2 px-2 py-2 text-left !text-[12px] text-on-surface/80",
+                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-on-surface/80",
                     option.disabled
                       ? "cursor-not-allowed text-on-surface/30"
                       : i === activeIndex
-                        ? "bg-primary/15 text-primary"
+                        ? "bg-surface-container-high text-on-surface"
                         : "hover:bg-surface-container-high"
                   )}
                 >

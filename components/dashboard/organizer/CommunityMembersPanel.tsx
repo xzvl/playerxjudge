@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/format";
 import { acceptCommunityJoinRequest, removeCommunityMember } from "@/app/account/organizer/community/[slug]/members/actions";
@@ -74,16 +73,13 @@ export function CommunityMembersPanel({ slug, members }: { slug: string; members
             <TabsTrigger value="requests">Requests to Join {requestCount > 0 ? `(${requestCount})` : ""}</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface/40" aria-hidden="true" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name..."
-            className="pl-9"
-            aria-label="Search members"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="w-full max-w-xs"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name..."
+          aria-label="Search members"
+        />
       </div>
 
       {error ? (

@@ -4,9 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { removeOrganizerRole, updateOrganizerTier } from "@/app/backend/organizers/actions";
 import { formatDate } from "@/lib/format";
 import type { SubscriptionPlan } from "@/lib/types/database";
@@ -66,8 +66,8 @@ export function OrganizersPanel({ organizers }: { organizers: OrganizerRow[] }) 
 
   return (
     <div>
-      <Input
-        className="mb-6 w-full max-w-xs"
+      <SearchInput
+        wrapperClassName="mb-6 w-full max-w-xs"
         placeholder="Search by name or username..."
         aria-label="Search organizers"
         value={query}

@@ -9,7 +9,6 @@ import {
   Pencil,
   Plus,
   Repeat,
-  Search,
   Shuffle,
   Trash2,
   UserPlus,
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LinkedAccountCell, ParticipantLinkActions, type ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
@@ -193,15 +193,12 @@ function ManageParticipantsTab({
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface/30" aria-hidden="true" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search participants..."
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="w-full max-w-xs"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search participants..."
+        />
         <div className="flex flex-wrap gap-2">
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>

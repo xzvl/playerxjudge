@@ -4,8 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { Ban, Check, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { BeyzIdStatusBadge, CertifiedJudgeBadge } from "@/components/dashboard/judge/badges";
 import { approveBeyzId, declineBeyzId, removeJudgeRole } from "@/app/backend/judges/actions";
 import type { BeyzIdStatus } from "@/lib/types/database";
@@ -60,8 +60,8 @@ export function JudgesPanel({ judges }: { judges: JudgeRow[] }) {
 
   return (
     <div>
-      <Input
-        className="mb-6 w-full max-w-xs"
+      <SearchInput
+        wrapperClassName="mb-6 w-full max-w-xs"
         placeholder="Search by name or username..."
         aria-label="Search judges"
         value={query}

@@ -4,8 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { Building2, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { CommunityApprovalStatusBadge, CommunityStatusBadge } from "@/components/dashboard/organizer/badges";
 import { adminDeleteCommunity, approveCommunity, rejectCommunity } from "@/app/backend/communities/actions";
 import { formatDate } from "@/lib/format";
@@ -210,8 +210,8 @@ export function CommunitiesPanel({ pending: pendingItems, communities }: { pendi
 
       <section>
         <h2 className="label-mono mb-4 text-on-surface/40">All Communities</h2>
-        <Input
-          className="mb-4 w-full max-w-xs"
+        <SearchInput
+          wrapperClassName="mb-4 w-full max-w-xs"
           placeholder="Search by name or owner..."
           aria-label="Search communities"
           value={query}

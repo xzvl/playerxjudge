@@ -14,12 +14,12 @@ import {
   Facebook,
   Pencil,
   Plus,
-  Search,
   Trash2,
   UserPlus,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -289,15 +289,12 @@ export function TournamentPreRegisterWorkspace({
       </p>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface/30" aria-hidden="true" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search pre-registrations..."
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          wrapperClassName="w-full max-w-xs"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search pre-registrations..."
+        />
         <div className="flex items-center gap-2">
           <Button
             size="sm"

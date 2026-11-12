@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { TournamentTable } from "@/components/tournaments/TournamentTable";
 import { TournamentDetailsModal } from "@/components/tournaments/TournamentDetailsModal";
@@ -81,19 +80,12 @@ export function TournamentListingsClient({ tournaments }: { tournaments: MockTou
           options={[{ value: ALL, label: "All Communities" }, ...communities.map((c) => ({ value: c, label: c }))]}
         />
 
-        <div className="relative">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface/40"
-          />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tournaments..."
-            className="pl-10"
-            aria-label="Search tournaments"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search tournaments..."
+          aria-label="Search tournaments"
+        />
       </div>
 
       {view === "upcoming" ? (

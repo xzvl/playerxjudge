@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Ban, Check, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -191,8 +192,8 @@ export function SponsorsPanel({ sponsors }: { sponsors: SponsorItem[] }) {
 
   return (
     <div>
-      <Input
-        className="mb-6 w-full max-w-xs"
+      <SearchInput
+        wrapperClassName="mb-6 w-full max-w-xs"
         placeholder="Search by sponsor or account..."
         aria-label="Search sponsors"
         value={query}

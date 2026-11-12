@@ -4,9 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { Ban, Mail, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { setPlayerBanned } from "@/app/backend/players/actions";
 import { formatDate } from "@/lib/format";
@@ -101,8 +101,8 @@ export function PlayersPanel({ players }: { players: PlayerRow[] }) {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <Input
-          className="w-full max-w-xs"
+        <SearchInput
+          wrapperClassName="w-full max-w-xs"
           placeholder="Search by name or username..."
           aria-label="Search players"
           value={query}
