@@ -42,6 +42,7 @@ export default async function EditSponsorListingPage({ params }: { params: Promi
           action={updateSponsorListing.bind(null, row.id)}
           submitLabel="Save Changes"
           initialLogoUrl={row.logo_url}
+          initialLightLogoUrl={row.logo_light_url}
           defaultValues={{
             sponsorName: row.company_name,
             websiteUrl: row.website_url ?? "",

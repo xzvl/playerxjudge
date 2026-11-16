@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Beyblade, BeybladeCategory, BeybladeDeck, BeybladeSystemLine, MatchScore } from "@/lib/types/database";
+import type { Beyblade, BeybladeCategory, BeybladeDeck, BeybladeSystemLine, BeybladeVariation, MatchScore } from "@/lib/types/database";
+import type { ComboVariationSlot } from "@/lib/validations/beyblade-combo";
 
 // Every function below defaults to the request's own RLS-respecting
 // client, but accepts this as an override — used exactly once today (the
@@ -36,6 +37,29 @@ export interface ComboPartOption {
   overBladeId: string | null;
   metalBladeId: string | null;
   assistBladeId: string | null;
+  // Picker options only: the part's catalog variations (colorways,
+  // editions), if any.
+  variations?: PartVariation[];
+  // On a combo's parts: the variation the player picked. imageUrl is then
+  // already the variation's image (when it has one).
+  variationId?: string | null;
+  variationName?: string | null;
+}
+
+export interface PartVariation {
+  id: string;
+  name: string;
+  source: string | null;
+  imageUrl: string | null;
+}
+
+const toPartVariation = (v: BeybladeVariation): PartVariation => ({ id: v.id, name: v.name, source: v.source, imageUrl: v.image_url });
+
+// The part as used in a specific variation: its name, and its image if it
+// has one. Stats don't change between variations.
+function withVariation(part: ComboPartOption, variation: PartVariation | undefined): ComboPartOption {
+  if (!variation) return part;
+  return { ...part, imageUrl: variation.imageUrl ?? part.imageUrl, variationId: variation.id, variationName: variation.name };
 }
 
 function toPartOption(b: Beyblade): ComboPartOption {
@@ -101,6 +125,8 @@ export interface ComboWithParts {
   // 20250101000044_beyblade_combos_ratchet_optional.sql.
   ratchet: ComboPartOption | null;
   bit: ComboPartOption;
+  // Slot -> variation id as saved (see COMBO_VARIATION_SLOTS).
+  variations: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
@@ -142,7 +168,25 @@ export async function getComboPickerOptions(): Promise<ComboPickerOptions> {
     ])
     .order("name");
   const rows = (data as Beyblade[] | null) ?? [];
-  const byCategory = (...categories: string[]) => rows.filter((r) => categories.includes(r.category)).map(toPartOption);
+
+  // Every variation, grouped by part. Empty (not an error) before the
+  // variations table exists.
+  const { data: variationRows } = await supabase.from("beyblade_variations").select("*").order("sort_order").order("created_at");
+  const variationsByPart = new Map<string, PartVariation[]>();
+  for (const v of (variationRows as BeybladeVariation[] | null) ?? []) {
+    const list = variationsByPart.get(v.beyblade_id) ?? [];
+    list.push(toPartVariation(v));
+    variationsByPart.set(v.beyblade_id, list);
+  }
+
+  const byCategory = (...categories: string[]) =>
+    rows
+      .filter((r) => categories.includes(r.category))
+      .map((r) => {
+        const option = toPartOption(r);
+        const variations = variationsByPart.get(r.id);
+        return variations?.length ? { ...option, variations } : option;
+      });
 
   return {
     blades: byCategory("blade", "ratchet_integrated_blade"),
@@ -161,6 +205,7 @@ interface ComboRow {
   profile_id: string;
   name: string;
   expand_blade: boolean;
+  variations: Record<string, string> | null;
   created_at: string;
   updated_at: string;
   blade: Beyblade | null;
@@ -235,14 +280,6 @@ function bladeDisplayFor(row: ComboRow): ComboBladeDisplay {
   };
 }
 
-// The real part(s) to show a thumbnail for — the one picked Blade, or (self-
-// assembled) each of its constituent parts individually.
-function bladePartsFor(row: ComboRow): ComboPartOption[] {
-  if (row.blade) return [toPartOption(row.blade)];
-  const { lockChip, core, overBlade, assistBlade } = customAssemblyParts(row);
-  return [lockChip, core, overBlade, assistBlade].filter((b): b is Beyblade => b !== null).map(toPartOption);
-}
-
 function bladeRolesFor(row: ComboRow): ComboBladeRoles {
   if (row.blade) return {};
   const { lockChip, core, overBlade, assistBlade } = customAssemblyParts(row);
@@ -257,24 +294,75 @@ function bladeRolesFor(row: ComboRow): ComboBladeRoles {
   return roles;
 }
 
-function toComboWithParts(row: ComboRow): ComboWithParts {
+type VariationMap = Map<string, BeybladeVariation>;
+
+function toComboWithParts(row: ComboRow, variationMap: VariationMap = new Map()): ComboWithParts {
+  // The variation picked for a slot, only if it really is a variation of
+  // the part currently in that slot.
+  const picked = (slot: ComboVariationSlot, partId: string | null | undefined): PartVariation | undefined => {
+    const v = variationMap.get(row.variations?.[slot] ?? "");
+    return v && partId && v.beyblade_id === partId ? toPartVariation(v) : undefined;
+  };
+  const roleSlot: Record<BladePartRole, ComboVariationSlot> = {
+    lockChip: "lockChip",
+    mainBlade: "mainBlade",
+    metalBlade: "metalBlade",
+    overBlade: "overBlade",
+    assistBlade: "assistBlade",
+  };
+
+  const roles = bladeRolesFor(row);
+  const bladeRoles: ComboBladeRoles = {};
+  for (const [role, part] of Object.entries(roles) as [BladePartRole, ComboPartOption][]) {
+    bladeRoles[role] = withVariation(part, picked(roleSlot[role], part.id));
+  }
+
+  let blade: ComboPartOption;
+  let bladeParts: ComboPartOption[];
+  if (row.blade) {
+    blade = withVariation(toPartOption(row.blade), picked("blade", row.blade.id));
+    bladeParts = [blade];
+  } else {
+    // Lock chip, core, over blade, assist: the self-assembled Blade's real parts, for thumbnails.
+    bladeParts = [bladeRoles.lockChip, bladeRoles.metalBlade ?? bladeRoles.mainBlade, bladeRoles.overBlade, bladeRoles.assistBlade].filter(
+      (p): p is ComboPartOption => !!p
+    );
+    const synthesized = synthesizeCustomBlade(row);
+    const core = bladeRoles.metalBlade ?? bladeRoles.mainBlade;
+    blade = { ...synthesized, imageUrl: core?.imageUrl ?? bladeRoles.lockChip?.imageUrl ?? synthesized.imageUrl };
+  }
+
   return {
     id: row.id,
     profileId: row.profile_id,
     name: row.name,
-    blade: row.blade ? toPartOption(row.blade) : synthesizeCustomBlade(row),
-    bladeParts: bladePartsFor(row),
-    bladeRoles: bladeRolesFor(row),
+    blade,
+    bladeParts,
+    bladeRoles,
     bladeDisplay: bladeDisplayFor(row),
-    ratchet: row.ratchet ? toPartOption(row.ratchet) : null,
-    bit: toPartOption(row.bit),
+    ratchet: row.ratchet ? withVariation(toPartOption(row.ratchet), picked("ratchet", row.ratchet.id)) : null,
+    bit: withVariation(toPartOption(row.bit), picked("bit", row.bit.id)),
+    variations: row.variations ?? {},
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
+// Loads every variation the given combos reference, in one query.
+async function loadComboVariations(supabase: SupabaseServerClient, rows: ComboRow[]): Promise<VariationMap> {
+  const ids = [...new Set(rows.flatMap((r) => Object.values(r.variations ?? {})).filter((id) => typeof id === "string" && id))];
+  if (ids.length === 0) return new Map();
+  const { data } = await supabase.from("beyblade_variations").select("*").in("id", ids);
+  return new Map(((data as BeybladeVariation[] | null) ?? []).map((v) => [v.id, v]));
+}
+
+async function resolveCombos(supabase: SupabaseServerClient, rows: ComboRow[]): Promise<ComboWithParts[]> {
+  const variationMap = await loadComboVariations(supabase, rows);
+  return rows.map((r) => toComboWithParts(r, variationMap));
+}
+
 const COMBO_SELECT =
-  "id, profile_id, name, expand_blade, created_at, updated_at, " +
+  "id, profile_id, name, expand_blade, variations, created_at, updated_at, " +
   "blade:beyblades!blade_id(*), ratchet:beyblades!ratchet_id(*), bit:beyblades!bit_id(*), " +
   "lock_chip:beyblades!lock_chip_id(*), main_blade:beyblades!main_blade_id(*), " +
   "over_blade:beyblades!over_blade_id(*), metal_blade:beyblades!metal_blade_id(*), assist_blade:beyblades!assist_blade_id(*)";
@@ -286,13 +374,15 @@ export async function listUserCombos(profileId: string): Promise<ComboWithParts[
     .select(COMBO_SELECT)
     .eq("profile_id", profileId)
     .order("created_at", { ascending: false });
-  return ((data as unknown as ComboRow[] | null) ?? []).map(toComboWithParts);
+  return resolveCombos(supabase, (data as unknown as ComboRow[] | null) ?? []);
 }
 
 export async function getUserCombo(id: string, profileId: string): Promise<ComboWithParts | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("beyblade_combos").select(COMBO_SELECT).eq("id", id).eq("profile_id", profileId).maybeSingle();
-  return data ? toComboWithParts(data as unknown as ComboRow) : null;
+  if (!data) return null;
+  const [combo] = await resolveCombos(supabase, [data as unknown as ComboRow]);
+  return combo;
 }
 
 // "Deck A", "Deck B", "Deck C", ... "Deck Z", "Deck AA", ... — same scheme
@@ -368,7 +458,8 @@ export async function getDeckCombos(deck: BeybladeDeck, profileId: string, clien
 
   const supabase = client ?? (await createClient());
   const { data } = await supabase.from("beyblade_combos").select(COMBO_SELECT).in("id", uniqueIds).eq("profile_id", profileId);
-  const byId = new Map(((data as unknown as ComboRow[] | null) ?? []).map((r) => [r.id, toComboWithParts(r)]));
+  const resolved = await resolveCombos(supabase, (data as unknown as ComboRow[] | null) ?? []);
+  const byId = new Map(resolved.map((c) => [c.id, c]));
   return ids.map((id) => (id ? (byId.get(id) ?? null) : null));
 }
 

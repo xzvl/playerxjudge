@@ -18,6 +18,7 @@ import {
   type PhotoSlot,
 } from "@/lib/validations/settings";
 import type { Profile } from "@/lib/types/database";
+import { queueImageVariants } from "@/lib/images/optimize";
 
 const NOT_CONFIGURED: SettingsActionState = {
   status: "error",
@@ -169,6 +170,8 @@ export async function uploadProfilePhoto(slot: PhotoSlot, formData: FormData): P
     .upload(path, file, { upsert: true, contentType: "image/webp" });
 
   if (uploadError) return { status: "error", message: uploadError.message };
+
+  queueImageVariants("profile-photos", path);
 
   const { data: publicUrlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
   const url = `${publicUrlData.publicUrl}?v=${Date.now()}`;

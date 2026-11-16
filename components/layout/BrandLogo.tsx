@@ -1,4 +1,10 @@
-// PlayerXJudge wordmark. The letterforms follow the current text color
+"use client";
+
+import { useSiteBranding } from "@/components/layout/SiteBrandingProvider";
+import { ThemedImage } from "@/components/ui/themed-image";
+import { cn } from "@/lib/utils";
+
+// PlayerXJudge wordmark (or the uploaded logo, see below). The letterforms follow the current text color
 // (`fill-on-surface`) so it works in both themes; the "X" is the brand red.
 // Size it with width/height or a className (the viewBox keeps the ratio).
 
@@ -17,6 +23,22 @@ export function BrandLogo({
   height?: number;
   className?: string;
 }) {
+  // A logo uploaded in /backend/content replaces the built-in wordmark:
+  // the main logo on the dark theme, the alternative on the light theme.
+  // Same height as the wordmark would be; width follows the image.
+  const { logoUrl, logoAltUrl } = useSiteBranding();
+  if (logoUrl || logoAltUrl) {
+    return (
+      <ThemedImage
+        darkSrc={logoUrl}
+        lightSrc={logoAltUrl}
+        alt="PlayerXJudge"
+        className={cn("w-auto max-w-[220px] object-contain", className)}
+        style={{ height: Math.max(height + 10, 24) }}
+      />
+    );
+  }
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

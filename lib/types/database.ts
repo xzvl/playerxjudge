@@ -134,7 +134,10 @@ export type Sponsor = {
   id: string;
   profile_id: string;
   company_name: string;
+  // Dark-mode logo (the default); logo_light_url is the light-theme
+  // alternative and falls back to this one.
   logo_url: string | null;
+  logo_light_url: string | null;
   website_url: string | null;
   facebook_url: string | null;
   phone: string | null;
@@ -725,6 +728,9 @@ export type BeybladeCombo = {
   metal_blade_id: string | null;
   assist_blade_id: string | null;
   expand_blade: boolean;
+  // Slot -> beyblade_variations.id for the parts used in a non-standard
+  // variation (20250101000060). See COMBO_VARIATION_SLOTS.
+  variations: Record<string, string>;
   created_at: string;
   updated_at: string;
 };
@@ -823,6 +829,26 @@ export type TeamLeagueBattle = {
   created_at: string;
 };
 
+// 20250101000060_site_content_variations_ownership.sql
+export type BeybladeVariation = {
+  id: string;
+  beyblade_id: string;
+  name: string;
+  // Where this variation came from (a set, a promo, a region, ...).
+  source: string | null;
+  image_url: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SiteSettingRow = {
+  key: string;
+  value: unknown;
+  updated_at: string;
+  updated_by: string | null;
+};
+
 type TableDef<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 
 // Minimal Supabase Database type shape so `@supabase/ssr` generics compile
@@ -865,6 +891,8 @@ export interface Database {
       team_league_roster: TableDef<TeamLeagueRosterEntry>;
       team_league_matches: TableDef<TeamLeagueMatch>;
       team_league_battles: TableDef<TeamLeagueBattle>;
+      beyblade_variations: TableDef<BeybladeVariation>;
+      site_settings: TableDef<SiteSettingRow>;
     };
     Views: {
       public_preregistrations: TableDef<PublicPreregistration>;
@@ -882,6 +910,8 @@ export interface Database {
       accept_team_invite: { Args: { target_invite_id: string }; Returns: string };
       decline_team_invite: { Args: { target_invite_id: string }; Returns: void };
       transfer_team_captaincy: { Args: { target_team_id: string; new_captain_id: string }; Returns: void };
+      // 20250101000060_site_content_variations_ownership.sql
+      transfer_team_ownership: { Args: { target_team_id: string; new_owner_id: string }; Returns: void };
     };
     Enums: {
       app_role: AppRole;

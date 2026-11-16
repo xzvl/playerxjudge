@@ -8,6 +8,7 @@ import { beybladeSchema, MAX_BEYBLADE_IMAGE_UPLOAD_BYTES, type BeybladeInput } f
 import type { RoleActionState } from "@/lib/validations/roles";
 import type { Beyblade } from "@/lib/types/database";
 import type { BeybladeItem } from "@/components/backend/BeybladesPanel";
+import { queueImageVariants } from "@/lib/images/optimize";
 
 function revalidateBeybladePaths() {
   revalidatePath("/backend/beyblades");
@@ -99,6 +100,7 @@ export async function uploadBeybladeImage(id: string, formData: FormData): Promi
     .from("beyblade-images")
     .upload(path, file, { upsert: true, contentType: "image/webp" });
   if (uploadError) return { status: "error", message: uploadError.message };
+  queueImageVariants("beyblade-images", path);
 
   const { data: publicUrlData } = supabase.storage.from("beyblade-images").getPublicUrl(path);
   const url = `${publicUrlData.publicUrl}?v=${Date.now()}`;

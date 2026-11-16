@@ -4,6 +4,7 @@ import { Facebook, Globe, Handshake } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getActiveSponsors } from "@/lib/sponsors/queries";
+import { ThemedImage } from "@/components/ui/themed-image";
 
 export const metadata: Metadata = {
   title: "Sponsors",
@@ -33,15 +34,19 @@ export default async function SponsorsPage() {
           {sponsors.map((sponsor) => (
             <div key={sponsor.id} className="flex flex-col overflow-hidden rounded-lg border border-outline-variant/25 bg-surface-container-low">
               <div className="flex h-40 items-center justify-center border-b border-outline-variant/20 bg-surface-container-lowest p-5">
-                {sponsor.logo_url ? (
+                {sponsor.logo_url || sponsor.logo_light_url ? (
                   // Fixed image height (not just a fixed container) — object-contain
                   // alone still lets a wide/short logo render much smaller than a
                   // squarish one even inside an equal-height box, which is what
                   // actually read as "different sizes" card to card. w-auto lets
                   // width scale naturally off that fixed height; max-w-full guards
                   // against an extreme-aspect-ratio logo overflowing the card.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={sponsor.logo_url} alt={sponsor.company_name} className="h-28 w-auto max-w-full object-contain" />
+                  <ThemedImage
+                    darkSrc={sponsor.logo_url}
+                    lightSrc={sponsor.logo_light_url}
+                    alt={sponsor.company_name}
+                    className="h-28 w-auto max-w-full object-contain"
+                  />
                 ) : (
                   <span className="text-base font-semibold text-on-surface/60">{sponsor.company_name}</span>
                 )}

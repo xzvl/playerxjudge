@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/supabase/get-user";
 import type { RoleActionState } from "@/lib/validations/roles";
 
 function revalidateFaqPaths() {
-  revalidatePath("/backend/faqs");
+  revalidatePath("/backend/content/faqs");
   revalidatePath("/faqs");
 }
 

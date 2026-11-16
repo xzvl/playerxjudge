@@ -62,6 +62,10 @@ async function hasValidBanCheck(value: string | undefined, userId: string): Prom
 }
 
 export async function updateSession(request: NextRequest) {
+  // Lets server components (the root layout's maintenance-mode check) know
+  // which page is being rendered. Overwrites any client-sent value.
+  request.headers.set("x-pathname", request.nextUrl.pathname);
+
   if (!isSupabaseConfigured) {
     return NextResponse.next({ request });
   }

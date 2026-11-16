@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, LogOut, MoreHorizontal, UserMinus } from "lucide-react";
+import { Crown, KeyRound, LogOut, MoreHorizontal, UserMinus } from "lucide-react";
 
-import { removeTeamMember, setMemberRole, transferCaptaincy } from "@/app/account/team/actions";
+import { removeTeamMember, setMemberRole, transferCaptaincy, transferOwnership } from "@/app/account/team/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -29,18 +29,22 @@ export function MembersTable({
   viewerId,
   viewerRole,
   isOwner,
+  ownerId,
 }: {
   teamId: string;
   members: TeamMemberRow[];
   viewerId: string;
   viewerRole: TeamRole | null;
   isOwner: boolean;
+  ownerId: string;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<{ kind: "remove" | "captain"; member: TeamMemberRow } | null>(null);
+  const [confirm, setConfirm] = useState<{ kind: "remove" | "captain" | "owner"; member: TeamMemberRow } | null>(null);
   const [, startTransition] = useTransition();
   const isManager = isOwner || viewerRole === "captain" || viewerRole === "sub_captain";
+  // Owner or captain: may appoint sub-captains and hand the captain role on.
+  const isLead = isOwner || viewerRole === "captain";
 
   const changeRole = (profileId: string, role: TeamRole) =>
     startTransition(async () => {
@@ -52,8 +56,13 @@ export function MembersTable({
 
   // What the viewer may do to a given row (mirrors the server rules).
   const canEditRole = (m: TeamMemberRow) =>
-    isManager && m.role !== "captain" && m.profile.id !== viewerId && (isOwner || m.role !== "sub_captain");
-  const canRemove = (m: TeamMemberRow) => canEditRole(m);
+    isManager &&
+    m.role !== "captain" &&
+    m.profile.id !== viewerId &&
+    (isLead || (m.role !== "sub_captain" && m.profile.id !== ownerId));
+  const canRemove = (m: TeamMemberRow) => canEditRole(m) && m.profile.id !== ownerId;
+  const canMakeCaptain = (m: TeamMemberRow) => isLead && m.role !== "captain";
+  const canMakeOwner = (m: TeamMemberRow) => isOwner && m.profile.id !== ownerId;
 
   return (
     <div className="space-y-2">
@@ -73,18 +82,26 @@ export function MembersTable({
           <tbody>
             {members.map((m) => {
               const isSelf = m.profile.id === viewerId;
-              const assignable = ASSIGNABLE_TEAM_ROLES.filter((r) => r !== m.role && (isOwner || r !== "sub_captain"));
+              const assignable = ASSIGNABLE_TEAM_ROLES.filter((r) => r !== m.role && (isLead || r !== "sub_captain"));
+              const isTeamOwner = m.profile.id === ownerId;
               return (
                 <tr key={m.profile.id} className="border-b border-outline-variant/15 last:border-0">
                   <td className="px-3">
                     <PlayerCell profile={m.profile} sub={isSelf ? `@${m.profile.username} · you` : undefined} />
                   </td>
                   <td className="px-3">
-                    <RoleBadge role={m.role} />
+                    <div className="flex flex-wrap items-center gap-1">
+                      <RoleBadge role={m.role} />
+                      {isTeamOwner ? (
+                        <span className="inline-flex items-center gap-1 rounded border border-outline-variant/30 px-1.5 py-px text-[11px] text-on-surface/70">
+                          <KeyRound className="h-3 w-3" aria-hidden="true" /> Owner
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="hidden px-3 text-on-surface/55 sm:table-cell">{joinedFmt.format(new Date(m.joinedAt))}</td>
                   <td className="px-3 text-right">
-                    {canEditRole(m) || (isOwner && !isSelf) ? (
+                    {canEditRole(m) || canMakeCaptain(m) || canMakeOwner(m) ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="erp:h-7 erp:w-7" aria-label={`Manage ${m.profile.displayName}`}>
@@ -102,13 +119,16 @@ export function MembersTable({
                               ))}
                             </>
                           ) : null}
-                          {isOwner && !isSelf ? (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onSelect={() => setConfirm({ kind: "captain", member: m })}>
-                                <Crown className="h-3.5 w-3.5" /> Make team captain
-                              </DropdownMenuItem>
-                            </>
+                          {canMakeCaptain(m) || canMakeOwner(m) ? <DropdownMenuSeparator /> : null}
+                          {canMakeCaptain(m) ? (
+                            <DropdownMenuItem onSelect={() => setConfirm({ kind: "captain", member: m })}>
+                              <Crown className="h-3.5 w-3.5" /> Make team captain
+                            </DropdownMenuItem>
+                          ) : null}
+                          {canMakeOwner(m) ? (
+                            <DropdownMenuItem onSelect={() => setConfirm({ kind: "owner", member: m })}>
+                              <KeyRound className="h-3.5 w-3.5" /> Transfer ownership
+                            </DropdownMenuItem>
                           ) : null}
                           {canRemove(m) ? (
                             <>
@@ -123,7 +143,7 @@ export function MembersTable({
                           ) : null}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    ) : isSelf && m.role !== "captain" ? (
+                    ) : isSelf && m.role !== "captain" && !isTeamOwner ? (
                       <ConfirmActionButton
                         title="Leave this team?"
                         description="You'll be taken off its league rosters. Your logged matches stay in the league history."
@@ -148,18 +168,28 @@ export function MembersTable({
       {confirm ? (
         <ControlledConfirm
           key={`${confirm.kind}-${confirm.member.profile.id}`}
-          title={confirm.kind === "captain" ? `Make ${confirm.member.profile.displayName} captain?` : `Remove ${confirm.member.profile.displayName}?`}
+          title={
+            confirm.kind === "captain"
+              ? `Make ${confirm.member.profile.displayName} captain?`
+              : confirm.kind === "owner"
+                ? `Transfer ownership to ${confirm.member.profile.displayName}?`
+                : `Remove ${confirm.member.profile.displayName}?`
+          }
           description={
             confirm.kind === "captain"
-              ? "They become the team captain and owner. You become a sub-captain."
-              : "They'll be taken off the team and its league rosters. Their logged matches stay."
+              ? "They become the team captain (team leader). The current captain becomes a sub-captain. Ownership doesn't change."
+              : confirm.kind === "owner"
+                ? "They become the team owner, with full control including deleting the team. Your team role stays the same, but you can no longer transfer ownership or delete the team."
+                : "They'll be taken off the team and its league rosters. Their logged matches stay."
           }
-          confirmLabel={confirm.kind === "captain" ? "Transfer captaincy" : "Remove"}
+          confirmLabel={confirm.kind === "captain" ? "Transfer captaincy" : confirm.kind === "owner" ? "Transfer ownership" : "Remove"}
           onClose={() => setConfirm(null)}
           onConfirm={() =>
             confirm.kind === "captain"
               ? transferCaptaincy(teamId, confirm.member.profile.id)
-              : removeTeamMember(teamId, confirm.member.profile.id)
+              : confirm.kind === "owner"
+                ? transferOwnership(teamId, confirm.member.profile.id)
+                : removeTeamMember(teamId, confirm.member.profile.id)
           }
           onDone={() => router.refresh()}
         />

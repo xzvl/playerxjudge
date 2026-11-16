@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { MAX_THUMBNAIL_UPLOAD_BYTES } from "@/lib/validations/tournament-wizard";
+import { queueImageVariants } from "@/lib/images/optimize";
 
 // Live availability check for the wizard/settings Slug field, in addition to
 // the unique-constraint error both create/update actions already handle on
@@ -137,6 +138,7 @@ export async function uploadTournamentThumbnail(
     .from("tournament-thumbnails")
     .upload(path, file, { upsert: true, contentType: "image/webp" });
   if (uploadError) return { status: "error", message: uploadError.message };
+  queueImageVariants("tournament-thumbnails", path);
 
   const { data: publicUrlData } = supabase.storage.from("tournament-thumbnails").getPublicUrl(path);
   const url = `${publicUrlData.publicUrl}?v=${Date.now()}`;

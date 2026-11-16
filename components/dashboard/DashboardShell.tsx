@@ -17,6 +17,7 @@ import type { NavUser } from "@/components/layout/ProfileMenu";
 // Reused as-is rather than duplicated: it's already a generic
 // theme/notifications/profile cluster with nothing player-view-specific.
 import { PlayerViewHeaderActions } from "@/components/tournaments/player/PlayerViewHeaderActions";
+import { TableCardLabels } from "@/components/dashboard/TableCardLabels";
 import { cn } from "@/lib/utils";
 
 export interface DashboardNavItem {
@@ -376,7 +377,10 @@ export function DashboardShell({
             {backendMobileNav}
           </div>
         )}
-        <div className="mx-auto max-w-[1400px] px-4 py-5 lg:px-6">{children}</div>
+        <div id="dashboard-content" className="mx-auto max-w-[1400px] px-4 py-5 lg:px-6">
+          {children}
+        </div>
+        <TableCardLabels rootId="dashboard-content" />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Beyblade } from "@/lib/types/database";
+import type { Beyblade, BeybladeVariation } from "@/lib/types/database";
 
 export async function listBeyblades(): Promise<Beyblade[]> {
   const supabase = await createClient();
@@ -72,4 +72,27 @@ export async function getBeybladePickerOptions(excludeId?: string): Promise<Beyb
     metalBlades: byCategory("metal_blade"),
     assistBlades: byCategory("assist_blade"),
   };
+}
+
+export async function listBeybladeVariations(beybladeId: string): Promise<BeybladeVariation[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("beyblade_variations")
+    .select("*")
+    .eq("beyblade_id", beybladeId)
+    .order("sort_order")
+    .order("created_at");
+  return (data as BeybladeVariation[] | null) ?? [];
+}
+
+// beyblade id -> number of variations, for the catalog list. Empty (not an
+// error) if the variations table isn't there yet.
+export async function countBeybladeVariations(): Promise<Map<string, number>> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("beyblade_variations").select("beyblade_id");
+  const counts = new Map<string, number>();
+  for (const row of (data as { beyblade_id: string }[] | null) ?? []) {
+    counts.set(row.beyblade_id, (counts.get(row.beyblade_id) ?? 0) + 1);
+  }
+  return counts;
 }

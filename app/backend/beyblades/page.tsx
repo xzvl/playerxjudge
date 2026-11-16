@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Disc3, Layers } from "lucide-react";
 
 import { BeybladesPanel, type BeybladeItem } from "@/components/backend/BeybladesPanel";
-import { listBeyblades } from "@/app/backend/beyblades/data";
+import { countBeybladeVariations, listBeyblades } from "@/app/backend/beyblades/data";
 import { KpiCard, PageHeader, Panel } from "@/components/dashboard/erp";
 import { BarList } from "@/components/dashboard/charts";
 
 export const metadata: Metadata = { title: "Beyblades", robots: { index: false, follow: false } };
 
 export default async function BackendBeybladesPage() {
-  const beyblades = await listBeyblades();
+  const [beyblades, variationCounts] = await Promise.all([listBeyblades(), countBeybladeVariations()]);
 
   const items: BeybladeItem[] = beyblades.map((b) => ({
     id: b.id,
@@ -29,6 +29,7 @@ export default async function BackendBeybladesPage() {
     description: b.description,
     series: b.series,
     imageUrl: b.image_url,
+    variationCount: variationCounts.get(b.id) ?? 0,
   }));
 
   const humanize = (v: string) => v.split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -6,8 +7,11 @@ import "./globals.css";
 import { Providers } from "@/app/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { getShellData } from "@/lib/supabase/get-user";
+import { MaintenanceScreen } from "@/components/layout/MaintenanceScreen";
+import { SiteBrandingProvider } from "@/components/layout/SiteBrandingProvider";
+import { getCurrentProfile, getShellData, isStaffProfile } from "@/lib/supabase/get-user";
 import { getActiveSponsors } from "@/lib/sponsors/queries";
+import { getSiteContent } from "@/lib/site-content/queries";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 
 // The site's one type family: Geist for text, Geist Mono for codes and
@@ -26,7 +30,7 @@ const geistMono = Geist_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://playerxjudge.com";
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     default: "PlayerXJudge — Beyblade X Community Tournament Platform",
@@ -55,19 +59,55 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
+// Favicons uploaded in /backend/content replace the built-in one; the
+// alternative favicon is used when the browser is in dark mode.
+export async function generateMetadata(): Promise<Metadata> {
+  const { branding } = await getSiteContent();
+  if (!branding.faviconUrl && !branding.faviconAltUrl) return baseMetadata;
+
+  const icon = branding.faviconUrl || branding.faviconAltUrl;
+  const darkIcon = branding.faviconAltUrl || branding.faviconUrl;
+  return {
+    ...baseMetadata,
+    icons: {
+      icon:
+        icon === darkIcon
+          ? [{ url: icon }]
+          : [
+              { url: icon, media: "(prefers-color-scheme: light)" },
+              { url: darkIcon, media: "(prefers-color-scheme: dark)" },
+            ],
+      apple: icon,
+    },
+  };
+}
+
+// Maintenance mode never blocks these: staff need to sign in and reach
+// /backend to turn it off again.
+const MAINTENANCE_ALLOWED = ["/backend", "/login", "/auth", "/api"];
+const isMaintenanceAllowed = (pathname: string) =>
+  MAINTENANCE_ALLOWED.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+
 export const viewport: Viewport = {
   themeColor: "#0a0a0b",
   colorScheme: "dark",
 };
 
-export default async function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   // getShellData is cache()'d, so the dashboard layouts reuse this same
   // batch instead of querying again. Sponsors are cached across requests.
-  const [shell, sponsors] = await Promise.all([getShellData(), getActiveSponsors()]);
+  const [shell, sponsors, content] = await Promise.all([getShellData(), getActiveSponsors(), getSiteContent()]);
   const user: NavUser | null = shell?.navUser ?? null;
   const notificationCount = shell?.notificationCount ?? 0;
+
+  let showMaintenance = false;
+  if (content.maintenance.enabled) {
+    const pathname = (await headers()).get("x-pathname") ?? "/";
+    if (!isMaintenanceAllowed(pathname)) {
+      const profile = shell ? await getCurrentProfile() : null;
+      showMaintenance = !(shell && isStaffProfile(profile, shell.roles));
+    }
+  }
 
   return (
     // suppressHydrationWarning is scoped to this element's own attributes
@@ -90,15 +130,23 @@ export default async function RootLayout({
           }}
         />
         <Providers>
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-primary focus:px-4 focus:py-2 focus:text-on-primary"
-          >
-            Skip to content
-          </a>
-          <Header user={user} notificationCount={notificationCount} />
-          <main id="main-content">{children}</main>
-          <Footer sponsors={sponsors} />
+          <SiteBrandingProvider branding={content.branding}>
+            {showMaintenance ? (
+              <MaintenanceScreen content={content.maintenance} email={content.branding.email} />
+            ) : (
+              <>
+                <a
+                  href="#main-content"
+                  className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-primary focus:px-4 focus:py-2 focus:text-on-primary"
+                >
+                  Skip to content
+                </a>
+                <Header user={user} notificationCount={notificationCount} links={content.header.links} />
+                <main id="main-content">{children}</main>
+                <Footer sponsors={sponsors} content={content.footer} email={content.branding.email} />
+              </>
+            )}
+          </SiteBrandingProvider>
         </Providers>
         <Analytics />
       </body>

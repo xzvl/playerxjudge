@@ -12,6 +12,7 @@ import { DONATION_TIERS, tierLabel } from "@/lib/sponsors/status";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Sponsor, SponsorDonationTier } from "@/lib/types/database";
+import { ThemedImage } from "@/components/ui/themed-image";
 
 function DeleteSponsorDialog({
   sponsor,
@@ -158,9 +159,13 @@ export function SponsorListingsPanel({ items }: { items: Sponsor[] }) {
           <div key={sponsor.id} className="border border-outline-variant/25 bg-surface-container-low p-5">
             <div className="mb-3 flex items-start justify-between gap-2">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-outline-variant/40 text-primary">
-                {sponsor.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={sponsor.logo_url} alt="" className="h-full w-full object-contain" />
+                {sponsor.logo_url || sponsor.logo_light_url ? (
+                  <ThemedImage
+                    darkSrc={sponsor.logo_url}
+                    lightSrc={sponsor.logo_light_url}
+                    alt=""
+                    className="h-full w-full object-contain"
+                  />
                 ) : (
                   <Handshake className="h-4 w-4" aria-hidden="true" />
                 )}

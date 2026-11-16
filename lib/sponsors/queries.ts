@@ -10,7 +10,7 @@ import type { Sponsor } from "@/lib/types/database";
 // Server-only: pulled into the root layout for the footer's "Our Sponsors"
 // marquee (components/marquee/SponsorMarquee.tsx). Kept out of
 // lib/sponsors/status.ts, which client components also import.
-export type MarqueeSponsor = Pick<Sponsor, "id" | "company_name" | "logo_url" | "website_url" | "facebook_url">;
+export type MarqueeSponsor = Pick<Sponsor, "id" | "company_name" | "logo_url" | "logo_light_url" | "website_url" | "facebook_url">;
 
 // Tag for invalidating the cached list (see revalidateSponsorMarquee).
 export const SPONSORS_CACHE_TAG = "sponsors";
@@ -28,13 +28,20 @@ const loadActiveSponsors = unstable_cache(
   async (): Promise<MarqueeSponsor[]> => {
     const { data } = await createPublicClient()
       .from("sponsors")
-      .select("id, company_name, logo_url, website_url, facebook_url, approval_status, tier_expires_at")
+      .select("id, company_name, logo_url, logo_light_url, website_url, facebook_url, approval_status, tier_expires_at")
       .eq("approval_status", "approved")
       .order("company_name");
 
     return ((data as Sponsor[] | null) ?? [])
       .filter((sponsor) => sponsorListingStatus(sponsor) === "active")
-      .map(({ id, company_name, logo_url, website_url, facebook_url }) => ({ id, company_name, logo_url, website_url, facebook_url }));
+      .map(({ id, company_name, logo_url, logo_light_url, website_url, facebook_url }) => ({
+        id,
+        company_name,
+        logo_url,
+        logo_light_url,
+        website_url,
+        facebook_url,
+      }));
   },
   ["active-sponsors"],
   { revalidate: 300, tags: [SPONSORS_CACHE_TAG] }

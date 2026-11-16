@@ -131,6 +131,10 @@ export function buildReplacementComboInput(
   name: string
 ): BeybladeComboInput {
   const pick = (role: ComboPartRole, fallback: string) => replacements[role] ?? fallback;
+  // Keep the variation of every part that isn't being swapped out.
+  const variations = Object.fromEntries(
+    Object.entries(candidate.variations ?? {}).filter(([slot]) => !(slot in replacements))
+  );
 
   if (candidate.blade.id) {
     return {
@@ -145,6 +149,7 @@ export function buildReplacementComboInput(
       assistBladeId: "",
       ratchetId: pick("ratchet", candidate.ratchet?.id ?? ""),
       bitId: pick("bit", candidate.bit.id),
+      variations,
     };
   }
 
@@ -160,6 +165,7 @@ export function buildReplacementComboInput(
     assistBladeId: pick("assistBlade", candidate.bladeRoles.assistBlade?.id ?? ""),
     ratchetId: pick("ratchet", candidate.ratchet?.id ?? ""),
     bitId: pick("bit", candidate.bit.id),
+    variations,
   };
 }
 

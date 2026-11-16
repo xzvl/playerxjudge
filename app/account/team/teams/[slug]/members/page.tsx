@@ -21,13 +21,13 @@ export default async function TeamMembersPage({ params }: { params: Promise<{ sl
   return (
     <div className="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
       <Panel title="Members" icon={Users} meta={members.length} bodyClassName="p-0">
-        <MembersTable teamId={team.id} members={members} viewerId={userId} viewerRole={role} isOwner={isOwner} />
+        <MembersTable teamId={team.id} members={members} viewerId={userId} viewerRole={role} isOwner={isOwner} ownerId={team.owner_id} />
       </Panel>
 
       {isManager ? (
         <div className="space-y-5">
           <Panel title="Invite players" icon={UserPlus}>
-            <InvitePlayerForm teamId={team.id} canAppointSubCaptain={isOwner} />
+            <InvitePlayerForm teamId={team.id} canAppointSubCaptain={isOwner || role === "captain"} />
           </Panel>
           <Panel title="Pending invites" icon={Mail} meta={invites.length}>
             <PendingInvitesList teamId={team.id} invites={invites} canManage={isManager} />
@@ -37,8 +37,12 @@ export default async function TeamMembersPage({ params }: { params: Promise<{ sl
         <Panel title="Roles" icon={Users}>
           <dl className="space-y-2 text-[13px]">
             <div>
+              <dt className="font-medium">Owner</dt>
+              <dd className="text-on-surface/55">Full control of the team, including transferring ownership or deleting it.</dd>
+            </div>
+            <div>
               <dt className="font-medium">Team Captain</dt>
-              <dd className="text-on-surface/55">Owns the team. Manages members, leagues and rosters.</dd>
+              <dd className="text-on-surface/55">Leads the team. Manages members, leagues and rosters.</dd>
             </div>
             <div>
               <dt className="font-medium">Sub Captain</dt>

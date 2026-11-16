@@ -13,7 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThumbnailUploadField } from "@/components/tournaments/wizard/ThumbnailUploadField";
+import { useSiteBranding } from "@/components/layout/SiteBrandingProvider";
 import { cn } from "@/lib/utils";
+
+const FALLBACK_CONTACT_EMAIL = "xzviel@gmail.com";
 
 // Creates or edits one sponsor listing (app/account/sponsor/new and
 // app/account/sponsor/[id]/edit). Logo upload mirrors CreateCommunityWizard:
@@ -26,20 +29,24 @@ export function SponsorListingForm({
   action,
   defaultValues,
   initialLogoUrl,
+  initialLightLogoUrl,
   submitLabel,
 }: {
   sponsorId: string | null;
   action: (input: SponsorListingInput) => Promise<RoleActionState & { id?: string }>;
   defaultValues?: Partial<SponsorListingInput>;
   initialLogoUrl?: string | null;
+  initialLightLogoUrl?: string | null;
   submitLabel: string;
 }) {
   const router = useRouter();
+  const contactEmail = useSiteBranding().email || FALLBACK_CONTACT_EMAIL;
   const [serverMessage, setServerMessage] = useState<{ type: "error" | "success"; text: string } | null>(
     null
   );
   const [submitting, setSubmitting] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [lightLogoFile, setLightLogoFile] = useState<File | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
 
   const form = useForm<SponsorListingInput>({
@@ -54,14 +61,16 @@ export function SponsorListingForm({
     },
   });
 
-  async function handleLogoReady(file: File) {
+  async function handleLogoReady(file: File, variant: "dark" | "light") {
     if (!sponsorId) {
-      setLogoFile(file);
+      if (variant === "light") setLightLogoFile(file);
+      else setLogoFile(file);
       return;
     }
+    setLogoError(null);
     const formData = new FormData();
     formData.set("file", file);
-    const result = await uploadSponsorLogo(sponsorId, formData);
+    const result = await uploadSponsorLogo(sponsorId, formData, variant);
     if (result.status === "error") setLogoError(result.message ?? "Upload failed.");
   }
 
@@ -79,7 +88,12 @@ export function SponsorListingForm({
     if (result.id && logoFile) {
       const formData = new FormData();
       formData.set("file", logoFile);
-      await uploadSponsorLogo(result.id, formData);
+      await uploadSponsorLogo(result.id, formData, "dark");
+    }
+    if (result.id && lightLogoFile) {
+      const formData = new FormData();
+      formData.set("file", lightLogoFile);
+      await uploadSponsorLogo(result.id, formData, "light");
     }
 
     router.push("/account/sponsor/dashboard");
@@ -133,14 +147,30 @@ export function SponsorListingForm({
               )}
             />
 
-            <ThumbnailUploadField
-              label="Logo"
-              aspectClassName="aspect-square w-full max-w-[220px]"
-              maxDimension={1000}
-              initialUrl={initialLogoUrl ?? null}
-              onFileReady={handleLogoReady}
-              preserveAspectRatio
-            />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <ThumbnailUploadField
+                  label="Logo (dark mode)"
+                  aspectClassName="aspect-square w-full max-w-[220px] !bg-[#0a0a0b]"
+                  maxDimension={1000}
+                  initialUrl={initialLogoUrl ?? null}
+                  onFileReady={(file) => handleLogoReady(file, "dark")}
+                  preserveAspectRatio
+                />
+                <p className="text-xs text-on-surface/50">Shown on the dark theme. Use a light-colored logo.</p>
+              </div>
+              <div className="space-y-1.5">
+                <ThumbnailUploadField
+                  label="Alternative logo (light mode)"
+                  aspectClassName="aspect-square w-full max-w-[220px] !bg-white"
+                  maxDimension={1000}
+                  initialUrl={initialLightLogoUrl ?? null}
+                  onFileReady={(file) => handleLogoReady(file, "light")}
+                  preserveAspectRatio
+                />
+                <p className="text-xs text-on-surface/50">Shown on the light theme. Falls back to the dark-mode logo.</p>
+              </div>
+            </div>
             {logoError ? <p className="text-xs font-medium text-destructive">{logoError}</p> : null}
           </CardContent>
         </Card>
@@ -178,8 +208,8 @@ export function SponsorListingForm({
                   <FormMessage />
                   <p className="text-sm text-on-surface/60">
                     After sending your donation, email a screenshot of the receipt to{" "}
-                    <a href="mailto:xzviel@gmail.com" className="text-primary hover:underline">
-                      xzviel@gmail.com
+                    <a href={`mailto:${contactEmail}`} className="text-primary hover:underline">
+                      {contactEmail}
                     </a>{" "}
                     so we can activate your sponsor listing.
                   </p>

@@ -5,7 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { getUserCombo, type ComboWithParts } from "@/app/account/beyblade/data";
-import { beybladeComboSchema, type BeybladeComboInput } from "@/lib/validations/beyblade-combo";
+import {
+  beybladeComboSchema,
+  COMBO_VARIATION_SLOTS,
+  type BeybladeComboInput,
+  type ComboVariationSlot,
+} from "@/lib/validations/beyblade-combo";
 import type { RoleActionState } from "@/lib/validations/roles";
 
 function revalidateBeybladeAccountPaths() {
@@ -22,6 +27,34 @@ export interface ComboActionState extends RoleActionState {
 // Exactly one of blade_id or the assembly columns is written per
 // bladeMode — see 20250101000045_beyblade_combos_custom_assembly.sql's
 // XOR check constraint.
+// Only the variations that are real variations of the part actually in
+// their slot (a slot not in use for this blade mode, or a variation of a
+// different part, is dropped).
+async function variationColumn(supabase: Awaited<ReturnType<typeof createClient>>, data: BeybladeComboInput): Promise<Record<string, string>> {
+  const partFor = (slot: ComboVariationSlot): string => {
+    if (slot === "blade" && data.bladeMode !== "existing") return "";
+    if (slot !== "blade" && slot !== "ratchet" && slot !== "bit" && data.bladeMode !== "custom") return "";
+    if (slot === "mainBlade" && data.expandBlade) return "";
+    if ((slot === "metalBlade" || slot === "overBlade") && !data.expandBlade) return "";
+    return data[COMBO_VARIATION_SLOTS[slot]].trim();
+  };
+
+  const wanted = (Object.keys(COMBO_VARIATION_SLOTS) as ComboVariationSlot[])
+    .map((slot) => ({ slot, partId: partFor(slot), variationId: (data.variations?.[slot] ?? "").trim() }))
+    .filter((w) => w.partId && /^[0-9a-f-]{36}$/i.test(w.variationId));
+  if (wanted.length === 0) return {};
+
+  const { data: rows } = await supabase
+    .from("beyblade_variations")
+    .select("id, beyblade_id")
+    .in(
+      "id",
+      wanted.map((w) => w.variationId)
+    );
+  const owner = new Map(((rows as { id: string; beyblade_id: string }[] | null) ?? []).map((r) => [r.id, r.beyblade_id]));
+  return Object.fromEntries(wanted.filter((w) => owner.get(w.variationId) === w.partId).map((w) => [w.slot, w.variationId]));
+}
+
 function bladeColumns(data: BeybladeComboInput) {
   if (data.bladeMode === "custom") {
     return {
@@ -61,6 +94,7 @@ export async function createCombo(input: BeybladeComboInput): Promise<ComboActio
       ...bladeColumns(parsed.data),
       ratchet_id: parsed.data.ratchetId.trim() || null,
       bit_id: parsed.data.bitId,
+      variations: await variationColumn(supabase, parsed.data),
     })
     .select("id")
     .single();
@@ -105,6 +139,7 @@ export async function updateCombo(id: string, input: BeybladeComboInput): Promis
       ...bladeColumns(parsed.data),
       ratchet_id: parsed.data.ratchetId.trim() || null,
       bit_id: parsed.data.bitId,
+      variations: await variationColumn(supabase, parsed.data),
     })
     .eq("id", id)
     .eq("profile_id", user.id);

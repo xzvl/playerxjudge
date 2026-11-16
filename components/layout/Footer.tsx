@@ -2,13 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRight, Facebook, Handshake, Instagram, Trophy, Youtube } from "lucide-react";
+import {
+  ArrowRight,
+  Facebook,
+  Globe,
+  Handshake,
+  Instagram,
+  MessageCircle,
+  Music2,
+  Trophy,
+  Twitter,
+  Youtube,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { SponsorMarquee } from "@/components/marquee/SponsorMarquee";
 import { isAccountRoute, isBackendRoute, isTournamentConsoleRoute } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 import type { MarqueeSponsor } from "@/lib/sponsors/queries";
+import { formatCopyright, type FooterContent, type NavLink, type SocialPlatform } from "@/lib/site-content/schema";
 
 const HOW_TO_STEPS = [
   { title: "Register", description: "Create your organizer account." },
@@ -16,45 +30,58 @@ const HOW_TO_STEPS = [
   { title: "Publish", description: "Open registrations and run everything from your dashboard." },
 ];
 
-const FOOTER_COLUMNS = [
-  {
-    title: "Navigation",
-    links: [
-      { label: "Tournaments", href: "/tournaments" },
-      { label: "Communities", href: "/communities" },
-      { label: "Calendar", href: "/calendar" },
-      { label: "Leaderboard", href: "/leaderboard" },
-    ],
-  },
-  {
-    title: "More",
-    links: [
-      { label: "Sponsors", href: "/sponsors" },
-      { label: "FAQs", href: "/faqs" },
-      { label: "How to use", href: "/how-to-use" },
-      { label: "Rules", href: "/rules" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Terms & Conditions", href: "/terms" },
-      { label: "Privacy Policy", href: "/privacy" },
-    ],
-  },
-];
+// Social platforms that have a Lucide icon; the rest use a generic one.
+const SOCIAL_ICONS: Record<SocialPlatform, LucideIcon> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  youtube: Youtube,
+  tiktok: Music2,
+  x: Twitter,
+  discord: MessageCircle,
+  website: Globe,
+};
 
-const SOCIALS = [
-  { label: "Facebook", href: "https://facebook.com", Icon: Facebook },
-  { label: "Instagram", href: "https://instagram.com", Icon: Instagram },
-  { label: "YouTube", href: "https://youtube.com", Icon: Youtube },
-];
+// Brand column plus one per link group (static classes so Tailwind sees them).
+const GRID_COLUMNS: Record<number, string> = {
+  1: "md:grid-cols-1",
+  2: "md:grid-cols-[1.5fr_1fr]",
+  3: "md:grid-cols-[1.5fr_1fr_1fr]",
+  4: "md:grid-cols-[1.5fr_1fr_1fr_1fr]",
+  5: "md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]",
+  6: "md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr]",
+};
 
-export function Footer({ sponsors }: { sponsors: MarqueeSponsor[] }) {
+// Footer links grouped into columns by their `group`, in first-seen order.
+function groupLinks(links: NavLink[]): { title: string; links: NavLink[] }[] {
+  const columns: { title: string; links: NavLink[] }[] = [];
+  for (const link of links) {
+    const title = link.group?.trim() || "Links";
+    let column = columns.find((c) => c.title === title);
+    if (!column) {
+      column = { title, links: [] };
+      columns.push(column);
+    }
+    column.links.push(link);
+  }
+  return columns;
+}
+
+export function Footer({
+  sponsors,
+  content,
+  email,
+}: {
+  sponsors: MarqueeSponsor[];
+  // Managed in /backend/content (Footer).
+  content: FooterContent;
+  email: string;
+}) {
   const pathname = usePathname();
   // Every /account and /backend page, plus the player view and judge
   // console, is its own app shell with no room for the site footer.
   if (isAccountRoute(pathname) || isBackendRoute(pathname) || isTournamentConsoleRoute(pathname)) return null;
+
+  const columns = groupLinks(content.links);
 
   return (
     <footer className="border-t border-outline-variant/20 bg-surface-container-lowest">
@@ -109,35 +136,46 @@ export function Footer({ sponsors }: { sponsors: MarqueeSponsor[] }) {
 
       <div className="border-t border-outline-variant/20">
         <div className="mx-auto max-w-[1280px] px-4 py-10 md:px-6">
-          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+          <div className={cn("grid gap-8 sm:grid-cols-2", GRID_COLUMNS[Math.min(columns.length + 1, 6)])}>
             <div>
               <BrandLogo width={136} height={15} />
-              <p className="mt-3 max-w-xs text-[13px] text-on-surface/55">
-                The community tournament platform for Beyblade X players, judges, and organizers.
-              </p>
-              <div className="mt-4 flex gap-1">
-                {SOCIALS.map(({ label, href, Icon }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={label}
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-on-surface/55 transition-colors hover:bg-surface-container hover:text-on-surface"
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                ))}
-              </div>
+              {content.socials.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-1">
+                  {content.socials.map(({ id, platform, url }) => {
+                    const Icon = SOCIAL_ICONS[platform] ?? Globe;
+                    const label = platform === "x" ? "X" : platform[0].toUpperCase() + platform.slice(1);
+                    return (
+                      <a
+                        key={id}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={label}
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-on-surface/55 transition-colors hover:bg-surface-container hover:text-on-surface"
+                      >
+                        <Icon className="h-4 w-4" />
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {content.note ? (
+                <p className="mt-3 max-w-xs whitespace-pre-line text-[13px] text-on-surface/55">{content.note}</p>
+              ) : null}
             </div>
 
-            {FOOTER_COLUMNS.map((column) => (
+            {columns.map((column) => (
               <div key={column.title}>
                 <p className="text-xs font-medium text-on-surface/45">{column.title}</p>
                 <ul className="mt-3 space-y-2">
                   {column.links.map((item) => (
-                    <li key={item.href}>
-                      <Link href={item.href} className="text-[13px] text-on-surface/70 transition-colors hover:text-on-surface">
+                    <li key={item.id}>
+                      <Link
+                        href={item.href}
+                        target={item.target}
+                        rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+                        className="text-[13px] text-on-surface/70 transition-colors hover:text-on-surface"
+                      >
                         {item.label}
                       </Link>
                     </li>
@@ -147,8 +185,16 @@ export function Footer({ sponsors }: { sponsors: MarqueeSponsor[] }) {
             ))}
           </div>
 
-          <div className="mt-8 border-t border-outline-variant/20 pt-5 text-xs text-on-surface/45">
-            © {new Date().getFullYear()} PlayerXJudge. All rights reserved.
+          <div className="mt-8 flex flex-col gap-2 border-t border-outline-variant/20 pt-5 text-xs text-on-surface/45 sm:flex-row sm:items-center sm:justify-between">
+            <p>{formatCopyright(content.copyright)}</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {content.tagline ? <p>{content.tagline}</p> : null}
+              {email ? (
+                <a href={`mailto:${email}`} className="transition-colors hover:text-on-surface">
+                  {email}
+                </a>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

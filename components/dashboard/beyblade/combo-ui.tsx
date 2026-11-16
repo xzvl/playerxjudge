@@ -141,6 +141,13 @@ export function ComboPartsLine({ bladeDisplay, ratchet, bit }: { bladeDisplay: C
   return <p className="truncate text-sm text-on-surface/50">{line}</p>;
 }
 
+// "Gold Metal Coat · Clear (Bit)": the variations a combo uses, if any.
+export function ComboVariationsLine({ parts }: { parts: (ComboPartOption | null | undefined)[] }) {
+  const names = parts.filter((p): p is ComboPartOption => !!p?.variationName).map((p) => `${p.variationName} (${p.shortName || p.name})`);
+  if (names.length === 0) return null;
+  return <p className="truncate text-xs text-on-surface/45">Variation: {names.join(" · ")}</p>;
+}
+
 export function StatChip({ value, label }: { value: string; label: string }) {
   return (
     <div className="text-center">

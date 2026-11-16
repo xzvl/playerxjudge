@@ -17,6 +17,7 @@ import {
   type TeamInput,
 } from "@/lib/validations/team";
 import type { TeamLeague, TeamLeagueMatch, TeamRole } from "@/lib/types/database";
+import { queueImageVariants } from "@/lib/images/optimize";
 
 // Write side of the Teams feature. RLS (20250101000059_teams_and_leagues.sql)
 // is the real boundary; the checks here exist to return a clear message
@@ -51,6 +52,9 @@ interface TeamContext {
   userId: string;
   role: TeamRole | null;
   isOwner: boolean;
+  // Owner or captain: the two who may appoint sub-captains and hand the
+  // captain role on.
+  isLead: boolean;
   isManager: boolean;
   team: { id: string; slug: string; owner_id: string };
 }
@@ -73,7 +77,15 @@ async function teamContext(teamId: string): Promise<TeamContext | string> {
   const t = team as TeamContext["team"];
   const isOwner = t.owner_id === user.id;
 
-  return { supabase, userId: user.id, role, isOwner, isManager: isOwner || isTeamManagerRole(role), team: t };
+  return {
+    supabase,
+    userId: user.id,
+    role,
+    isOwner,
+    isLead: isOwner || role === "captain",
+    isManager: isOwner || isTeamManagerRole(role),
+    team: t,
+  };
 }
 
 async function managerContext(teamId: string): Promise<TeamContext | string> {
@@ -159,7 +171,7 @@ export async function updateTeam(teamId: string, input: TeamInput): Promise<Team
 export async function deleteTeam(teamId: string): Promise<TeamActionState> {
   const ctx = await teamContext(teamId);
   if (typeof ctx === "string") return fail(ctx);
-  if (!ctx.isOwner) return fail("Only the team captain can delete the team.");
+  if (!ctx.isOwner) return fail("Only the team owner can delete the team.");
 
   await ctx.supabase.storage.from("team-images").remove([`${teamId}/logo.webp`, `${teamId}/cover.webp`]);
   const { error } = await ctx.supabase.from("teams").delete().eq("id", teamId);
@@ -185,6 +197,7 @@ export async function uploadTeamImage(teamId: string, kind: TeamImageKind, formD
     .from("team-images")
     .upload(path, file, { upsert: true, contentType: "image/webp" });
   if (uploadError) return fail(uploadError.message);
+  queueImageVariants("team-images", path);
 
   const { data } = ctx.supabase.storage.from("team-images").getPublicUrl(path);
   const url = `${data.publicUrl}?v=${Date.now()}`;
@@ -259,7 +272,7 @@ export async function inviteToTeam(teamId: string, profileId: string, role: Team
   const ctx = await managerContext(teamId);
   if (typeof ctx === "string") return fail(ctx);
   if (role === "captain") return fail("Invite them first, then transfer captaincy.");
-  if (role === "sub_captain" && !ctx.isOwner) return fail("Only the captain can appoint sub-captains.");
+  if (role === "sub_captain" && !ctx.isLead) return fail("Only the owner or captain can appoint sub-captains.");
 
   const { data: member } = await ctx.supabase
     .from("team_members")
@@ -339,8 +352,8 @@ export async function setMemberRole(teamId: string, profileId: string, role: Tea
   const current = (target as { role: TeamRole } | null)?.role;
   if (!current) return fail("They're not on the team.");
   if (current === "captain") return fail("Transfer captaincy to someone else first.");
-  if ((role === "sub_captain" || current === "sub_captain") && !ctx.isOwner) {
-    return fail("Only the captain can appoint or change sub-captains.");
+  if ((role === "sub_captain" || current === "sub_captain") && !ctx.isLead) {
+    return fail("Only the owner or captain can appoint or change sub-captains.");
   }
 
   const { error } = await ctx.supabase.from("team_members").update({ role }).eq("team_id", teamId).eq("profile_id", profileId);
@@ -353,9 +366,24 @@ export async function setMemberRole(teamId: string, profileId: string, role: Tea
 export async function transferCaptaincy(teamId: string, profileId: string): Promise<TeamActionState> {
   const ctx = await teamContext(teamId);
   if (typeof ctx === "string") return fail(ctx);
-  if (!ctx.isOwner) return fail("Only the captain can transfer captaincy.");
+  if (!ctx.isLead) return fail("Only the owner or captain can transfer captaincy.");
 
   const { error } = await ctx.supabase.rpc("transfer_team_captaincy", { target_team_id: teamId, new_captain_id: profileId });
+  if (error) return fail(error.message);
+
+  revalidateTeams();
+  return ok();
+}
+
+// Moves teams.owner_id to another member. Their team role doesn't change;
+// the old owner keeps whatever role they hold.
+export async function transferOwnership(teamId: string, profileId: string): Promise<TeamActionState> {
+  const ctx = await teamContext(teamId);
+  if (typeof ctx === "string") return fail(ctx);
+  if (!ctx.isOwner) return fail("Only the team owner can transfer ownership.");
+  if (profileId === ctx.userId) return fail("You already own this team.");
+
+  const { error } = await ctx.supabase.rpc("transfer_team_ownership", { target_team_id: teamId, new_owner_id: profileId });
   if (error) return fail(error.message);
 
   revalidateTeams();
@@ -377,10 +405,13 @@ export async function removeTeamMember(teamId: string, profileId: string): Promi
     .maybeSingle();
   const role = (target as { role: TeamRole } | null)?.role;
   if (!role) return fail("They're not on the team.");
+  if (profileId === ctx.team.owner_id) {
+    return fail(leaving ? "Transfer ownership before leaving, or delete the team." : "The team owner can't be removed.");
+  }
   if (role === "captain") {
     return fail(leaving ? "Transfer captaincy before leaving, or delete the team." : "The captain can't be removed.");
   }
-  if (!leaving && role === "sub_captain" && !ctx.isOwner) return fail("Only the captain can remove a sub-captain.");
+  if (!leaving && role === "sub_captain" && !ctx.isLead) return fail("Only the owner or captain can remove a sub-captain.");
 
   const { error } = await ctx.supabase.from("team_members").delete().eq("team_id", teamId).eq("profile_id", profileId);
   if (error) return fail(error.message);

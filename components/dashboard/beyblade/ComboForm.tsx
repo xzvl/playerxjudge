@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ComboStatBars, PartThumbnail } from "@/components/dashboard/beyblade/combo-ui";
 import { computeComboStats, type ComboStats } from "@/lib/beyblades/combo-stats";
-import { beybladeComboSchema, DEFAULT_BEYBLADE_COMBO_VALUES, type BeybladeComboInput } from "@/lib/validations/beyblade-combo";
+import { beybladeComboSchema, DEFAULT_BEYBLADE_COMBO_VALUES, type BeybladeComboInput, type ComboVariationSlot } from "@/lib/validations/beyblade-combo";
+import { NativeSelect } from "@/components/ui/native-select";
 
 const NONE_OPTION: ComboboxOption = { value: "", label: "— None —" };
 
@@ -56,6 +57,7 @@ function comboToFormValues(combo: ComboWithParts): BeybladeComboInput {
     assistBladeId: isCustom ? (combo.blade.assistBladeId ?? "") : "",
     ratchetId: combo.ratchet?.id ?? "",
     bitId: combo.bit.id,
+    variations: combo.variations ?? {},
   };
 }
 
@@ -76,6 +78,44 @@ function AssemblyPartPreview({ label, part }: { label: string; part: ComboPartOp
       ) : (
         <p className="text-sm text-on-surface/30">— None —</p>
       )}
+    </div>
+  );
+}
+
+// "Variation" select under a picked part, shown only when that part has
+// catalog variations (colorways, editions). The standard part is the
+// default. A variation that doesn't belong to the current part (it was
+// changed) reads as standard here, and the server drops it on save.
+function VariationPicker({
+  slot,
+  part,
+  value,
+  onChange,
+}: {
+  slot: ComboVariationSlot;
+  part: ComboPartOption | null;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const options = part?.variations ?? [];
+  if (!part || options.length === 0) return null;
+  const current = options.some((v) => v.id === value) ? value : "";
+  const selected = options.find((v) => v.id === current);
+
+  return (
+    <div className="mt-2 space-y-1">
+      <label htmlFor={`variation-${slot}`} className="text-xs text-on-surface/60">
+        Variation
+      </label>
+      <NativeSelect id={`variation-${slot}`} value={current} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Standard</option>
+        {options.map((v) => (
+          <option key={v.id} value={v.id}>
+            {v.name}
+          </option>
+        ))}
+      </NativeSelect>
+      {selected?.source ? <p className="text-xs text-on-surface/45">From {selected.source}</p> : null}
     </div>
   );
 }
@@ -107,6 +147,21 @@ export function ComboForm({
   const assistBladeId = form.watch("assistBladeId");
   const ratchetId = form.watch("ratchetId");
   const bitId = form.watch("bitId");
+  const variations = form.watch("variations") ?? {};
+
+  // "" = the standard part (no variation).
+  const setVariation = (slot: ComboVariationSlot, id: string) => {
+    const next = { ...form.getValues("variations") };
+    if (id) next[slot] = id;
+    else delete next[slot];
+    form.setValue("variations", next, { shouldDirty: true });
+  };
+
+  // The part as it will look in the combo: its picked variation's image.
+  const shown = (part: ComboPartOption, slot: ComboVariationSlot): ComboPartOption => {
+    const variation = part.variations?.find((v) => v.id === variations[slot]);
+    return variation?.imageUrl ? { ...part, imageUrl: variation.imageUrl } : part;
+  };
 
   const selectedExistingBlade = pickerOptions.blades.find((b) => b.id === bladeId) ?? null;
   const selectedLockChip = pickerOptions.lockChips.find((p) => p.id === lockChipId) ?? null;
@@ -133,15 +188,14 @@ export function ComboForm({
   const customBladeStats = useMemo(
     () =>
       computeComboStats(
-        expandBlade ? [selectedLockChip, selectedOverBlade, selectedMetalBlade, selectedAssistBlade] : [selectedLockChip, selectedMainBlade, selectedAssistBlade]
+        expandBlade
+          ? [selectedLockChip, selectedOverBlade, selectedMetalBlade, selectedAssistBlade]
+          : [selectedLockChip, selectedMainBlade, selectedAssistBlade],
       ),
-    [expandBlade, selectedLockChip, selectedMainBlade, selectedOverBlade, selectedMetalBlade, selectedAssistBlade]
+    [expandBlade, selectedLockChip, selectedMainBlade, selectedOverBlade, selectedMetalBlade, selectedAssistBlade],
   );
   const bladeStatsSource: ComboStats | ComboPartOption | null = bladeMode === "custom" ? customBladeStats : selectedExistingBlade;
-  const stats = useMemo(
-    () => computeComboStats([bladeStatsSource, selectedRatchet, selectedBit]),
-    [bladeStatsSource, selectedRatchet, selectedBit]
-  );
+  const stats = useMemo(() => computeComboStats([bladeStatsSource, selectedRatchet, selectedBit]), [bladeStatsSource, selectedRatchet, selectedBit]);
 
   // A Ratchet-Integrated Blade/Bit is a single physical piece that already
   // supplies the ratchet layer — a combo only ever has one, so picking
@@ -170,8 +224,12 @@ export function ComboForm({
   const previewLockChip = selectedExistingBlade?.lockChipId ? pickerOptions.lockChips.find((p) => p.id === selectedExistingBlade.lockChipId) : undefined;
   const previewMainBlade = selectedExistingBlade?.mainBladeId ? pickerOptions.mainBlades.find((p) => p.id === selectedExistingBlade.mainBladeId) : undefined;
   const previewOverBlade = selectedExistingBlade?.overBladeId ? pickerOptions.overBlades.find((p) => p.id === selectedExistingBlade.overBladeId) : undefined;
-  const previewMetalBlade = selectedExistingBlade?.metalBladeId ? pickerOptions.metalBlades.find((p) => p.id === selectedExistingBlade.metalBladeId) : undefined;
-  const previewAssistBlade = selectedExistingBlade?.assistBladeId ? pickerOptions.assistBlades.find((p) => p.id === selectedExistingBlade.assistBladeId) : undefined;
+  const previewMetalBlade = selectedExistingBlade?.metalBladeId
+    ? pickerOptions.metalBlades.find((p) => p.id === selectedExistingBlade.metalBladeId)
+    : undefined;
+  const previewAssistBlade = selectedExistingBlade?.assistBladeId
+    ? pickerOptions.assistBlades.find((p) => p.id === selectedExistingBlade.assistBladeId)
+    : undefined;
   const previewExpanded = selectedExistingBlade?.expandBlade ?? false;
 
   async function onSubmit(values: BeybladeComboInput) {
@@ -278,9 +336,15 @@ export function ComboForm({
                             onValueChange={field.onChange}
                             options={bladeOptions(availableBlades)}
                           />
-                          {selectedExistingBlade ? <PartThumbnail part={selectedExistingBlade} size="sm" fit="contain" /> : null}
+                          {selectedExistingBlade ? <PartThumbnail part={shown(selectedExistingBlade, "blade")} size="sm" fit="contain" /> : null}
                         </div>
                       </FormControl>
+                      <VariationPicker
+                        slot="blade"
+                        part={selectedExistingBlade}
+                        value={variations["blade"] ?? ""}
+                        onChange={(id) => setVariation("blade", id)}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -345,9 +409,15 @@ export function ComboForm({
                               onValueChange={field.onChange}
                               options={assemblyOptions(pickerOptions.lockChips)}
                             />
-                            {selectedLockChip ? <PartThumbnail part={selectedLockChip} size="sm" fit="contain" /> : null}
+                            {selectedLockChip ? <PartThumbnail part={shown(selectedLockChip, "lockChip")} size="sm" fit="contain" /> : null}
                           </div>
                         </FormControl>
+                        <VariationPicker
+                          slot="lockChip"
+                          part={selectedLockChip}
+                          value={variations["lockChip"] ?? ""}
+                          onChange={(id) => setVariation("lockChip", id)}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -370,9 +440,15 @@ export function ComboForm({
                                 onValueChange={field.onChange}
                                 options={assemblyOptions(pickerOptions.metalBlades)}
                               />
-                              {selectedMetalBlade ? <PartThumbnail part={selectedMetalBlade} size="sm" fit="contain" /> : null}
+                              {selectedMetalBlade ? <PartThumbnail part={shown(selectedMetalBlade, "metalBlade")} size="sm" fit="contain" /> : null}
                             </div>
                           </FormControl>
+                          <VariationPicker
+                            slot="metalBlade"
+                            part={selectedMetalBlade}
+                            value={variations["metalBlade"] ?? ""}
+                            onChange={(id) => setVariation("metalBlade", id)}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -395,9 +471,15 @@ export function ComboForm({
                                 onValueChange={field.onChange}
                                 options={assemblyOptions(pickerOptions.mainBlades)}
                               />
-                              {selectedMainBlade ? <PartThumbnail part={selectedMainBlade} size="sm" fit="contain" /> : null}
+                              {selectedMainBlade ? <PartThumbnail part={shown(selectedMainBlade, "mainBlade")} size="sm" fit="contain" /> : null}
                             </div>
                           </FormControl>
+                          <VariationPicker
+                            slot="mainBlade"
+                            part={selectedMainBlade}
+                            value={variations["mainBlade"] ?? ""}
+                            onChange={(id) => setVariation("mainBlade", id)}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -424,9 +506,15 @@ export function ComboForm({
                                 onValueChange={field.onChange}
                                 options={assemblyOptions(pickerOptions.overBlades)}
                               />
-                              {selectedOverBlade ? <PartThumbnail part={selectedOverBlade} size="sm" fit="contain" /> : null}
+                              {selectedOverBlade ? <PartThumbnail part={shown(selectedOverBlade, "overBlade")} size="sm" fit="contain" /> : null}
                             </div>
                           </FormControl>
+                          <VariationPicker
+                            slot="overBlade"
+                            part={selectedOverBlade}
+                            value={variations["overBlade"] ?? ""}
+                            onChange={(id) => setVariation("overBlade", id)}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -449,9 +537,15 @@ export function ComboForm({
                               onValueChange={field.onChange}
                               options={assemblyOptions(pickerOptions.assistBlades)}
                             />
-                            {selectedAssistBlade ? <PartThumbnail part={selectedAssistBlade} size="sm" fit="contain" /> : null}
+                            {selectedAssistBlade ? <PartThumbnail part={shown(selectedAssistBlade, "assistBlade")} size="sm" fit="contain" /> : null}
                           </div>
                         </FormControl>
+                        <VariationPicker
+                          slot="assistBlade"
+                          part={selectedAssistBlade}
+                          value={variations["assistBlade"] ?? ""}
+                          onChange={(id) => setVariation("assistBlade", id)}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -482,9 +576,10 @@ export function ComboForm({
                           onValueChange={field.onChange}
                           options={ratchetOptions(pickerOptions.ratchets)}
                         />
-                        {selectedRatchet ? <PartThumbnail part={selectedRatchet} size="sm" fit="contain" /> : null}
+                        {selectedRatchet ? <PartThumbnail part={shown(selectedRatchet, "ratchet")} size="sm" fit="contain" /> : null}
                       </div>
                     </FormControl>
+                    <VariationPicker slot="ratchet" part={selectedRatchet} value={variations["ratchet"] ?? ""} onChange={(id) => setVariation("ratchet", id)} />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -508,9 +603,10 @@ export function ComboForm({
                         onValueChange={field.onChange}
                         options={bitOptions(availableBits)}
                       />
-                      {selectedBit ? <PartThumbnail part={selectedBit} size="sm" fit="contain" /> : null}
+                      {selectedBit ? <PartThumbnail part={shown(selectedBit, "bit")} size="sm" fit="contain" /> : null}
                     </div>
                   </FormControl>
+                  <VariationPicker slot="bit" part={selectedBit} value={variations["bit"] ?? ""} onChange={(id) => setVariation("bit", id)} />
                   <FormMessage />
                 </FormItem>
               )}

@@ -14,11 +14,11 @@ const PUBLIC_PATH: Record<StaticPageSlug, string> = {
 };
 
 // The /backend route names don't all match their slug 1:1 (Terms lives at
-// /backend/terms, not /backend/terms-of-service — see app/backend/layout.tsx).
+// /backend/content/terms, not .../terms-of-service).
 const BACKEND_PATH: Record<StaticPageSlug, string> = {
-  "privacy-policy": "/backend/privacy-policy",
-  "terms-of-service": "/backend/terms",
-  "how-to-use": "/backend/how-to-use",
+  "privacy-policy": "/backend/content/privacy-policy",
+  "terms-of-service": "/backend/content/terms",
+  "how-to-use": "/backend/content/how-to-use",
 };
 
 // Backs the Privacy Policy / Terms / How to Use editors — all three static

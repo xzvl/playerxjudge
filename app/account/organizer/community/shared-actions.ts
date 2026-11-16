@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { MAX_LOGO_UPLOAD_BYTES } from "@/lib/validations/community";
 import type { CommunityRow } from "@/lib/types/database";
+import { queueImageVariants } from "@/lib/images/optimize";
 
 // Live availability check for the Slug field — same "taken" pattern as
 // checkSlugAvailable in app/account/organizer/tournament/shared-actions.ts,
@@ -58,6 +59,7 @@ export async function uploadCommunityLogo(
     .from("community-logos")
     .upload(path, file, { upsert: true, contentType: "image/webp" });
   if (uploadError) return { status: "error", message: uploadError.message };
+  queueImageVariants("community-logos", path);
 
   const { data: publicUrlData } = supabase.storage.from("community-logos").getPublicUrl(path);
   const url = `${publicUrlData.publicUrl}?v=${Date.now()}`;

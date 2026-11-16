@@ -520,3 +520,112 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Theme-specific images (see components/ui/themed-image.tsx): both
+   variants render, the one that doesn't match the active theme hides. */
+:root[data-theme="light"] .theme-dark-only {
+  display: none !important;
+}
+:root:not([data-theme="light"]) .theme-light-only {
+  display: none !important;
+}
+
+/* Tables as cards on tablet and phone. Every <table> in dashboard content
+   (#dashboard-content, see DashboardShell) turns each row into a card below the lg breakpoint; each
+   cell shows its column name from `data-label`, which TableCardLabels
+   (components/dashboard/TableCardLabels.tsx) copies over from the header
+   row. Add `table-keep` to a table to opt out. */
+@media (max-width: 1023.98px) {
+  #dashboard-content table:not(.table-keep) {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  #dashboard-content table:not(.table-keep) > thead {
+    display: none;
+  }
+  #dashboard-content table:not(.table-keep) > tbody,
+  #dashboard-content table:not(.table-keep) > tfoot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  #dashboard-content table:not(.table-keep) > tbody > tr,
+  #dashboard-content table:not(.table-keep) > tfoot > tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgb(var(--m3-outline-variant) / 0.25) !important;
+    border-radius: 0.5rem;
+    background: rgb(var(--m3-surface-container-low) / 0.6);
+  }
+  #dashboard-content table:not(.table-keep) > tbody > tr > td,
+  #dashboard-content table:not(.table-keep) > tbody > tr > th,
+  #dashboard-content table:not(.table-keep) > tfoot > tr > td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: auto !important;
+    min-width: 0;
+    padding: 0.25rem 0 !important;
+    border: 0 !important;
+    text-align: right;
+  }
+  #dashboard-content table:not(.table-keep) > tbody > tr > td > *,
+  #dashboard-content table:not(.table-keep) > tbody > tr > th > * {
+    min-width: 0;
+  }
+  /* The first cell is the card's title: full width, left aligned, its
+     content stacked as written. */
+  #dashboard-content table:not(.table-keep) > tbody > tr > :first-child {
+    display: block;
+    text-align: left;
+    padding-bottom: 0.375rem !important;
+  }
+  /* Label on the left, value(s) pushed right. */
+  #dashboard-content table:not(.table-keep) > tbody > tr > td:not(:first-child) {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  #dashboard-content table:not(.table-keep) > tbody > tr > [data-label]:not([data-label=""])::before {
+    margin-right: auto;
+  }
+  #dashboard-content table:not(.table-keep) > tbody > tr > :first-child::before {
+    display: none;
+  }
+  #dashboard-content table:not(.table-keep) > tbody > tr > [data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    text-align: left;
+    color: rgb(var(--m3-on-surface) / 0.5);
+  }
+  /* Action cells (no header text) sit at the bottom right of the card. */
+  #dashboard-content table:not(.table-keep) > tbody > tr > td[data-label=""]:not(:first-child) {
+    justify-content: flex-end;
+  }
+  /* Single full-width cells (empty states, colSpan rows) stay centered. */
+  #dashboard-content table:not(.table-keep) > tbody > tr > td[colspan] {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* Hero colors set in /backend/content (Hero). The section carries
+   --hero-bg-dark/--hero-fg-dark/--hero-bg-light/--hero-fg-light inline
+   (only the ones that are set); an unset one falls back to the theme. */
+.erp .legacy-hero.hero-custom-colors {
+  background-color: var(--hero-bg, rgb(var(--m3-background)));
+  color: var(--hero-fg, rgb(var(--m3-on-surface)));
+}
+:root:not([data-theme="light"]) .erp .legacy-hero.hero-custom-colors {
+  --hero-bg: var(--hero-bg-dark);
+  --hero-fg: var(--hero-fg-dark);
+}
+:root[data-theme="light"] .erp .legacy-hero.hero-custom-colors {
+  --hero-bg: var(--hero-bg-light);
+  --hero-fg: var(--hero-fg-light);
+}

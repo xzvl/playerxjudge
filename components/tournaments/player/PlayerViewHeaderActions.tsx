@@ -58,6 +58,13 @@ export function PlayerViewHeaderActions({ user, notificationCount = 0 }: { user:
 
   return (
     <div className="flex shrink-0 items-center gap-2">
+      {user ? (
+        <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex" tooltip="Open your dashboard">
+          <Link href="/account">
+            <LayoutDashboard /> Dashboard
+          </Link>
+        </Button>
+      ) : null}
       <ThemeToggle />
       <NotificationsBell count={user ? notificationCount : 0} enabled={!!user} />
 

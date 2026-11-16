@@ -18,6 +18,8 @@ import {
   UserPlus,
   UserRound,
   Users2,
+  Link2,
+  type LucideIcon,
 } from "lucide-react";
 
 import { signOut } from "@/app/(auth)/actions";
@@ -30,20 +32,28 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { NotificationsBell } from "@/components/layout/NotificationsBell";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 import { isAccountRoute, isBackendRoute, isTournamentConsoleRoute } from "@/lib/routes";
+import type { NavLink } from "@/lib/site-content/schema";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { label: "Home", href: "/", Icon: Home },
-  { label: "Dashboard", href: "/account", Icon: LayoutDashboard },
-  { label: "Tournaments", href: "/tournaments", Icon: Swords },
-  { label: "Communities", href: "/communities", Icon: Users2 },
-  { label: "Calendar", href: "/calendar", Icon: CalendarDays },
-  { label: "Leaderboard", href: "/leaderboard", Icon: Trophy },
-  { label: "Beyblade X Rules", href: "/rules", Icon: BookOpenCheck },
+// Known destinations keep their icon in the menu; any other link from
+// /backend/content gets a generic one.
+const ICONS_BY_HREF: Record<string, LucideIcon> = {
+  "/": Home,
+  "/account": LayoutDashboard,
+  "/tournaments": Swords,
+  "/communities": Users2,
+  "/calendar": CalendarDays,
+  "/leaderboard": Trophy,
+  "/rules": BookOpenCheck,
+};
+
+// Always at the top of the menu, ahead of the managed links.
+const FIXED_MENU_ITEMS: NavLink[] = [
+  { id: "home", label: "Home", href: "/", target: "_self" },
+  { id: "dashboard", label: "Dashboard", href: "/account", target: "_self" },
 ];
 
-// The subset shown inline on wide screens; everything stays in the menu.
-const DESKTOP_NAV = NAV_ITEMS.filter((item) => ["/tournaments", "/communities", "/calendar", "/leaderboard", "/rules"].includes(item.href));
+const isExternal = (href: string) => /^(https?:|mailto:|tel:)/i.test(href);
 
 function isActive(href: string, pathname: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -52,7 +62,16 @@ function isActive(href: string, pathname: string) {
 const menuLinkClass =
   "flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-on-surface/75 transition-colors hover:bg-surface-container hover:text-on-surface";
 
-export function Header({ user, notificationCount = 0 }: { user: NavUser | null; notificationCount?: number }) {
+export function Header({
+  user,
+  notificationCount = 0,
+  links,
+}: {
+  user: NavUser | null;
+  notificationCount?: number;
+  // Main navigation, managed in /backend/content (Header).
+  links: NavLink[];
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname() ?? "/";
 
@@ -62,6 +81,7 @@ export function Header({ user, notificationCount = 0 }: { user: NavUser | null; 
   if (isTournamentConsoleRoute(pathname) || isAccountRoute(pathname) || isBackendRoute(pathname)) return null;
 
   const close = () => setMobileOpen(false);
+  const menuItems = [...FIXED_MENU_ITEMS, ...links.filter((l) => !FIXED_MENU_ITEMS.some((f) => f.href === l.href))];
 
   return (
     <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-background">
@@ -71,19 +91,21 @@ export function Header({ user, notificationCount = 0 }: { user: NavUser | null; 
         </Link>
 
         <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex">
-          {DESKTOP_NAV.map(({ label, href }) => (
+          {links.map(({ id, label, href, target }) => (
             <Link
-              key={href}
+              key={id}
               href={href}
-              aria-current={isActive(href, pathname) ? "page" : undefined}
+              target={target}
+              rel={target === "_blank" ? "noopener noreferrer" : undefined}
+              aria-current={!isExternal(href) && isActive(href, pathname) ? "page" : undefined}
               className={cn(
                 "rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
-                isActive(href, pathname)
+                !isExternal(href) && isActive(href, pathname)
                   ? "font-medium text-on-surface"
-                  : "text-on-surface/60 hover:bg-surface-container hover:text-on-surface"
+                  : "text-on-surface/60 hover:bg-surface-container hover:text-on-surface",
               )}
             >
-              {label === "Beyblade X Rules" ? "Rules" : label}
+              {label}
             </Link>
           ))}
         </nav>
@@ -91,13 +113,29 @@ export function Header({ user, notificationCount = 0 }: { user: NavUser | null; 
         <SearchBar className="ml-auto hidden w-64 md:block" />
 
         <div className="ml-auto flex items-center gap-1 md:ml-0">
-          {user?.isOrganizer ? (
-            <Button asChild size="sm" className="hidden sm:inline-flex" tooltip="Set up a new tournament">
-              <Link href="/account/organizer/tournament/new">
-                <Plus /> Add tournament
-              </Link>
-            </Button>
-          ) : !user ? (
+          {user ? (
+            <>
+              {user.isOrganizer ? (
+                <Button asChild size="sm" className="hidden md:inline-flex" tooltip="Set up a new tournament">
+                  <Link href="/account/organizer/tournament/new">
+                    <Plus /> Add tournament
+                  </Link>
+                </Button>
+              ) : null}
+              {/* Every signed-in role (players included) gets the dashboard
+                  shortcut; icon-only on phones. */}
+              <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex" tooltip="Open your dashboard">
+                <Link href="/account">
+                  <LayoutDashboard /> Dashboard
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="icon" className="sm:hidden" aria-label="Dashboard">
+                <Link href="/account">
+                  <LayoutDashboard />
+                </Link>
+              </Button>
+            </>
+          ) : (
             <div className="hidden items-center gap-1 sm:flex">
               <Button asChild variant="ghost" size="sm">
                 <Link href="/login">Sign in</Link>
@@ -106,12 +144,6 @@ export function Header({ user, notificationCount = 0 }: { user: NavUser | null; 
                 <Link href="/register">Join</Link>
               </Button>
             </div>
-          ) : (
-            <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
-              <Link href="/account">
-                <LayoutDashboard /> Dashboard
-              </Link>
-            </Button>
           )}
           <ThemeToggle />
           <NotificationsBell count={user ? notificationCount : 0} enabled={!!user} />
@@ -148,18 +180,24 @@ export function Header({ user, notificationCount = 0 }: { user: NavUser | null; 
               )}
 
               <nav aria-label="Site" className="flex flex-1 flex-col gap-px">
-                {NAV_ITEMS.map(({ label, href, Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={close}
-                    aria-current={isActive(href, pathname) ? "page" : undefined}
-                    className={cn(menuLinkClass, isActive(href, pathname) && "bg-surface-container-high font-medium text-on-surface")}
-                  >
-                    <Icon className="h-4 w-4 shrink-0 text-on-surface/50" aria-hidden="true" />
-                    {label}
-                  </Link>
-                ))}
+                {menuItems.map(({ id, label, href, target }) => {
+                  const Icon = ICONS_BY_HREF[href] ?? Link2;
+                  const active = !isExternal(href) && isActive(href, pathname);
+                  return (
+                    <Link
+                      key={id}
+                      href={href}
+                      target={target}
+                      rel={target === "_blank" ? "noopener noreferrer" : undefined}
+                      onClick={close}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(menuLinkClass, active && "bg-surface-container-high font-medium text-on-surface")}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-on-surface/50" aria-hidden="true" />
+                      {label}
+                    </Link>
+                  );
+                })}
               </nav>
 
               {!user ? (

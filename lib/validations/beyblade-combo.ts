@@ -25,7 +25,24 @@ export const beybladeComboSchema = z.object({
   assistBladeId: z.string().trim(),
   ratchetId: z.string().trim(),
   bitId: z.string().trim().min(1, "Pick a bit"),
+  // Slot -> variation id, for parts used in a specific variation (see
+  // COMBO_VARIATION_SLOTS). A slot that isn't here uses the standard part.
+  variations: z.record(z.string(), z.string()).default({}),
 });
+
+// The combo slots a variation can be picked for, and the form field that
+// holds each slot's part id.
+export const COMBO_VARIATION_SLOTS = {
+  blade: "bladeId",
+  ratchet: "ratchetId",
+  bit: "bitId",
+  lockChip: "lockChipId",
+  mainBlade: "mainBladeId",
+  overBlade: "overBladeId",
+  metalBlade: "metalBladeId",
+  assistBlade: "assistBladeId",
+} as const;
+export type ComboVariationSlot = keyof typeof COMBO_VARIATION_SLOTS;
 
 export type BeybladeComboInput = z.infer<typeof beybladeComboSchema>;
 
@@ -41,4 +58,5 @@ export const DEFAULT_BEYBLADE_COMBO_VALUES: BeybladeComboInput = {
   assistBladeId: "",
   ratchetId: "",
   bitId: "",
+  variations: {},
 };

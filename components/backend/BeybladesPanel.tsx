@@ -45,6 +45,8 @@ export interface BeybladeItem {
   description: string | null;
   series: BeybladeSeries;
   imageUrl: string | null;
+  // Number of variations (colorways/editions) — see BeybladeVariationsPanel.
+  variationCount?: number;
 }
 
 type SortKey = "code" | "name" | "shortName" | "type" | "systemLine" | "category";
@@ -261,6 +263,12 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
                 <p className="mt-2 text-sm text-on-surface/60">
                   {BEYBLADE_SYSTEM_LINE_LABELS[b.systemLine]} <span className="text-on-surface/30">|</span>{" "}
                   {BEYBLADE_CATEGORY_LABELS[b.category]}
+                  {b.variationCount ? (
+                    <>
+                      {" "}
+                      <span className="text-on-surface/30">|</span> {b.variationCount} variation{b.variationCount === 1 ? "" : "s"}
+                    </>
+                  ) : null}
                 </p>
                 <div className="mt-3 flex gap-2">{rowActions(b)}</div>
               </article>
@@ -282,6 +290,9 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
                   <SortableHeader label="System Line" sortKey="systemLine" active={sortKey === "systemLine"} dir={sortDir} onClick={toggleSort} />
                   <SortableHeader label="Category" sortKey="category" active={sortKey === "category"} dir={sortDir} onClick={toggleSort} />
                   <th className="p-4" scope="col">
+                    Variations
+                  </th>
+                  <th className="p-4" scope="col">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -300,6 +311,7 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
                     </td>
                     <td className="p-4 text-on-surface/60">{BEYBLADE_SYSTEM_LINE_LABELS[b.systemLine]}</td>
                     <td className="p-4 text-on-surface/60">{BEYBLADE_CATEGORY_LABELS[b.category]}</td>
+                    <td className="p-4 tabular-nums text-on-surface/60">{b.variationCount ?? 0}</td>
                     <td className="p-4">
                       <div className="flex justify-end gap-2">{rowActions(b)}</div>
                     </td>

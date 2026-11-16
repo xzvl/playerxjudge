@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Gavel, Handshake, LayoutDashboard, Trophy } from "lucide-react";
+import { Disc3, Gavel, Handshake, LayoutDashboard, Shield, Trophy } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,21 @@ const ROLE_DASHBOARDS = [
     description: "Track your tournament activity, match history, and achievements.",
     href: "/account/player/dashboard",
     icon: Trophy,
+  },
+  // Open to every signed-in account, like the player dashboard.
+  {
+    role: "team" as const,
+    label: "Team Dashboard",
+    description: "Create or join a team, manage members, leagues and rosters.",
+    href: "/account/team/dashboard",
+    icon: Shield,
+  },
+  {
+    role: "beyblade" as const,
+    label: "Beyblade Dashboard",
+    description: "Save your combos and build your tournament deck.",
+    href: "/account/beyblade/dashboard",
+    icon: Disc3,
   },
   {
     role: "judge" as const,
@@ -51,8 +66,10 @@ export default async function AccountPage() {
   if (!shell) redirect("/login?redirectTo=/account");
 
   const { roles } = shell;
-  const approvedRoles = new Set(roles.filter((r) => r.status === "approved").map((r) => r.role));
+  const approvedRoles = new Set<string>(roles.filter((r) => r.status === "approved").map((r) => r.role));
   approvedRoles.add("player");
+  approvedRoles.add("team");
+  approvedRoles.add("beyblade");
 
   const dashboards = ROLE_DASHBOARDS.filter((d) => approvedRoles.has(d.role));
 
@@ -71,7 +88,7 @@ export default async function AccountPage() {
       <div className="space-y-5">
         <PageHeader eyebrow="Account" title="Your Dashboards" description="Pick a dashboard to continue." />
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {dashboards.map((dashboard) => (
             <Card key={dashboard.role}>
               <CardHeader>

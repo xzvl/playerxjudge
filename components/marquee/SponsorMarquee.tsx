@@ -1,4 +1,5 @@
 import { Marquee } from "@/components/marquee/Marquee";
+import { ThemedImage } from "@/components/ui/themed-image";
 import type { MarqueeSponsor } from "@/lib/sponsors/queries";
 
 export function SponsorMarquee({ sponsors }: { sponsors: MarqueeSponsor[] }) {
@@ -14,10 +15,10 @@ export function SponsorMarquee({ sponsors }: { sponsors: MarqueeSponsor[] }) {
             // website_url is the primary link; facebook_url is the fallback
             // most small/local sponsors actually have.
             const href = sponsor.website_url || sponsor.facebook_url || null;
-            const logo = sponsor.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={sponsor.logo_url}
+            const logo = sponsor.logo_url || sponsor.logo_light_url ? (
+              <ThemedImage
+                darkSrc={sponsor.logo_url}
+                lightSrc={sponsor.logo_light_url}
                 alt={sponsor.company_name}
                 className="h-9 w-auto max-w-[140px] object-contain opacity-60 transition-opacity hover:opacity-100"
               />

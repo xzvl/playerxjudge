@@ -7,7 +7,7 @@ import { Pencil, Plus, Swords, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ComboPartsLine, ComboStatBars, ComboThumbnails } from "@/components/dashboard/beyblade/combo-ui";
+import { ComboPartsLine, ComboStatBars, ComboThumbnails, ComboVariationsLine } from "@/components/dashboard/beyblade/combo-ui";
 import { deleteCombo } from "@/app/account/beyblade/actions";
 import { computeComboStats } from "@/lib/beyblades/combo-stats";
 import type { ComboWithParts } from "@/app/account/beyblade/data";
@@ -58,6 +58,7 @@ export function CombosPanel({ combos }: { combos: ComboWithParts[] }) {
                   <ComboThumbnails bladeParts={combo.bladeParts} ratchet={combo.ratchet} bit={combo.bit} fit="contain" />
                   <p className="mt-3 heading truncate text-on-surface">{combo.name}</p>
                   <ComboPartsLine bladeDisplay={combo.bladeDisplay} ratchet={combo.ratchet} bit={combo.bit} />
+                  <ComboVariationsLine parts={[...combo.bladeParts, combo.ratchet, combo.bit]} />
 
                   <div className="mt-3">
                     <ComboStatBars stats={stats} />
