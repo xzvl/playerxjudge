@@ -45,30 +45,36 @@ export function HeroView({
   return (
     <section
       className={cn(
-        "legacy-hero hero-grid relative overflow-hidden border-b border-outline-variant/25",
+        "legacy-hero hud-aurora relative overflow-hidden border-b border-outline-variant/25",
         !preview && "hero-custom-colors",
         preview && "rounded-md border"
       )}
       style={style as CSSProperties}
     >
+      <div aria-hidden="true" className="hud-grid pointer-events-none absolute inset-0" />
       <div
         className={cn(
-          "mx-auto grid max-w-[1280px] gap-8 px-4 py-12 md:px-6 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:py-16",
+          "relative mx-auto grid max-w-[1280px] gap-8 px-4 py-12 md:px-6 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:py-20",
           preview && "gap-6 py-8 lg:py-10"
         )}
       >
         <div className={preview ? undefined : "animate-hero-fade-up"}>
-          {hero.tag ? <p className="label-mono text-primary">{hero.tag}</p> : null}
-          <Title className={cn("heading mt-3 leading-[1.02]", preview ? "text-3xl" : "text-4xl sm:text-5xl lg:text-[56px]")}>
+          {hero.tag ? (
+            <p className="label-mono inline-flex items-center gap-2 border border-primary/40 bg-primary/10 px-2.5 py-1 text-primary">
+              <span className="live-dot" aria-hidden="true" />
+              {hero.tag}
+            </p>
+          ) : null}
+          <Title className={cn("heading mt-4 italic leading-[0.95]", preview ? "text-3xl" : "text-[3.25rem] sm:text-7xl lg:text-[96px]")}>
             {hero.title}
             {hero.title && hero.titleRed ? <br /> : null}
-            {hero.titleRed ? <span className="text-primary">{hero.titleRed}</span> : null}
+            {hero.titleRed ? <span className="text-primary text-glow">{hero.titleRed}</span> : null}
           </Title>
           {hero.content ? (
-            <p className="mt-4 max-w-lg whitespace-pre-line text-[15px] leading-relaxed opacity-70">{hero.content}</p>
+            <p className="mt-5 max-w-lg whitespace-pre-line text-base leading-relaxed opacity-70">{hero.content}</p>
           ) : null}
           {(hero.primaryLabel && hero.primaryHref) || (hero.secondaryLabel && hero.secondaryHref) ? (
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               {hero.primaryLabel && hero.primaryHref ? (
                 <Button asChild size="lg">
                   <Link href={hero.primaryHref} target={isExternal(hero.primaryHref) ? "_blank" : undefined}>
@@ -91,8 +97,8 @@ export function HeroView({
 
         <div
           className={cn(
-            "hero-glass relative flex aspect-[4/3] items-center justify-center overflow-hidden lg:aspect-auto",
-            preview ? "lg:h-[240px]" : "animate-hero-fade-in lg:h-[360px]"
+            "hero-glass chamfer scanlines relative flex aspect-[4/3] items-center justify-center overflow-hidden lg:aspect-auto",
+            preview ? "lg:h-[240px]" : "animate-hero-fade-in lg:h-[420px]"
           )}
         >
           {hero.imageUrl ? (
@@ -104,7 +110,7 @@ export function HeroView({
                 style={{ background: "radial-gradient(circle at 50% 50%, rgba(237,13,17,0.18), transparent 65%)" }}
                 aria-hidden="true"
               />
-              <Swords className="h-24 w-24 text-primary/70 lg:h-32 lg:w-32" aria-hidden="true" />
+              <Swords className="relative h-24 w-24 text-primary drop-shadow-[0_0_24px_rgb(var(--m3-primary)/0.8)] lg:h-32 lg:w-32" aria-hidden="true" />
               <span className="sr-only">Beyblade X tournament battle artwork</span>
             </>
           )}

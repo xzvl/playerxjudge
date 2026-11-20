@@ -84,12 +84,13 @@ export function Footer({
   const columns = groupLinks(content.links);
 
   return (
-    <footer className="border-t border-outline-variant/20 bg-surface-container-lowest">
+    <footer className="pb-tabbar relative border-t border-outline-variant/25 bg-surface-container-lowest lg:pb-0">
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
       <div className="mx-auto grid max-w-[1280px] gap-4 px-4 py-10 md:px-6 lg:grid-cols-[1fr_1fr_1.1fr]">
-        <div className="flex flex-col justify-between rounded-lg border border-outline-variant/25 bg-surface-container-low p-5">
+        <div className="chamfer flex flex-col justify-between border border-primary/30 bg-gradient-to-br from-primary/15 via-surface-container-low to-surface-container-low p-5">
           <div>
-            <Trophy className="h-4 w-4 text-on-surface/50" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold">Become a tournament organizer</p>
+            <Trophy className="h-5 w-5 text-primary" aria-hidden="true" />
+            <p className="mt-3 font-display text-xl font-semibold uppercase tracking-[0.04em]">Become a tournament organizer</p>
             <p className="mt-1 text-[13px] text-on-surface/55">
               Run Beyblade X events, manage brackets, and grow your community with organizer tools built for competitive play.
             </p>
@@ -101,10 +102,10 @@ export function Footer({
           </Button>
         </div>
 
-        <div className="flex flex-col justify-between rounded-lg border border-outline-variant/25 bg-surface-container-low p-5">
+        <div className="chamfer flex flex-col justify-between border border-tertiary/30 bg-gradient-to-br from-tertiary/10 via-surface-container-low to-surface-container-low p-5">
           <div>
-            <Handshake className="h-4 w-4 text-on-surface/50" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold">Become a sponsor</p>
+            <Handshake className="h-5 w-5 text-tertiary" aria-hidden="true" />
+            <p className="mt-3 font-display text-xl font-semibold uppercase tracking-[0.04em]">Become a sponsor</p>
             <p className="mt-1 text-[13px] text-on-surface/55">
               Put your brand in front of the Beyblade X community with featured placement, event banners and tournament badges.
             </p>
@@ -114,12 +115,12 @@ export function Footer({
           </Button>
         </div>
 
-        <div className="rounded-lg border border-outline-variant/25 p-5">
-          <p className="text-sm font-semibold">How to create a tournament</p>
+        <div className="rounded-[3px] border border-outline-variant/25 p-5">
+          <p className="font-display text-xl font-semibold uppercase tracking-[0.04em]">How to create a tournament</p>
           <ol className="mt-3 space-y-3">
             {HOW_TO_STEPS.map(({ title, description }, index) => (
               <li key={title} className="flex gap-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-outline-variant/40 text-[11px] font-medium tabular-nums text-on-surface/60">
+                <span className="chamfer-sm flex h-6 w-6 shrink-0 items-center justify-center bg-primary/15 font-mono text-[11px] font-semibold tabular-nums text-primary">
                   {index + 1}
                 </span>
                 <div>
@@ -151,7 +152,7 @@ export function Footer({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={label}
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-on-surface/55 transition-colors hover:bg-surface-container hover:text-on-surface"
+                        className="flex h-10 w-10 items-center justify-center rounded-[3px] text-on-surface/55 transition-colors hover:bg-primary/10 hover:text-primary lg:h-9 lg:w-9"
                       >
                         <Icon className="h-4 w-4" />
                       </a>
@@ -166,7 +167,7 @@ export function Footer({
 
             {columns.map((column) => (
               <div key={column.title}>
-                <p className="text-xs font-medium text-on-surface/45">{column.title}</p>
+                <p className="label-mono text-primary">{column.title}</p>
                 <ul className="mt-3 space-y-2">
                   {column.links.map((item) => (
                     <li key={item.id}>
@@ -174,7 +175,7 @@ export function Footer({
                         href={item.href}
                         target={item.target}
                         rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
-                        className="text-[13px] text-on-surface/70 transition-colors hover:text-on-surface"
+                        className="text-[13px] text-on-surface/65 transition-colors hover:text-primary"
                       >
                         {item.label}
                       </Link>

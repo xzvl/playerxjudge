@@ -8,7 +8,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
       ref={ref}
       data-slot="card"
       className={cn(
-        "border border-outline-variant/25 bg-surface-container-low text-on-surface transition-all erp:rounded-lg erp:transition-colors",
+        "border border-outline-variant/25 bg-surface-container-low text-on-surface transition-all erp:rounded-[3px] erp:transition-colors",
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HT
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn("heading text-xl leading-none erp:text-sm erp:leading-5", className)}
+      className={cn("heading text-xl leading-none erp:text-lg erp:leading-5", className)}
       {...props}
     />
   )

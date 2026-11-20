@@ -28,7 +28,8 @@ export function TournamentCard({
   const actionTooltip = completed ? "See the final results" : "Watch this tournament live";
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-lg border border-outline-variant/25 bg-surface-container-low transition-colors hover:border-outline-variant/50">
+    <article className="group relative flex flex-col overflow-hidden rounded-[3px] border border-outline-variant/25 bg-surface-container-low transition-all duration-200 hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_12px_32px_-12px_rgb(var(--m3-primary)/0.5)]">
+      <span aria-hidden="true" className="pointer-events-none absolute left-0 top-0 z-10 h-0.5 w-0 bg-primary shadow-[0_0_10px_rgb(var(--m3-primary))] transition-all duration-300 group-hover:w-full" />
       <TournamentThumbnail
         color={tournament.thumbnailColor}
         title={tournament.title}
@@ -40,27 +41,27 @@ export function TournamentCard({
           <BattleTypeBadge type={tournament.battleType} />
           <TournamentTypeBadge type={tournament.tournamentType} />
         </div>
-        <h3 className="heading text-[15px] leading-snug">{tournament.title}</h3>
+        <h3 className="heading text-xl leading-[1.05]">{tournament.title}</h3>
         <p className="line-clamp-2 text-[13px] text-on-surface/60">{tournament.shortDescription}</p>
 
-        <dl className="mt-1 space-y-1.5 text-xs text-on-surface/50">
+        <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-outline-variant/20 pt-3 font-mono text-[11px] text-on-surface/55">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
             <dt className="sr-only">Date</dt>
             <dd>{formatDate(tournament.startsAt)}</dd>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <Clock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
             <dt className="sr-only">Time</dt>
             <dd>{formatTime(tournament.startsAt)}</dd>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
             <dt className="sr-only">Location</dt>
             <dd className="line-clamp-1">{tournament.locationName}</dd>
           </div>
           <div className="flex items-center gap-2">
-            <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <User className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
             <dt className="sr-only">Organizer</dt>
             <dd className="line-clamp-1">{tournament.organizerName}</dd>
           </div>

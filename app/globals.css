@@ -169,31 +169,38 @@
      --m3-outline-variant is a mid grey that reads as a quiet hairline at
      that opacity on either background. */
   :root:not([data-theme="light"]) .erp {
-    --background: 240 6% 4%;
-    --card: 240 5% 7%;
-    --popover: 240 5% 7%;
-    --muted: 240 4% 10%;
-    --muted-foreground: 240 5% 62%;
-    --accent: 240 4% 13%;
-    --border: 240 4% 16%;
-    --input: 240 4% 18%;
-    --radius: 6px;
+    /* 2026 esports "ink": near-black with a blue-violet undertone, hot
+       signal red as the brand accent, electric cyan (--m3-tertiary) as
+       the secondary "volt" accent. */
+    --background: 250 30% 4%;
+    --card: 250 24% 7%;
+    --popover: 250 24% 7%;
+    --muted: 250 20% 10%;
+    --muted-foreground: 250 10% 64%;
+    --accent: 250 18% 14%;
+    --border: 250 18% 18%;
+    --input: 250 18% 20%;
+    --radius: 4px;
 
-    --m3-background: 10 10 11;
-    --m3-surface: 10 10 11;
-    --m3-surface-dim: 10 10 11;
-    --m3-surface-container-lowest: 10 10 11;
-    --m3-surface-container-low: 17 17 19;
-    --m3-surface-container: 24 24 27;
-    --m3-surface-container-high: 31 31 35;
-    --m3-surface-container-highest: 39 39 42;
-    --m3-surface-bright: 52 52 56;
-    --m3-surface-variant: 39 39 42;
-    --m3-outline: 113 113 122;
-    --m3-outline-variant: 113 113 122;
-    --m3-on-surface: 236 236 238;
-    --m3-on-background: 236 236 238;
-    --m3-on-surface-variant: 161 161 170;
+    --m3-primary: 255 46 62;
+    --m3-primary-container: 190 20 40;
+    --m3-tertiary: 56 225 255;
+    --m3-tertiary-container: 0 140 170;
+    --m3-background: 9 9 14;
+    --m3-surface: 9 9 14;
+    --m3-surface-dim: 9 9 14;
+    --m3-surface-container-lowest: 7 7 11;
+    --m3-surface-container-low: 15 15 23;
+    --m3-surface-container: 21 21 32;
+    --m3-surface-container-high: 29 29 43;
+    --m3-surface-container-highest: 38 38 56;
+    --m3-surface-bright: 52 52 76;
+    --m3-surface-variant: 38 38 56;
+    --m3-outline: 120 120 150;
+    --m3-outline-variant: 120 120 160;
+    --m3-on-surface: 238 238 246;
+    --m3-on-background: 238 238 246;
+    --m3-on-surface-variant: 168 168 190;
   }
 
   :root[data-theme="light"] .erp {
@@ -205,11 +212,13 @@
     --accent: 240 5% 94%;
     --border: 240 6% 90%;
     --input: 240 6% 88%;
-    --radius: 6px;
+    --radius: 4px;
 
-    --m3-background: 250 250 250;
-    --m3-surface: 250 250 250;
-    --m3-surface-dim: 244 244 245;
+    --m3-primary: 224 18 44;
+    --m3-tertiary: 0 120 150;
+    --m3-background: 246 246 250;
+    --m3-surface: 246 246 250;
+    --m3-surface-dim: 240 240 246;
     --m3-surface-container-lowest: 255 255 255;
     --m3-surface-container-low: 255 255 255;
     --m3-surface-container: 244 244 245;
@@ -248,20 +257,116 @@
      cyber-grid no longer draws a grid, glitch-hover is a quiet border
      change. */
   .glass-panel {
-    background-color: rgb(var(--m3-surface-container-low));
+    background-color: rgb(var(--m3-surface-container-low) / 0.7);
     border: 1px solid rgb(var(--m3-outline-variant) / 0.25);
     border-radius: var(--radius);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   .cyber-grid {
-    background-image: none;
+    background-image: linear-gradient(rgb(var(--m3-on-surface) / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--m3-on-surface) / 0.035) 1px, transparent 1px);
+    background-size: 32px 32px;
   }
+
+  /* ---- Esports HUD kit (2026) ---------------------------------------- */
+
+  /* Angular "cut corner" silhouettes: the signature shape of the system. */
+  .chamfer {
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  .chamfer-sm {
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .chamfer-tr {
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  }
+  .chamfer-skew {
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  }
+
+  /* Ambient glows */
+  .glow-primary {
+    box-shadow: 0 0 0 1px rgb(var(--m3-primary) / 0.5), 0 0 24px -4px rgb(var(--m3-primary) / 0.55);
+  }
+  .glow-volt {
+    box-shadow: 0 0 0 1px rgb(var(--m3-tertiary) / 0.45), 0 0 24px -4px rgb(var(--m3-tertiary) / 0.45);
+  }
+  .text-glow {
+    text-shadow: 0 0 18px rgb(var(--m3-primary) / 0.55);
+  }
+
+  /* Background atmospherics */
+  .hud-grid {
+    background-image: linear-gradient(rgb(var(--m3-on-surface) / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--m3-on-surface) / 0.04) 1px, transparent 1px);
+    background-size: 36px 36px;
+    mask-image: radial-gradient(ellipse at 50% 30%, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 20%, transparent 75%);
+  }
+  .hud-aurora {
+    background:
+      radial-gradient(60% 60% at 15% 0%, rgb(var(--m3-primary) / 0.22), transparent 60%),
+      radial-gradient(50% 50% at 90% 10%, rgb(var(--m3-tertiary) / 0.14), transparent 60%);
+  }
+  .scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.14) 0 1px, transparent 1px 3px);
+    mix-blend-mode: multiply;
+    opacity: 0.5;
+  }
+
+  /* Pulsing "LIVE" indicator */
+  .live-dot {
+    position: relative;
+    display: inline-block;
+    height: 7px;
+    width: 7px;
+    border-radius: 999px;
+    background: rgb(var(--m3-primary));
+  }
+  .live-dot::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 999px;
+    border: 1px solid rgb(var(--m3-primary) / 0.7);
+    animation: live-ping 1.6s ease-out infinite;
+  }
+  @keyframes live-ping {
+    from { transform: scale(0.5); opacity: 1; }
+    to { transform: scale(1.5); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot::after { animation: none; }
+  }
+
+  /* Mobile app chrome: respect notches / home indicator. */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .h-tabbar { height: calc(3.5rem + env(safe-area-inset-bottom)); }
+  .pb-tabbar { padding-bottom: calc(3.5rem + env(safe-area-inset-bottom) + 0.5rem); }
+  .snap-row {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .snap-row::-webkit-scrollbar { display: none; }
+  .snap-row > * { scroll-snap-align: start; flex-shrink: 0; }
+  .tap { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
   .glitch-hover {
     transition: border-color 120ms ease, background-color 120ms ease;
   }
   .glitch-hover:hover {
-    border-color: rgb(var(--m3-outline-variant) / 0.5);
+    border-color: rgb(var(--m3-primary) / 0.55);
     background-color: rgb(var(--m3-surface-container));
   }
 
@@ -291,48 +396,55 @@
 @layer components {
   /* Headings: Geist semibold, sentence case, tight tracking. */
   .erp .heading {
-    font-family: inherit;
-    font-weight: 600;
-    text-transform: none;
-    letter-spacing: -0.02em;
+    font-family: var(--font-display), var(--font-geist), ui-sans-serif, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 1.02;
   }
 
   /* Inside the app shells (dashboards, player view, judge console; marked
-     `.app-shell`) headings collapse to one fixed data-UI scale, whatever
+     `.app-shell`) headings collapse to one fixed display scale, whatever
      size class the panel used. Public pages keep their own sizes. */
   .app-shell h1.heading {
-    font-size: 1.25rem;
-    line-height: 1.75rem;
+    font-size: 1.875rem;
+    line-height: 1;
+    letter-spacing: 0.015em;
   }
   .app-shell h2.heading {
-    font-size: 1rem;
-    line-height: 1.5rem;
+    font-size: 1.25rem;
+    line-height: 1.1;
   }
   .app-shell h3.heading,
   .app-shell h4.heading {
-    font-size: 0.875rem;
-    line-height: 1.25rem;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+  @media (min-width: 1024px) {
+    .app-shell h1.heading {
+      font-size: 2.25rem;
+    }
   }
 
-  /* Labels / eyebrows / table headers: small medium-weight sans in
-     sentence case. `!important` here outranks the many `!text-[10px]`
-     call-site overrides so every label lands on one size. */
+  /* Labels / eyebrows / table headers: HUD micro-labels, tracked uppercase
+     mono. `!important` here outranks the many `!text-[10px]` call-site
+     overrides so every label lands on one size. */
   .erp .label-mono {
-    font-family: inherit;
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
     font-weight: 500;
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 12px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 10.5px !important;
     line-height: 1rem;
   }
 
   /* Marketing display weights read as shouting in a data UI. */
   .erp .font-black,
   .erp .font-extrabold {
-    font-weight: 600;
+    font-weight: 700;
   }
   .erp .font-inter {
-    font-family: inherit;
+    font-family: var(--font-display), var(--font-geist), sans-serif;
   }
   /* Mono stays for codes, ids and figures, but in tabular form. */
   .erp .font-mono {
@@ -355,8 +467,8 @@
   /* Flat surfaces: no sheen, no inset highlight, rounded to the scope's
      radius. Elevation comes from a 1px border only. */
   .erp [data-slot="card"] {
-    background-image: none;
-    box-shadow: none;
+    background-image: linear-gradient(180deg, rgb(var(--m3-on-surface) / 0.025), transparent 40%);
+    box-shadow: inset 0 1px 0 rgb(var(--m3-on-surface) / 0.04);
     border-radius: var(--radius);
   }
 
@@ -375,8 +487,11 @@
   .erp table th {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
-    font-size: 12px;
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 10.5px;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
     color: rgb(var(--m3-on-surface-variant));
   }
   .erp table td {
@@ -428,14 +543,13 @@
     color: rgb(var(--m3-on-surface));
   }
   .erp .legacy-hero .heading {
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: -0.035em;
+    letter-spacing: 0;
   }
   .erp .legacy-hero .label-mono {
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
+    font-weight: 600;
+    letter-spacing: 0.18em;
     font-size: 11px !important;
   }
   .erp .legacy-hero .hero-grid,
@@ -446,10 +560,10 @@
   }
   .erp .legacy-hero .hero-glass {
     border-radius: var(--radius);
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, rgb(var(--m3-primary) / 0.08), rgb(var(--m3-tertiary) / 0.05));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgb(var(--m3-primary) / 0.25);
   }
 }
 

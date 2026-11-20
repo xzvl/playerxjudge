@@ -151,6 +151,7 @@ const config: Config = {
         // inherited text to Geist on its own; `font-sans` is for the places
         // that need to say it explicitly (e.g. the `erp:` overrides).
         sans: ["var(--font-geist)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-geist)", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
     },

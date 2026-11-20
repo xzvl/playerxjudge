@@ -10,25 +10,26 @@ const ITEMS = [
 
 export function QuickAccess() {
   return (
-    <section className="mx-auto max-w-[1280px] px-4 py-10 md:px-6" aria-labelledby="quick-access-heading">
+    <section className="mx-auto max-w-[1280px] px-4 py-8 md:px-6 md:py-10" aria-labelledby="quick-access-heading">
       <h2 id="quick-access-heading" className="sr-only">
         Quick access
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         {ITEMS.map(({ label, description, href, Icon }) => (
           <Link
             key={href}
             href={href}
-            className="group flex items-center gap-3 rounded-lg border border-outline-variant/25 bg-surface-container-low px-4 py-3 transition-colors hover:border-outline-variant/50 hover:bg-surface-container"
+            className="tap group relative flex flex-col gap-3 overflow-hidden rounded-[3px] border border-outline-variant/25 bg-surface-container-low p-4 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-surface-container sm:flex-row sm:items-center"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-outline-variant/25 bg-surface-container">
-              <Icon className="h-4 w-4 text-on-surface/70" aria-hidden="true" />
+            <span className="absolute inset-y-0 left-0 w-[3px] bg-outline-variant/40 transition-colors group-hover:bg-primary group-hover:shadow-[0_0_12px_rgb(var(--m3-primary))]" aria-hidden="true" />
+            <span className="chamfer-sm flex h-11 w-11 shrink-0 items-center justify-center bg-primary/10 transition-colors group-hover:bg-primary/20">
+              <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-medium">{label}</span>
+              <span className="block truncate font-display text-lg font-semibold uppercase leading-tight tracking-[0.04em]">{label}</span>
               <span className="block truncate text-xs text-on-surface/50">{description}</span>
             </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-on-surface/30 transition-colors group-hover:text-on-surface/70" aria-hidden="true" />
+            <ChevronRight className="hidden h-4 w-4 shrink-0 text-on-surface/30 transition-all group-hover:translate-x-0.5 group-hover:text-primary sm:block" aria-hidden="true" />
           </Link>
         ))}
       </div>

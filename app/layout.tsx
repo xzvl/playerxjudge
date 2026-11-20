@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 import { Providers } from "@/app/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { MaintenanceScreen } from "@/components/layout/MaintenanceScreen";
 import { SiteBrandingProvider } from "@/components/layout/SiteBrandingProvider";
 import { getCurrentProfile, getShellData, isStaffProfile } from "@/lib/supabase/get-user";
@@ -19,6 +20,14 @@ import type { NavUser } from "@/components/layout/ProfileMenu";
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist",
+  display: "swap",
+});
+
+// Display face: condensed, hard-edged, built for scoreboards and headlines.
+const display = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -89,8 +98,9 @@ const isMaintenanceAllowed = (pathname: string) =>
   MAINTENANCE_ALLOWED.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0b",
+  themeColor: "#09090e",
   colorScheme: "dark",
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -117,7 +127,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     // Same caveat every "apply a saved theme via a pre-hydration script"
     // approach has (next-themes included).
     <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
-      <body className={`${geist.variable} ${geistMono.variable} erp font-sans`}>
+      <body className={`${geist.variable} ${geistMono.variable} ${display.variable} erp font-sans`}>
         {/* Applies a saved light-theme preference before first paint — see
             ThemeToggle. Runs as the first thing in <body> (before anything
             else is parsed) so there's no flash of the wrong theme; the
@@ -144,6 +154,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                 <Header user={user} notificationCount={notificationCount} links={content.header.links} />
                 <main id="main-content">{children}</main>
                 <Footer sponsors={sponsors} content={content.footer} email={content.branding.email} />
+                <MobileTabBar signedIn={!!user} />
               </>
             )}
           </SiteBrandingProvider>
