@@ -405,11 +405,15 @@ export async function removeTeamMember(teamId: string, profileId: string): Promi
     .maybeSingle();
   const role = (target as { role: TeamRole } | null)?.role;
   if (!role) return fail("They're not on the team.");
-  if (profileId === ctx.team.owner_id) {
-    return fail(leaving ? "Transfer ownership before leaving, or delete the team." : "The team owner can't be removed.");
-  }
-  if (role === "captain") {
-    return fail(leaving ? "Transfer captaincy before leaving, or delete the team." : "The captain can't be removed.");
+  // The owner may remove anyone, including the captain and their own row.
+  // Everyone else can't touch the owner or the captain.
+  if (!ctx.isOwner) {
+    if (profileId === ctx.team.owner_id) {
+      return fail(leaving ? "Transfer ownership before leaving, or delete the team." : "The team owner can't be removed.");
+    }
+    if (role === "captain") {
+      return fail(leaving ? "Transfer captaincy before leaving, or delete the team." : "The captain can't be removed.");
+    }
   }
   if (!leaving && role === "sub_captain" && !ctx.isLead) return fail("Only the owner or captain can remove a sub-captain.");
 
@@ -609,6 +613,7 @@ export async function generateLeagueElite(leagueId: string): Promise<TeamActionS
       .from("team_league_matches")
       .select("id, profile_id, opponent_name, player_points, opponent_points")
       .eq("league_id", leagueId)
+      .eq("status", "approved")
       .order("played_on")
       .order("created_at"),
   ]);
@@ -708,6 +713,8 @@ export async function createLeagueMatch(leagueId: string, input: LeagueMatchInpu
       played_on: parsed.data.playedOn,
       notes: parsed.data.notes || null,
       created_by: ctx.userId,
+      // Members/fillers need a manager's approval; managers' own are approved.
+      status: ctx.isManager ? "approved" : "pending",
     })
     .select("id")
     .single();
@@ -753,6 +760,8 @@ export async function updateLeagueMatch(leagueId: string, matchId: string, input
       opponent_points: parsed.data.opponentPoints,
       played_on: parsed.data.playedOn,
       notes: parsed.data.notes || null,
+      // A member's edit needs re-approval; a manager's edit is approved.
+      status: ctx.isManager ? "approved" : "pending",
     })
     .eq("id", matchId);
   if (error) return fail(error.message);
@@ -762,6 +771,23 @@ export async function updateLeagueMatch(leagueId: string, matchId: string, input
 
   revalidateTeams();
   return ok({ id: matchId, slug: ctx.team.slug });
+}
+
+export async function approveLeagueMatch(matchId: string): Promise<TeamActionState> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("team_league_matches").select("league_id").eq("id", matchId).maybeSingle();
+  const leagueId = (data as { league_id: string } | null)?.league_id;
+  if (!leagueId) return fail("Match not found.");
+
+  const ctx = await leagueManagerContext(leagueId);
+  if (typeof ctx === "string") return fail(ctx);
+
+  // The guard trigger stamps approved_by / approved_at.
+  const { error } = await ctx.supabase.from("team_league_matches").update({ status: "approved" }).eq("id", matchId);
+  if (error) return fail(error.message);
+
+  revalidateTeams();
+  return ok();
 }
 
 export async function deleteLeagueMatch(matchId: string): Promise<TeamActionState> {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, Pencil, Swords } from "lucide-react";
 
+import { MatchApproveButton } from "@/components/dashboard/team/MatchApproveButton";
 import { MatchDeleteButton } from "@/components/dashboard/team/MatchDeleteButton";
 import { formatLeagueDate, PlayerAvatar, ResultPill } from "@/components/dashboard/team/team-ui";
 import { EmptyState } from "@/components/dashboard/erp";
@@ -16,8 +17,11 @@ export function MatchHistory({
   canEdit,
   editHref,
   emptyAction,
+  canApprove,
 }: {
   matches: LeagueMatchRow[];
+  // Managers (owner / captain / sub-captain) can approve pending matches.
+  canApprove?: boolean;
   // Which rows the viewer may edit/delete; omit for read-only (public) use.
   canEdit?: (match: LeagueMatchRow) => boolean;
   editHref?: (match: LeagueMatchRow) => string;
@@ -50,7 +54,13 @@ export function MatchHistory({
                 <span className="px-1 text-on-surface/35">–</span>
                 {m.opponentPoints}
               </span>
-              <ResultPill result={result} />
+              {m.status === "pending" ? (
+                <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-px text-[11px] font-medium text-amber-500">
+                  Pending
+                </span>
+              ) : (
+                <ResultPill result={result} />
+              )}
             </div>
             <div className="hidden items-center justify-end gap-1 sm:flex">
               {m.battles.length > 0 ? (
@@ -95,7 +105,7 @@ export function MatchHistory({
                     </ol>
                   ) : null}
                   {m.notes ? <p className="text-xs text-on-surface/55">{m.notes}</p> : null}
-                  {editable ? <RowActions match={m} editHref={editHref} /> : null}
+                  {editable ? <RowActions match={m} editHref={editHref} canApprove={canApprove} /> : null}
                 </div>
               </details>
             ) : (
@@ -103,7 +113,7 @@ export function MatchHistory({
                 {summary}
                 {editable ? (
                   <div className="-mt-1 px-3 pb-2">
-                    <RowActions match={m} editHref={editHref} />
+                    <RowActions match={m} editHref={editHref} canApprove={canApprove} />
                   </div>
                 ) : null}
               </div>
@@ -115,9 +125,18 @@ export function MatchHistory({
   );
 }
 
-function RowActions({ match, editHref }: { match: LeagueMatchRow; editHref?: (m: LeagueMatchRow) => string }) {
+function RowActions({
+  match,
+  editHref,
+  canApprove,
+}: {
+  match: LeagueMatchRow;
+  editHref?: (m: LeagueMatchRow) => string;
+  canApprove?: boolean;
+}) {
   return (
     <div className="flex items-center gap-1">
+      {canApprove && match.status === "pending" ? <MatchApproveButton matchId={match.id} /> : null}
       {editHref ? (
         <Link
           href={editHref(match)}

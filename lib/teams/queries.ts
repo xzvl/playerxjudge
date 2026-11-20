@@ -273,6 +273,7 @@ export interface LeagueMatchRow {
   notes: string | null;
   createdBy: string | null;
   createdAt: string;
+  status: "pending" | "approved";
   battles: BattleRow[];
 }
 
@@ -320,6 +321,7 @@ export async function getLeagueMatches(leagueId: string, opts: { profileId?: str
     notes: m.notes,
     createdBy: m.created_by,
     createdAt: m.created_at,
+    status: m.status ?? "approved",
     battles: battles
       .filter((b) => b.match_id === m.id)
       .map((b) => ({
@@ -376,6 +378,7 @@ export async function getMyRecentLeagueMatches(userId: string, limit = 8): Promi
     .from("team_league_matches")
     .select("id, league_id, opponent_name, player_points, opponent_points, played_on, created_at")
     .eq("profile_id", userId)
+    .eq("status", "approved")
     .order("played_on", { ascending: false })
     .order("created_at", { ascending: false });
   const matches = (data ?? []) as Pick<

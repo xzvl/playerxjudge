@@ -814,6 +814,9 @@ export type TeamLeagueMatch = {
   played_on: string;
   notes: string | null;
   created_by: string | null;
+  status: "pending" | "approved";
+  approved_by: string | null;
+  approved_at: string | null;
   created_at: string;
   updated_at: string;
 };

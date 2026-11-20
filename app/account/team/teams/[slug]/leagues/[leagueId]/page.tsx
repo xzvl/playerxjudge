@@ -10,6 +10,7 @@ import { MatchHistory } from "@/components/dashboard/team/MatchHistory";
 import { RosterBoard, type RosterPlayerStats } from "@/components/dashboard/team/RosterBoard";
 import { StandingsTable } from "@/components/dashboard/team/StandingsTable";
 import { DateRange, ExternalPageLink, LeagueStatusBadge } from "@/components/dashboard/team/team-ui";
+import { BreadcrumbLabel } from "@/components/dashboard/BreadcrumbLabel";
 import { getLeagueView } from "@/lib/teams/league-view";
 import { getTeamMembers, leagueStatus } from "@/lib/teams/queries";
 
@@ -41,6 +42,9 @@ export default async function LeaguePage({
   const rosterIds = new Set(view.roster.map((r) => r.profile.id));
   const available = members.filter((m) => !rosterIds.has(m.profile.id)).map((m) => m.profile);
 
+  const pendingTotal = view.matches.filter((m) => m.status === "pending").length;
+  const pendingMine = view.matches.filter((m) => m.status === "pending" && (m.player.id === userId || m.createdBy === userId)).length;
+
   const playerFilter = sp.player && view.profiles.has(sp.player) ? sp.player : null;
   const shownMatches = playerFilter ? view.matches.filter((m) => m.player.id === playerFilter) : view.matches;
 
@@ -54,6 +58,7 @@ export default async function LeaguePage({
 
   return (
     <div className="space-y-4">
+      <BreadcrumbLabel segment={league.id} label={league.name} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -75,6 +80,18 @@ export default async function LeaguePage({
       {!isManager && !onRoster ? (
         <p className="rounded-md border border-outline-variant/25 bg-surface-container-low px-3 py-2 text-[13px] text-on-surface/60">
           You&apos;re not on this league&apos;s roster, so you can&apos;t log matches here yet. Ask your captain to add you.
+        </p>
+      ) : null}
+
+      {!isManager && pendingMine > 0 ? (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-500">
+          {pendingMine} of your match{pendingMine === 1 ? "" : "es"} {pendingMine === 1 ? "is" : "are"} waiting for approval from a captain,
+          sub-captain or the owner. It counts in the standings once approved.
+        </p>
+      ) : null}
+      {isManager && pendingTotal > 0 ? (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-500">
+          {pendingTotal} match{pendingTotal === 1 ? "" : "es"} waiting for your approval. Review them in the Matches tab.
         </p>
       ) : null}
 
@@ -121,6 +138,7 @@ export default async function LeaguePage({
             ) : null}
             <MatchHistory
               matches={shownMatches}
+              canApprove={isManager}
               canEdit={(m) => isManager || m.player.id === userId || m.createdBy === userId}
               editHref={(m) => `${base}/matches/${m.id}/edit`}
               emptyAction={addMatchButton}

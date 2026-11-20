@@ -23,7 +23,8 @@ export async function getLeagueView(league: TeamLeague): Promise<LeagueView> {
   for (const m of matches) if (!profiles.has(m.player.id)) profiles.set(m.player.id, m.player);
 
   // Standings want oldest-first so each player's form reads left to right.
-  const chronological = [...matches].reverse();
+  // Only approved matches count.
+  const chronological = matches.filter((m) => m.status === "approved").reverse();
   const standings = computeLeagueStandings(
     roster.map((r) => ({ profileId: r.profile.id, name: r.profile.displayName })),
     chronological.map((m) => ({

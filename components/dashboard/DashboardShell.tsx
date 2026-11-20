@@ -18,6 +18,7 @@ import type { NavUser } from "@/components/layout/ProfileMenu";
 // theme/notifications/profile cluster with nothing player-view-specific.
 import { PlayerViewHeaderActions } from "@/components/tournaments/player/PlayerViewHeaderActions";
 import { TableCardLabels } from "@/components/dashboard/TableCardLabels";
+import { BreadcrumbLabelProvider, useBreadcrumbLabels } from "@/components/dashboard/BreadcrumbLabel";
 import { cn } from "@/lib/utils";
 
 export interface DashboardNavItem {
@@ -50,6 +51,7 @@ function humanizeSegment(segment: string): string {
 // aren't pages of their own.
 function Breadcrumbs() {
   const pathname = usePathname() ?? "";
+  const labels = useBreadcrumbLabels();
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 0) return <span />;
 
@@ -58,7 +60,7 @@ function Breadcrumbs() {
       <ol className="flex min-w-0 items-center gap-1 font-mono text-[11px] uppercase tracking-[0.12em]">
         {segments.map((segment, index) => {
           const last = index === segments.length - 1;
-          const label = humanizeSegment(segment);
+          const label = labels[segment] ?? humanizeSegment(segment);
           return (
             <li key={`${segment}-${index}`} className="flex min-w-0 items-center gap-1">
               {index > 0 ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-on-surface/25" aria-hidden="true" /> : null}
@@ -379,8 +381,9 @@ export function DashboardShell({
   );
 
   return (
-    // Only the content column is width-capped, so the sticky sidebar sits
-    // flush against the window's left edge on wide screens.
+    <BreadcrumbLabelProvider>
+    {/* Only the content column is width-capped, so the sticky sidebar sits
+        flush against the window's left edge on wide screens. */}
     <div className="app-shell flex min-h-screen bg-background text-on-surface">
       <aside
         className={cn(
@@ -475,5 +478,6 @@ export function DashboardShell({
         {standalone ? accountMobileNav : null}
       </div>
     </div>
+    </BreadcrumbLabelProvider>
   );
 }

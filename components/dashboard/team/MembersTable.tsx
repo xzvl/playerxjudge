@@ -60,7 +60,8 @@ export function MembersTable({
     m.role !== "captain" &&
     m.profile.id !== viewerId &&
     (isLead || (m.role !== "sub_captain" && m.profile.id !== ownerId));
-  const canRemove = (m: TeamMemberRow) => canEditRole(m) && m.profile.id !== ownerId;
+  // The owner can remove anyone: captain, sub-captain, even their own row.
+  const canRemove = (m: TeamMemberRow) => isOwner || (canEditRole(m) && m.profile.id !== ownerId);
   const canMakeCaptain = (m: TeamMemberRow) => isLead && m.role !== "captain";
   const canMakeOwner = (m: TeamMemberRow) => isOwner && m.profile.id !== ownerId;
 
@@ -101,7 +102,7 @@ export function MembersTable({
                   </td>
                   <td className="hidden px-3 text-on-surface/55 sm:table-cell">{joinedFmt.format(new Date(m.joinedAt))}</td>
                   <td className="px-3 text-right">
-                    {canEditRole(m) || canMakeCaptain(m) || canMakeOwner(m) ? (
+                    {canEditRole(m) || canMakeCaptain(m) || canMakeOwner(m) || canRemove(m) ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="erp:h-7 erp:w-7" aria-label={`Manage ${m.profile.displayName}`}>

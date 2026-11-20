@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, Crown, ListOrdered, Swords, Users } from "lucide-react";
 
 import { Panel } from "@/components/dashboard/erp";
@@ -8,7 +8,8 @@ import { MatchHistory } from "@/components/dashboard/team/MatchHistory";
 import { StandingsTable } from "@/components/dashboard/team/StandingsTable";
 import { DateRange, LeagueStatusBadge, PlayerCell, TeamLogo } from "@/components/dashboard/team/team-ui";
 import { getLeagueView } from "@/lib/teams/league-view";
-import { getLeague, getTeamBySlug, leagueStatus } from "@/lib/teams/queries";
+import { getCurrentUser } from "@/lib/supabase/get-user";
+import { getLeague, getMyTeamRole, getTeamBySlug, leagueStatus } from "@/lib/teams/queries";
 
 type Params = Promise<{ slug: string; leagueId: string }>;
 
@@ -25,13 +26,22 @@ export default async function PublicLeaguePage({ params, searchParams }: { param
   const { player } = await searchParams;
   const team = await getTeamBySlug(slug);
   if (!team) notFound();
+
+  // Members-only: team members (any role, captain and sub-captain included)
+  // and the owner. Everyone else goes back to the public team page.
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?redirectTo=/teams/${slug}/leagues/${leagueId}`);
+  const role = await getMyTeamRole(team.id, user.id);
+  if (!role && team.owner_id !== user.id) redirect(`/teams/${slug}`);
+
   const league = await getLeague(team.id, leagueId);
   if (!league) notFound();
 
   const view = await getLeagueView(league);
   const statsById = new Map(view.standings.map((r) => [r.profileId, r]));
   const playerFilter = player && view.profiles.has(player) ? player : null;
-  const matches = playerFilter ? view.matches.filter((m) => m.player.id === playerFilter) : view.matches;
+  const approved = view.matches.filter((m) => m.status === "approved");
+  const matches = playerFilter ? approved.filter((m) => m.player.id === playerFilter) : approved;
   const base = `/teams/${team.slug}/leagues/${league.id}`;
 
   const lineupRow = (id: string, label: string) => {
