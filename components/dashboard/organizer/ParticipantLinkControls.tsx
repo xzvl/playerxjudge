@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { Ban, Check } from "lucide-react";
 
 import { Badge, type BadgeProps } from "@/components/ui/badge";
@@ -57,7 +58,7 @@ export function ParticipantLinkActions({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   if (!link || link.status !== "pending") return null;
   const linkId = link.id;

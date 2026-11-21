@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 
 import { createLeague, updateLeague } from "@/app/account/team/actions";
@@ -30,7 +31,7 @@ export function LeagueForm({
   const [eliteCount, setEliteCount] = useState(String(league?.elite_count ?? 3));
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<{ status: "success" | "error"; message?: string } | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();

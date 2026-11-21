@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { Megaphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ export function TournamentAnnouncementsPanel({
   const [items, setItems] = useState(announcements);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   function post() {
     const message = draft.trim();

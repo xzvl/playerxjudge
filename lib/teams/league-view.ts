@@ -15,7 +15,7 @@ export interface LeagueView {
 }
 
 // Everything a league page shows, from one roster read and one match read.
-export async function getLeagueView(league: TeamLeague): Promise<LeagueView> {
+export async function getLeagueView(league: Pick<TeamLeague, "id">): Promise<LeagueView> {
   const [roster, matches] = await Promise.all([getLeagueRoster(league.id), getLeagueMatches(league.id)]);
 
   const profiles = new Map<string, ProfileSummary>();

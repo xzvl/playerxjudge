@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { ImageIcon, Trash2, Upload } from "lucide-react";
 
@@ -18,7 +19,7 @@ export function TeamImageField({ teamId, kind, initialUrl }: { teamId: string; k
   const inputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initialUrl);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
   const isLogo = kind === "logo";
 
   const onFile = async (event: React.ChangeEvent<HTMLInputElement>) => {

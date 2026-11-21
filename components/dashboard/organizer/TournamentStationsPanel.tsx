@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { Gavel, Plus, Radio, X } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -92,7 +93,7 @@ export function TournamentStationsPanel({
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [dragOverStationId, setDragOverStationId] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   // This page's own optimistic local state (every handler below updates
   // `stations`/`judges` directly) used to be the *only* way it ever

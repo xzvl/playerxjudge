@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { Flag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export function ReportsPanel({ reports }: { reports: OrganizerReportItem[] }) {
   const [items, setItems] = useState<OrganizerReportItem[]>(reports);
   const [view, setView] = useState<"open" | "closed">("open");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   function setStatus(report: OrganizerReportItem, status: TournamentReportStatus) {
     setError(null);

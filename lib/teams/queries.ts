@@ -1,5 +1,8 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+
+import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 import { TEAM_ROLE_ORDER } from "@/lib/teams/constants";
 import type {
@@ -94,6 +97,19 @@ export async function getMyTeamRole(teamId: string, userId: string | null | unde
     .eq("profile_id", userId)
     .maybeSingle();
   return ((data as { role: TeamRole } | null)?.role ?? null) as TeamRole | null;
+}
+
+// Same as getMyTeamRole but keyed by slug, so it can run alongside the team
+// lookup instead of waiting for the team's id.
+export async function getMyTeamRoleBySlug(slug: string, userId: string): Promise<TeamRole | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("team_members")
+    .select("role, teams!inner(slug)")
+    .eq("profile_id", userId)
+    .eq("teams.slug", slug)
+    .maybeSingle();
+  return ((data as unknown as { role: TeamRole } | null)?.role ?? null) as TeamRole | null;
 }
 
 export interface TeamMemberRow {
@@ -236,6 +252,12 @@ export async function getLeague(teamId: string, leagueId: string): Promise<TeamL
   return (data as TeamLeague | null) ?? null;
 }
 
+export async function getLeagueById(leagueId: string): Promise<TeamLeague | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("team_leagues").select("*").eq("id", leagueId).maybeSingle();
+  return (data as TeamLeague | null) ?? null;
+}
+
 export interface RosterRow {
   profile: ProfileSummary;
   slot: LeagueRosterSlot;
@@ -278,7 +300,7 @@ export interface LeagueMatchRow {
 }
 
 // Newest first.
-export async function getLeagueMatches(leagueId: string, opts: { profileId?: string } = {}): Promise<LeagueMatchRow[]> {
+export async function getLeagueMatches(leagueId: string, opts: { profileId?: string; matchId?: string } = {}): Promise<LeagueMatchRow[]> {
   const supabase = await createClient();
   let query = supabase
     .from("team_league_matches")
@@ -287,28 +309,29 @@ export async function getLeagueMatches(leagueId: string, opts: { profileId?: str
     .order("played_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (opts.profileId) query = query.eq("profile_id", opts.profileId);
+  if (opts.matchId) query = query.eq("id", opts.matchId);
   const { data } = await query;
   const matches = (data ?? []) as TeamLeagueMatch[];
   if (matches.length === 0) return [];
 
-  const { data: battleData } = await supabase
-    .from("team_league_battles")
-    .select("*")
-    .in("match_id", matches.map((m) => m.id))
-    .order("battle_no");
+  // Battles and profiles are independent, so they load together; only the
+  // blade names have to wait for the battles.
+  const [{ data: battleData }, profiles] = await Promise.all([
+    supabase
+      .from("team_league_battles")
+      .select("*")
+      .in("match_id", matches.map((m) => m.id))
+      .order("battle_no"),
+    loadProfiles(supabase, matches.map((m) => m.profile_id)),
+  ]);
   const battles = (battleData ?? []) as TeamLeagueBattle[];
 
   const beybladeIds = [...new Set(battles.flatMap((b) => [b.player_beyblade_id, b.opponent_beyblade_id]).filter(Boolean))] as string[];
-  const [profiles, beybladeNames] = await Promise.all([
-    loadProfiles(supabase, matches.map((m) => m.profile_id)),
-    (async () => {
-      const map = new Map<string, string>();
-      if (beybladeIds.length === 0) return map;
-      const { data: bb } = await supabase.from("beyblades").select("id, name").in("id", beybladeIds);
-      for (const b of (bb ?? []) as { id: string; name: string }[]) map.set(b.id, b.name);
-      return map;
-    })(),
-  ]);
+  const beybladeNames = new Map<string, string>();
+  if (beybladeIds.length > 0) {
+    const { data: bb } = await supabase.from("beyblades").select("id, name").in("id", beybladeIds);
+    for (const b of (bb ?? []) as { id: string; name: string }[]) beybladeNames.set(b.id, b.name);
+  }
 
   return matches.map((m) => ({
     id: m.id,
@@ -337,8 +360,8 @@ export async function getLeagueMatches(leagueId: string, opts: { profileId?: str
 }
 
 export async function getLeagueMatch(leagueId: string, matchId: string): Promise<LeagueMatchRow | null> {
-  const all = await getLeagueMatches(leagueId);
-  return all.find((m) => m.id === matchId) ?? null;
+  const [match] = await getLeagueMatches(leagueId, { matchId });
+  return match ?? null;
 }
 
 export interface BeybladeOption {
@@ -348,14 +371,24 @@ export interface BeybladeOption {
 
 // Whole-blade catalog entries for the battle pickers (a battle names the
 // Beyblade by its Blade).
+//
+// The catalog is the same for everyone and rarely changes, so it's cached
+// across requests (10 minutes) instead of queried on every form load.
+const loadBladeOptions = unstable_cache(
+  async (): Promise<BeybladeOption[]> => {
+    const { data } = await createPublicClient()
+      .from("beyblades")
+      .select("id, name")
+      .in("category", ["blade", "ratchet_integrated_blade"])
+      .order("name");
+    return (data ?? []) as BeybladeOption[];
+  },
+  ["team-blade-options"],
+  { revalidate: 600 }
+);
+
 export async function getBladeOptions(): Promise<BeybladeOption[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("beyblades")
-    .select("id, name")
-    .in("category", ["blade", "ratchet_integrated_blade"])
-    .order("name");
-  return ((data ?? []) as BeybladeOption[]) ?? [];
+  return loadBladeOptions();
 }
 
 // Every match this player has logged across all their teams' leagues,

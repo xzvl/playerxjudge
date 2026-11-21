@@ -10,9 +10,19 @@ function headerLabel(th: Element): string {
   return (clone.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
-function labelTable(table: HTMLTableElement) {
+// React stamps a `__reactFiber$…` key on every node it owns. A table without
+// one is still raw server HTML waiting to hydrate (streamed pages hydrate
+// after the shell), and adding attributes to it now would cause a hydration
+// mismatch.
+function isHydrated(el: Element): boolean {
+  return Object.keys(el).some((key) => key.startsWith("__reactFiber$"));
+}
+
+// Returns false when the table was skipped because it hasn't hydrated yet.
+function labelTable(table: HTMLTableElement): boolean {
+  if (!isHydrated(table)) return false;
   const headerRow = table.tHead?.rows[table.tHead.rows.length - 1];
-  if (!headerRow) return;
+  if (!headerRow) return true;
 
   // Expand colSpans so column positions line up with the body cells.
   const labels: string[] = [];
@@ -31,10 +41,16 @@ function labelTable(table: HTMLTableElement) {
       }
     }
   }
+  return true;
 }
 
-function labelAll(root: ParentNode) {
-  root.querySelectorAll("table").forEach((table) => labelTable(table as HTMLTableElement));
+// Returns true if every table was labelled (none waiting on hydration).
+function labelAll(root: ParentNode): boolean {
+  let done = true;
+  root.querySelectorAll("table").forEach((table) => {
+    if (!labelTable(table as HTMLTableElement)) done = false;
+  });
+  return done;
 }
 
 // Copies each table's column names onto its body cells as `data-label`, so
@@ -47,18 +63,31 @@ export function TableCardLabels({ rootId }: { rootId: string }) {
     if (!root) return;
 
     let frame = 0;
+    let retry = 0;
+    let tries = 0;
+    // Tables still waiting on hydration don't trigger the observer, so poll
+    // for them briefly.
+    const run = () => {
+      if (labelAll(root)) return;
+      if (tries++ < 60) retry = window.setTimeout(run, 250);
+    };
     const schedule = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => labelAll(root));
+      frame = requestAnimationFrame(() => {
+        tries = 0;
+        window.clearTimeout(retry);
+        run();
+      });
     };
 
-    labelAll(root);
+    run();
     // childList only: setting data-label is an attribute change, so this
     // never re-triggers itself.
     const observer = new MutationObserver(schedule);
     observer.observe(root, { childList: true, subtree: true });
     return () => {
       cancelAnimationFrame(frame);
+      window.clearTimeout(retry);
       observer.disconnect();
     };
   }, [rootId]);

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { MapPin, Pencil, Trash2, Users2 } from "lucide-react";
 
@@ -59,7 +60,7 @@ export function CommunityManagementPanel({ items }: { items: CommunityListItem[]
   const [rows, setRows] = useState(items);
   const [deleting, setDeleting] = useState<CommunityListItem | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   function handleDelete() {
     if (!deleting) return;

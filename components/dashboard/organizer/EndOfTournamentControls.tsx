@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { Flag } from "lucide-react";
 
@@ -24,7 +25,7 @@ function ActionMessage({ message }: { message: { type: "error" | "success"; text
 // match has a result.
 export function EndOfTournamentControls({ tournamentId, slug }: { tournamentId: string; slug: string }) {
   const router = useRouter();
-  const [ending, startEnding] = useTransition();
+  const [ending, startEnding] = useBusyTransition();
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   function handleEnd() {

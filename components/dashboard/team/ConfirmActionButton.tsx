@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,7 +31,7 @@ export function ConfirmActionButton({
 } & Omit<ButtonProps, "onClick" | "children">) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   const run = () =>
     startTransition(async () => {

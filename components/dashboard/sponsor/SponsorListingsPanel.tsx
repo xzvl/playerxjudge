@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { Facebook, Globe, Handshake, Pencil, RefreshCw, Trash2 } from "lucide-react";
 
@@ -106,7 +107,7 @@ export function SponsorListingsPanel({ items }: { items: Sponsor[] }) {
   const [deleting, setDeleting] = useState<Sponsor | null>(null);
   const [renewing, setRenewing] = useState<Sponsor | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   function handleDelete() {
     if (!deleting) return;

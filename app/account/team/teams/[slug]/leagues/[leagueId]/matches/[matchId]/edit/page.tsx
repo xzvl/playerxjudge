@@ -16,8 +16,12 @@ export default async function EditLeagueMatchPage({
   params: Promise<{ slug: string; leagueId: string; matchId: string }>;
 }) {
   const { slug, leagueId, matchId } = await params;
-  const { team, league, userId, isManager } = await loadLeagueContext(slug, leagueId);
-  const [match, roster, blades] = await Promise.all([getLeagueMatch(league.id, matchId), getLeagueRoster(league.id), getBladeOptions()]);
+  const [{ team, league, userId, isManager }, match, roster, blades] = await Promise.all([
+    loadLeagueContext(slug, leagueId),
+    getLeagueMatch(leagueId, matchId),
+    getLeagueRoster(leagueId),
+    getBladeOptions(),
+  ]);
   if (!match) notFound();
 
   const leagueHref = `/account/team/teams/${team.slug}/leagues/${league.id}`;

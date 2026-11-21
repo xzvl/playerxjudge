@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, GripVertical, Sparkles, Trash2, UserPlus, Users } from "lucide-react";
 
@@ -51,7 +52,7 @@ export function RosterBoard({
   const [drag, setDrag] = useState<DragSource | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, startSaving] = useTransition();
+  const [saving, startSaving] = useBusyTransition();
 
   // Server data wins after a refresh (e.g. after Generate or Add).
   useEffect(() => setElite(initialElite), [initialElite]);
@@ -422,7 +423,7 @@ function AddPlayersButton({ leagueId, available }: { leagueId: string; available
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
   const sorted = useMemo(() => [...available].sort((a, b) => a.displayName.localeCompare(b.displayName)), [available]);
 
   const toggle = (id: string) =>

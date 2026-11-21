@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/supabase/get-user";
 import { isTeamManagerRole } from "@/lib/teams/constants";
-import { getLeague, getMyTeamRole, getTeamBySlug } from "@/lib/teams/queries";
+import { getLeagueById, getMyTeamRoleBySlug, getTeamBySlug } from "@/lib/teams/queries";
 import type { Team, TeamLeague, TeamRole } from "@/lib/types/database";
 
 export interface TeamPageContext {
@@ -19,13 +19,13 @@ export interface TeamPageContext {
 // Deduped per request (layout + page both call it). Non-members get the
 // public page instead of the management view.
 export const loadTeamContext = cache(async (slug: string): Promise<TeamPageContext> => {
+  // The session check is local (no network); after it, the team and the
+  // viewer's role are looked up together by slug.
   const user = await getCurrentUser();
   if (!user) redirect(`/login?redirectTo=/account/team/teams/${slug}`);
-
-  const team = await getTeamBySlug(slug);
+  const [team, role] = await Promise.all([getTeamBySlug(slug), getMyTeamRoleBySlug(slug, user.id)]);
   if (!team) notFound();
 
-  const role = await getMyTeamRole(team.id, user.id);
   const isOwner = team.owner_id === user.id;
   if (!role && !isOwner) redirect(`/teams/${slug}`);
 
@@ -34,9 +34,10 @@ export const loadTeamContext = cache(async (slug: string): Promise<TeamPageConte
 
 export const loadLeagueContext = cache(
   async (slug: string, leagueId: string): Promise<TeamPageContext & { league: TeamLeague }> => {
-    const ctx = await loadTeamContext(slug);
-    const league = await getLeague(ctx.team.id, leagueId);
-    if (!league) notFound();
+    // The league is looked up by id alongside the team, then checked to
+    // belong to it, so the two don't queue.
+    const [ctx, league] = await Promise.all([loadTeamContext(slug), getLeagueById(leagueId)]);
+    if (!league || league.team_id !== ctx.team.id) notFound();
     return { ...ctx, league };
   }
 );

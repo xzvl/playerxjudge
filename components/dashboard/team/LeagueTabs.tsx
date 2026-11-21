@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 import { ListOrdered, Swords, Users } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,17 +22,21 @@ export function LeagueTabs({
   matches: ReactNode;
   counts: { roster: number; matches: number };
 }) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [tab, setTab] = useState<LeagueTab>(initialTab);
 
   const onChange = (value: string) => {
     const next = value as LeagueTab;
     setTab(next);
-    const params = new URLSearchParams(searchParams?.toString());
+    // Read the live URL (not the router's snapshot) and write it back
+    // without involving the Next router, so switching never waits on it.
+    const params = new URLSearchParams(window.location.search);
     params.set("tab", next);
     if (next !== "matches") params.delete("player");
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    try {
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
+    } catch {
+      // URL sync is cosmetic; the tab has already switched.
+    }
   };
 
   return (

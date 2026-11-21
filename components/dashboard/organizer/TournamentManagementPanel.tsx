@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Archive, ArchiveRestore, Copy, LayoutDashboard, MonitorPlay, Plus, Send, Undo2 } from "lucide-react";
@@ -107,7 +108,7 @@ export function TournamentManagementPanel({
   const router = useRouter();
   const started = useMemo(() => new Set(startedTournamentIds), [startedTournamentIds]);
   const [tab, setTab] = useState<TabKey>("all");
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useBusyTransition();
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   // Defaults to the tournament's start date, latest first — see

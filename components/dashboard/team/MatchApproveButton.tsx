@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 export function MatchApproveButton({ matchId }: { matchId: string }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
   const [error, setError] = useState<string | null>(null);
   return (
     <>

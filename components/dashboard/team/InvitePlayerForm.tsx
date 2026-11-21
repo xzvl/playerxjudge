@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { Loader2, UserPlus } from "lucide-react";
 
@@ -21,7 +22,7 @@ export function InvitePlayerForm({ teamId, canAppointSubCaptain }: { teamId: str
   const [role, setRole] = useState<TeamRole>("member");
   const [status, setStatus] = useState<{ status: "success" | "error"; message?: string } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+  const [, startTransition] = useBusyTransition();
 
   // Debounced search; ignores responses for stale queries.
   useEffect(() => {

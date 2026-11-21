@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, X } from "lucide-react";
@@ -17,7 +18,7 @@ export function PendingInvitesList({ teamId, invites, canManage }: { teamId: str
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+  const [, startTransition] = useBusyTransition();
 
   if (invites.length === 0) return <p className="text-[13px] text-on-surface/50">No pending invites.</p>;
 
@@ -64,7 +65,7 @@ export function MyInvitesList({ invites }: { invites: MyInviteRow[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+  const [, startTransition] = useBusyTransition();
 
   const respond = (id: string, accept: boolean) => {
     setBusy(id);

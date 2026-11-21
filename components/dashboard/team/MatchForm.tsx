@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { Plus, Swords, Trash2 } from "lucide-react";
 
@@ -65,7 +66,7 @@ export function MatchForm({
   const [nextKey, setNextKey] = useState(battles.length);
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<{ status: "success" | "error"; message?: string } | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   // Points implied by the battles: a win scores the finish's points for the
   // player, a loss scores them for the opponent.

@@ -351,7 +351,8 @@ export async function setMemberRole(teamId: string, profileId: string, role: Tea
     .maybeSingle();
   const current = (target as { role: TeamRole } | null)?.role;
   if (!current) return fail("They're not on the team.");
-  if (current === "captain") return fail("Transfer captaincy to someone else first.");
+  // Only the owner may demote the captain directly; others transfer captaincy.
+  if (current === "captain" && !ctx.isOwner) return fail("Transfer captaincy to someone else first.");
   if ((role === "sub_captain" || current === "sub_captain") && !ctx.isLead) {
     return fail("Only the owner or captain can appoint or change sub-captains.");
   }

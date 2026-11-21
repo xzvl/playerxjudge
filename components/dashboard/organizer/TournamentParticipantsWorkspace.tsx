@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRightLeft,
@@ -851,7 +852,7 @@ export function TournamentParticipantsWorkspace({
     new Map(initialLinks.map((l) => [l.participantId, l.link]))
   );
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   function handleLinkConfirmed(participantId: string) {
     setLinks((prev) => {

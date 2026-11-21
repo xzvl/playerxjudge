@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { Check, Pencil, X } from "lucide-react";
 
@@ -56,7 +57,7 @@ export function DeckRows({
   const [nameDraft, setNameDraft] = useState("");
   const [picker, setPicker] = useState<{ deckId: string; slot: Slot } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   const orderedRows = useMemo(() => {
     const active = rows.find((r) => r.id === activeId);

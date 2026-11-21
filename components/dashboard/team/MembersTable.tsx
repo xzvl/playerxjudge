@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { Crown, KeyRound, LogOut, MoreHorizontal, UserMinus } from "lucide-react";
 
@@ -21,7 +22,7 @@ import { ASSIGNABLE_TEAM_ROLES, TEAM_ROLE_LABEL } from "@/lib/teams/constants";
 import type { TeamMemberRow } from "@/lib/teams/queries";
 import type { TeamRole } from "@/lib/types/database";
 
-const joinedFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+const joinedFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 export function MembersTable({
   teamId,
@@ -41,7 +42,7 @@ export function MembersTable({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ kind: "remove" | "captain" | "owner"; member: TeamMemberRow } | null>(null);
-  const [, startTransition] = useTransition();
+  const [, startTransition] = useBusyTransition();
   const isManager = isOwner || viewerRole === "captain" || viewerRole === "sub_captain";
   // Owner or captain: may appoint sub-captains and hand the captain role on.
   const isLead = isOwner || viewerRole === "captain";
@@ -55,11 +56,13 @@ export function MembersTable({
     });
 
   // What the viewer may do to a given row (mirrors the server rules).
+  // The owner can change anyone's role, their own and the captain's included.
   const canEditRole = (m: TeamMemberRow) =>
-    isManager &&
+    isOwner ||
+    (isManager &&
     m.role !== "captain" &&
     m.profile.id !== viewerId &&
-    (isLead || (m.role !== "sub_captain" && m.profile.id !== ownerId));
+    (isLead || (m.role !== "sub_captain" && m.profile.id !== ownerId)));
   // The owner can remove anyone: captain, sub-captain, even their own row.
   const canRemove = (m: TeamMemberRow) => isOwner || (canEditRole(m) && m.profile.id !== ownerId);
   const canMakeCaptain = (m: TeamMemberRow) => isLead && m.role !== "captain";
@@ -215,7 +218,7 @@ function ControlledConfirm({
   onDone: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
   return (
     <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
       <DialogContent className="max-w-sm">

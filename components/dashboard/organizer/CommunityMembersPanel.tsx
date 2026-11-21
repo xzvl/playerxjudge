@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
@@ -29,7 +30,7 @@ export function CommunityMembersPanel({ slug, members }: { slug: string; members
   const [view, setView] = useState<View>("members");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   const requestCount = rows.filter((r) => r.status === "pending").length;
 

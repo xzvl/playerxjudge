@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 
 import { AssignComboDialog } from "@/components/dashboard/beyblade/AssignComboDialog";
 import { DeckSlotCard, EMPTY_COMBO_MATCH_STATS } from "@/components/dashboard/beyblade/combo-ui";
@@ -32,7 +33,7 @@ export function DeckSlots({
   const [current, setCurrent] = useState(slots);
   const [pickerSlot, setPickerSlot] = useState<Slot | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   function assign(slot: Slot, combo: ComboWithParts | null) {
     setError(null);

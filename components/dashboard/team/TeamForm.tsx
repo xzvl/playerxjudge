@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 
 import { createTeam, updateTeam } from "@/app/account/team/actions";
@@ -26,7 +27,7 @@ export function TeamForm({
   const [description, setDescription] = useState(team?.description ?? "");
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<{ status: "success" | "error"; message?: string } | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   const onNameChange = (value: string) => {
     setName(value);

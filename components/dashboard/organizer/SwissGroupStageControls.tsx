@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { Flag, Play } from "lucide-react";
 
@@ -54,9 +55,9 @@ export function SwissGroupStageControls({
 }) {
   const router = useRouter();
   const [rounds, setRounds] = useState(currentSwissRounds);
-  const [savingRounds, startSavingRounds] = useTransition();
-  const [starting, startStarting] = useTransition();
-  const [ending, startEnding] = useTransition();
+  const [savingRounds, startSavingRounds] = useBusyTransition();
+  const [starting, startStarting] = useBusyTransition();
+  const [ending, startEnding] = useBusyTransition();
   const [roundsMessage, setRoundsMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [startMessage, setStartMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [endMessage, setEndMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);

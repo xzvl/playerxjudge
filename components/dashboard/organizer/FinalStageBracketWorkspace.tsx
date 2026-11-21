@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { Maximize2, Minimize2, MonitorPlay } from "lucide-react";
 
@@ -133,7 +134,7 @@ export function FinalStageBracketWorkspace({
   const [clearingId, setClearingId] = useState<string | null>(null);
   const [clearingRound, setClearingRound] = useState<WorkspaceBracketRound | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   const matchesById = new Map(matches.map((m) => [m.id, m]));
   const mainBracketMatches = matches.filter((m) => m.bracket_id === null);

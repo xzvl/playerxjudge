@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import {
   Calendar,
   Check,
@@ -157,7 +158,7 @@ export function TournamentPreRegisterWorkspace({
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [editing, setEditing] = useState<TournamentPreregistration | null>(null);
   const [removing, setRemoving] = useState<TournamentPreregistration | null>(null);

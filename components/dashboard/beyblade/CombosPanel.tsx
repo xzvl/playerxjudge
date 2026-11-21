@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { Pencil, Plus, Swords, Trash2 } from "lucide-react";
 
@@ -16,7 +17,7 @@ export function CombosPanel({ combos }: { combos: ComboWithParts[] }) {
   const [rows, setRows] = useState(combos);
   const [deleting, setDeleting] = useState<ComboWithParts | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
 
   function handleDelete() {
     if (!deleting) return;

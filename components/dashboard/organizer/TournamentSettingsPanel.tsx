@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -63,10 +64,10 @@ export function TournamentSettingsPanel({
   const [detailsMessage, setDetailsMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, startDeleting] = useTransition();
+  const [deleting, startDeleting] = useBusyTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
-  const [resetting, startResetting] = useTransition();
+  const [resetting, startResetting] = useBusyTransition();
   const [resetError, setResetError] = useState<string | null>(null);
 
   const form = useForm<CreateTournamentInput>({

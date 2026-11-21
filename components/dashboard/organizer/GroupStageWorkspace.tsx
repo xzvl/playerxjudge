@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpCircle, Camera, Download, Eraser, Flame, Gavel, Maximize2, Minimize2, Info, MonitorPlay, Pencil, Play, Radio, RotateCw, Square, Swords, Trophy, Zap } from "lucide-react";
@@ -667,8 +668,8 @@ function MatchesTab({ groupId, tournamentId, slug, participants, matches, setMat
   const [detailsMatch, setDetailsMatch] = useState<Match | null>(null);
   const [clearingMatch, setClearingMatch] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const [generating, startGenerating] = useTransition();
+  const [pending, startTransition] = useBusyTransition();
+  const [generating, startGenerating] = useBusyTransition();
 
   const latestRound = matches.reduce((max, m) => Math.max(max, m.round), 0);
   const latestRoundMatches = matches.filter((m) => m.round === latestRound);

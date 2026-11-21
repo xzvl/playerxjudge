@@ -18,8 +18,13 @@ export default async function NewLeagueMatchPage({
 }) {
   const { slug, leagueId } = await params;
   const { player } = await searchParams;
-  const { team, league, userId, isManager } = await loadLeagueContext(slug, leagueId);
-  const [roster, blades] = await Promise.all([getLeagueRoster(league.id), getBladeOptions()]);
+  // Roster and blades only need the league id from the URL: load them with
+  // the access check rather than after it.
+  const [{ team, league, userId, isManager }, roster, blades] = await Promise.all([
+    loadLeagueContext(slug, leagueId),
+    getLeagueRoster(leagueId),
+    getBladeOptions(),
+  ]);
   const leagueHref = `/account/team/teams/${team.slug}/leagues/${league.id}`;
 
   // Managers log for anyone on the roster; everyone else only for themselves.

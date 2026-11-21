@@ -18,6 +18,7 @@ import type { NavUser } from "@/components/layout/ProfileMenu";
 // theme/notifications/profile cluster with nothing player-view-specific.
 import { PlayerViewHeaderActions } from "@/components/tournaments/player/PlayerViewHeaderActions";
 import { TableCardLabels } from "@/components/dashboard/TableCardLabels";
+import { BusyBoundary, DashboardBusyProvider } from "@/components/dashboard/DashboardBusy";
 import { BreadcrumbLabelProvider, useBreadcrumbLabels } from "@/components/dashboard/BreadcrumbLabel";
 import { cn } from "@/lib/utils";
 
@@ -381,6 +382,7 @@ export function DashboardShell({
   );
 
   return (
+    <DashboardBusyProvider>
     <BreadcrumbLabelProvider>
     {/* Only the content column is width-capped, so the sticky sidebar sits
         flush against the window's left edge on wide screens. */}
@@ -471,7 +473,7 @@ export function DashboardShell({
           id="dashboard-content"
           className={cn("mx-auto max-w-[1400px] px-4 py-5 lg:px-6 lg:py-6", standalone && "pb-tabbar lg:pb-6")}
         >
-          {children}
+          <BusyBoundary>{children}</BusyBoundary>
         </div>
         <TableCardLabels rootId="dashboard-content" />
         {standalone ? <BottomTabBar navItems={navItems} onMenu={() => setMobileOpen(true)} /> : null}
@@ -479,5 +481,6 @@ export function DashboardShell({
       </div>
     </div>
     </BreadcrumbLabelProvider>
+    </DashboardBusyProvider>
   );
 }

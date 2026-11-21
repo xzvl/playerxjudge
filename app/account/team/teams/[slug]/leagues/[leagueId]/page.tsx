@@ -27,8 +27,15 @@ export default async function LeaguePage({
 }) {
   const { slug, leagueId } = await params;
   const sp = await searchParams;
-  const { team, league, userId, isManager } = await loadLeagueContext(slug, leagueId);
-  const [view, members] = await Promise.all([getLeagueView(league), getTeamMembers(team.id)]);
+  // The league view only needs the id from the URL, so it loads alongside
+  // the access check instead of after it (it's public data, and nothing is
+  // rendered if the check fails). Members are only for the manager's
+  // "add to roster" list.
+  const [{ team, league, userId, isManager }, view] = await Promise.all([
+    loadLeagueContext(slug, leagueId),
+    getLeagueView({ id: leagueId }),
+  ]);
+  const members = isManager ? await getTeamMembers(team.id) : [];
 
   const base = `/account/team/teams/${team.slug}/leagues/${league.id}`;
   const onRoster = view.roster.some((r) => r.profile.id === userId);

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { Play } from "lucide-react";
 
@@ -23,7 +24,7 @@ function ActionMessage({ message }: { message: { type: "error" | "success"; text
 // bordered box, same copy pattern — just for the final bracket instead.
 export function StartFinalStageControls({ tournamentId, slug }: { tournamentId: string; slug: string }) {
   const router = useRouter();
-  const [starting, startStarting] = useTransition();
+  const [starting, startStarting] = useBusyTransition();
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   function handleStart() {
