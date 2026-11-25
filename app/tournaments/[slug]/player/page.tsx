@@ -8,7 +8,14 @@ import { PlayerMatchesSection } from "@/components/tournaments/player/PlayerMatc
 import { PlayerStatsSidebar } from "@/components/tournaments/player/PlayerStatsSidebar";
 import { PlayerPreviewView } from "@/components/tournaments/player/PlayerPreviewView";
 import { getPlayerViewData } from "@/app/tournaments/[slug]/player/data";
-import { getDeckCombos, listOrCreateUserDecks } from "@/app/account/beyblade/data";
+import {
+  getComboMatchStatsForProfile,
+  getComboPickerOptions,
+  getDeckCombos,
+  listOrCreateUserDecks,
+  listUserCombos,
+} from "@/app/account/beyblade/data";
+import type { DeckSummary } from "@/components/dashboard/beyblade/DeckRows";
 import { getTournamentWorkspace } from "@/lib/mock/tournament-workspace";
 import { computeGroupStandings, type StandingsRow } from "@/lib/swiss";
 import {
@@ -230,13 +237,28 @@ export default async function TournamentPlayerPage({
   // yet. This is the viewer's real active deck (see CurrentDeckSection's
   // doc comment), fetched fresh here rather than passed down from
   // anywhere else on the page.
-  let currentDeck: { id: string; name: string; combos: Awaited<ReturnType<typeof getDeckCombos>> } | null = null;
+  let currentDeck: {
+    id: string;
+    name: string;
+    combos: Awaited<ReturnType<typeof getDeckCombos>>;
+    decks: DeckSummary[];
+    availableCombos: Awaited<ReturnType<typeof listUserCombos>>;
+    pickerOptions: Awaited<ReturnType<typeof getComboPickerOptions>>;
+    comboStats: Awaited<ReturnType<typeof getComboMatchStatsForProfile>>;
+  } | null = null;
   if (authUser && myLink?.status === "approved" && selectedId !== null && selectedId === myLinkedParticipantId) {
     const decks = await listOrCreateUserDecks(authUser.id);
     const activeDeck = decks.find((d) => d.is_active) ?? decks[0] ?? null;
     if (activeDeck) {
-      const combos = await getDeckCombos(activeDeck, authUser.id);
-      currentDeck = { id: activeDeck.id, name: activeDeck.name, combos };
+      // Everything the Change / Customize popups need, loaded together.
+      const [deckSummaries, availableCombos, pickerOptions, comboStats] = await Promise.all([
+        Promise.all(decks.map(async (deck): Promise<DeckSummary> => ({ deck, combos: await getDeckCombos(deck, authUser.id) }))),
+        listUserCombos(authUser.id),
+        getComboPickerOptions(),
+        getComboMatchStatsForProfile(authUser.id),
+      ]);
+      const combos = deckSummaries.find((d) => d.deck.id === activeDeck.id)?.combos ?? [null, null, null];
+      currentDeck = { id: activeDeck.id, name: activeDeck.name, combos, decks: deckSummaries, availableCombos, pickerOptions, comboStats };
     }
   }
 
@@ -262,7 +284,15 @@ export default async function TournamentPlayerPage({
             myLink={myLink}
           />
 
-          {currentDeck ? <CurrentDeckSection deckId={currentDeck.id} deckName={currentDeck.name} combos={currentDeck.combos} /> : null}
+          {currentDeck ? <CurrentDeckSection
+              deckId={currentDeck.id}
+              deckName={currentDeck.name}
+              combos={currentDeck.combos}
+              decks={currentDeck.decks}
+              availableCombos={currentDeck.availableCombos}
+              pickerOptions={currentDeck.pickerOptions}
+              comboStats={currentDeck.comboStats}
+            /> : null}
 
           <PlayerStagesSection
             hasGroupStage

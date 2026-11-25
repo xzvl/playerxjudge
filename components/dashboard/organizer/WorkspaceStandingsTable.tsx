@@ -1,3 +1,4 @@
+import { DragScroll } from "@/components/dashboard/team/DragScroll";
 import { RegistrationStatusBadge } from "@/components/dashboard/organizer/badges";
 import { cn } from "@/lib/utils";
 import type { WorkspaceParticipant } from "@/lib/mock/tournament-workspace";
@@ -23,7 +24,7 @@ export function WorkspaceStandingsTable({
   }
 
   return (
-    <div className="overflow-x-auto border border-outline-variant/25">
+    <DragScroll className="max-h-none border border-outline-variant/25">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
           <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
@@ -54,6 +55,6 @@ export function WorkspaceStandingsTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </DragScroll>
   );
 }

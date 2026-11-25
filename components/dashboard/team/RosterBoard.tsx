@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, GripVertical, Sparkles, Trash2, UserPlus, Users } from "lucide-react";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ConfirmActionButton } from "@/components/dashboard/team/ConfirmActionButton";
 import { PlayerCell } from "@/components/dashboard/team/team-ui";
 import { EmptyState } from "@/components/dashboard/erp";
+import { PlayerLoadingScreen } from "@/components/tournaments/player/PlayerLoadingScreen";
 import type { ProfileSummary } from "@/lib/teams/queries";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +53,9 @@ export function RosterBoard({
   const [drag, setDrag] = useState<DragSource | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, startSaving] = useBusyTransition();
+  // Plain transition (not the dashboard-wide skeleton): moves show the
+  // player-style loader over a transparent backdrop instead.
+  const [saving, startSaving] = useTransition();
 
   // Server data wins after a refresh (e.g. after Generate or Add).
   useEffect(() => setElite(initialElite), [initialElite]);
@@ -186,7 +189,6 @@ export function RosterBoard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[13px] text-on-surface/55">
             Drag players to reorder the bench or swap them into the lineup. Changes save automatically.
-            {saving ? <span className="ml-2 text-on-surface/40">Saving…</span> : null}
           </p>
           <div className="flex flex-wrap gap-2">
             <AddPlayersButton leagueId={leagueId} available={available} />
@@ -323,6 +325,12 @@ export function RosterBoard({
           {subs.length === 0 && !drag ? <li className="px-3 py-3 text-[13px] text-on-surface/45">No subs.</li> : null}
         </ol>
       </section>
+
+      {saving ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <PlayerLoadingScreen label="Saving lineup…" />
+        </div>
+      ) : null}
     </div>
   );
 }

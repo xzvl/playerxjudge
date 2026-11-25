@@ -40,6 +40,7 @@ import { useRealtimeMatches } from "@/lib/hooks/use-realtime-matches";
 import { useRealtimeRows } from "@/lib/hooks/use-realtime-rows";
 import { cn } from "@/lib/utils";
 import type { FinishType, Match, MatchBattle, MatchBattleCombo, TournamentStation } from "@/lib/types/database";
+import { BlurLoadingOverlay } from "@/components/tournaments/player/BlurLoadingOverlay";
 
 export interface JudgeMatchContext {
   matchId: string;
@@ -642,6 +643,7 @@ export function JudgeConsole({
 
   return (
     <div ref={consoleRef} className="app-shell flex min-h-screen bg-background text-on-surface">
+      <BlurLoadingOverlay show={saving} label="Saving result…" />
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-outline-variant/20 bg-surface-container-lowest lg:flex">
         <div className="border-b border-outline-variant/20 px-4 pb-4 pt-5">
           <Link href="/" className="heading block text-lg" aria-label="PlayerXJudge home">

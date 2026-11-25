@@ -43,7 +43,7 @@ function StageFormatSelect({
         options={stageFormatOptionsFor(stage)}
       />
       <p className="text-xs text-on-surface/40">
-        {stage === "final" ? "Swiss, Double Elimination, and Round Robin are" : "Double Elimination and Round Robin are"} coming
+        {stage === "final" ? "Swiss, Double Elimination, and Round Robin are" : "Double Elimination is"} coming
         soon.
       </p>
     </div>
@@ -134,7 +134,12 @@ function GroupStageFields({
       </fieldset>
 
       <fieldset disabled={locked} className="m-0 min-w-0 space-y-5 border-0 p-0">
-        {format === "round_robin" ? <RoundRobinPlayCountField prefix="groupStage" /> : null}
+        {format === "round_robin" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <RoundRobinPlayCountField prefix="groupStage" />
+            <RankByField prefix="groupStage" />
+          </div>
+        ) : null}
 
         {format === "double_elimination" ? (
           <FormField

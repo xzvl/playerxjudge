@@ -6,6 +6,7 @@ import { Clock3, Link as LinkIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cancelParticipantLink, requestParticipantLink } from "@/app/tournaments/[slug]/player/actions";
+import { BlurLoadingOverlay } from "@/components/tournaments/player/BlurLoadingOverlay";
 
 export interface MyParticipantLink {
   id: string;
@@ -64,6 +65,7 @@ export function LinkPlayerControls({
     if (myLink.status !== "pending") return null;
     return (
       <div className="flex shrink-0 items-center gap-2">
+        <BlurLoadingOverlay show={pending} label="Updating…" />
         <span className="label-mono flex items-center gap-1.5 bg-surface-container-high px-2 py-1.5 text-on-surface/60">
           <Clock3 className="h-3.5 w-3.5" aria-hidden="true" /> Pending
         </span>
@@ -85,6 +87,7 @@ export function LinkPlayerControls({
 
   return (
     <>
+      <BlurLoadingOverlay show={pending} label="Linking player…" />
       <Button
         variant="outline"
         size="sm"

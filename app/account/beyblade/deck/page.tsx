@@ -31,11 +31,11 @@ export default async function BuildDeckPage() {
       <PageHeader
         eyebrow="Beyblade Dashboard"
         title="Build Your Deck"
-        description="Rename, select, or customize any of your decks — each one holds 3 combo slots."
+        description="Create as many decks as you like, then rename them, pick your active deck and fill each one's 3 combo slots."
       />
 
       <div className="mt-5">
-        <DeckRows decks={deckSummaries} availableCombos={combos} pickerOptions={pickerOptions} comboStats={comboStats} />
+        <DeckRows key={deckSummaries.map((d) => d.deck.id).join()} decks={deckSummaries} availableCombos={combos} pickerOptions={pickerOptions} comboStats={comboStats} />
       </div>
     </div>
   );

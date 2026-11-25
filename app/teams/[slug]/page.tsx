@@ -26,11 +26,13 @@ export default async function PublicTeamPage({ params }: { params: Promise<{ slu
   if (!team) notFound();
 
   const user = await getCurrentUser();
-  const [members, leagues, viewerRole] = await Promise.all([
+  const [members, allLeagues, viewerRole] = await Promise.all([
     getTeamMembers(team.id),
     getTeamLeagues(team.id),
     getMyTeamRole(team.id, user?.id),
   ]);
+  // Earliest start date first (the shared query returns newest first).
+  const leagues = [...allLeagues].sort((a, b) => a.start_date.localeCompare(b.start_date));
 
   return (
     <div className="app-shell bg-background">

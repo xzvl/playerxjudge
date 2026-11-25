@@ -399,14 +399,15 @@ function deckNameForIndex(index: number): string {
   return `Deck ${letters}`;
 }
 
-// Every profile always has at least this many decks — auto-provisioned
+// Every profile always has at least this many decks (the first is auto-created
+// on first visit; players add more with createDeck) — originally provisioned
 // lazily the first time they visit Build Your Deck. v1's UI only exposes
 // picking among these fixed 3, but raising this constant (or adding a
 // "+ New Deck" action later, which would just insert one more the same
 // way) doesn't need a schema change — `beyblade_decks` was never capped
 // at one row per profile, only `is_active` is (see
 // 20250101000043_beyblade_decks_one_active.sql).
-const MIN_DECKS = 3;
+const MIN_DECKS = 1;
 
 export async function listOrCreateUserDecks(profileId: string): Promise<BeybladeDeck[]> {
   const supabase = await createClient();

@@ -1,5 +1,6 @@
 "use client";
 
+import { DragScroll } from "@/components/dashboard/team/DragScroll";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 import Link from "next/link";
@@ -873,7 +874,7 @@ export function GroupStandingsTable({
   }
 
   return (
-    <div className="overflow-x-auto border border-outline-variant/25">
+    <DragScroll className="max-h-none border border-outline-variant/25">
       <table className="w-full min-w-[880px] text-left text-sm">
         <thead>
           <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
@@ -931,7 +932,7 @@ export function GroupStandingsTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </DragScroll>
   );
 }
 

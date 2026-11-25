@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, Crown, ListOrdered, Swords, Users } from "lucide-react";
+import { ChevronLeft, Crown, ListOrdered, Plus, Swords, Users } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/dashboard/erp";
 import { MatchHistory } from "@/components/dashboard/team/MatchHistory";
 import { StandingsTable } from "@/components/dashboard/team/StandingsTable";
@@ -44,6 +45,13 @@ export default async function PublicLeaguePage({ params, searchParams }: { param
   const matches = playerFilter ? approved.filter((m) => m.player.id === playerFilter) : approved;
   const base = `/teams/${team.slug}/leagues/${league.id}`;
 
+  // Managers (owner / captain / sub-captain) log for anyone on the roster;
+  // other members only for themselves, so they must be on it.
+  const isManager = team.owner_id === user.id || role === "captain" || role === "sub_captain";
+  const onRoster = view.roster.some((r) => r.profile.id === user.id);
+  const canAddMatch = isManager ? view.roster.length > 0 : onRoster;
+  const addMatchHref = `/account/team/teams/${team.slug}/leagues/${league.id}/matches/new${playerFilter ? `?player=${playerFilter}` : ""}`;
+
   const lineupRow = (id: string, label: string) => {
     const profile = view.profiles.get(id);
     const s = statsById.get(id);
@@ -65,17 +73,19 @@ export default async function PublicLeaguePage({ params, searchParams }: { param
 
   return (
     <div className="app-shell bg-background">
-      <div className="mx-auto max-w-6xl space-y-5 px-4 pb-16 pt-6 lg:px-6">
-        <div>
+      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 overflow-x-clip px-4 pb-16 pt-6 lg:px-6">
+        <div className="min-w-0">
           <Link href={`/teams/${team.slug}`} className="inline-flex items-center gap-1 text-xs text-on-surface/50 hover:text-on-surface">
             <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" /> {team.name}
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-3 border-b border-outline-variant/20 pb-4">
             <TeamLogo name={team.name} logoUrl={team.logo_url} size="lg" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="heading truncate">{league.name}</h1>
-                <LeagueStatusBadge status={leagueStatus(league)} />
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="heading min-w-0 truncate">{league.name}</h1>
+                <span className="shrink-0">
+                  <LeagueStatusBadge status={leagueStatus(league)} />
+                </span>
               </div>
               <p className="text-xs text-on-surface/50">
                 {team.name} · <DateRange start={league.start_date} end={league.end_date} />
@@ -84,8 +94,8 @@ export default async function PublicLeaguePage({ params, searchParams }: { param
           </div>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_1.6fr]">
-          <div className="space-y-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] [&>*]:min-w-0">
+          <div className="space-y-5 [&>*]:min-w-0">
             <Panel title="Elite" icon={Crown} meta={`${view.elite.length}/${league.elite_count}`} bodyClassName="p-0">
               {view.elite.length === 0 ? (
                 <p className="px-4 py-4 text-[13px] text-on-surface/50">Lineup not set yet.</p>
@@ -117,6 +127,13 @@ export default async function PublicLeaguePage({ params, searchParams }: { param
             <h2 className="heading flex items-center gap-2">
               <Swords className="h-4 w-4 text-on-surface/45" aria-hidden="true" /> Match history
             </h2>
+            {canAddMatch ? (
+              <Button asChild size="sm">
+                <Link href={addMatchHref}>
+                  <Plus /> Add match
+                </Link>
+              </Button>
+            ) : null}
             {playerFilter ? (
               <p className="text-[13px] text-on-surface/55">
                 {view.profiles.get(playerFilter)?.displayName}&apos;s matches ·{" "}

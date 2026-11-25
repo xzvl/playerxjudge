@@ -1,3 +1,4 @@
+import { DragScroll } from "@/components/dashboard/team/DragScroll";
 import { cn } from "@/lib/utils";
 import type { FinalStandingRow } from "@/lib/final-stage-placeholder";
 
@@ -24,7 +25,7 @@ export function FinalStageStandingsTable({
   }
 
   return (
-    <div className="overflow-x-auto border border-outline-variant/25">
+    <DragScroll className="max-h-none border border-outline-variant/25">
       <table className="w-full min-w-[520px] text-left text-sm">
         <thead>
           <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
@@ -63,6 +64,6 @@ export function FinalStageStandingsTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </DragScroll>
   );
 }

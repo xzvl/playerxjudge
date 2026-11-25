@@ -32,12 +32,12 @@ export function MatchHistory({
   }
 
   return (
-    <ul className="divide-y divide-outline-variant/15 rounded-lg border border-outline-variant/25">
+    <ul className="min-w-0 divide-y divide-outline-variant/15 overflow-hidden rounded-lg border border-outline-variant/25">
       {matches.map((m) => {
         const result = matchResult(m.playerPoints, m.opponentPoints);
         const editable = canEdit?.(m) ?? false;
         const summary = (
-          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2.5 sm:grid-cols-[6.5rem_1fr_auto_auto]">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 sm:grid-cols-[6.5rem_minmax(0,1fr)_auto_auto]">
             <span className="hidden text-xs tabular-nums text-on-surface/50 sm:block">{formatLeagueDate(m.playedOn)}</span>
             <div className="flex min-w-0 items-center gap-2">
               <PlayerAvatar profile={m.player} size="xs" />
@@ -84,7 +84,7 @@ export function MatchHistory({
                   {m.battles.length > 0 ? (
                     <ol className="space-y-1">
                       {m.battles.map((b) => (
-                        <li key={b.battleNo} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px]">
+                        <li key={b.battleNo} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 break-words text-[13px]">
                           <span className="w-14 shrink-0 text-xs tabular-nums text-on-surface/45">Battle {b.battleNo}</span>
                           <span className="font-medium">{b.playerBeyblade ?? "Beyblade"}</span>
                           <span

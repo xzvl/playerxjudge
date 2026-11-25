@@ -12,8 +12,8 @@ export const RANK_BY_OPTIONS = [
   { value: "game_wins", label: "Game/Set Wins" },
   { value: "game_win_pct", label: "Game/Set Win %" },
   { value: "game_diff", label: "Game/Set W/L Difference" },
-  { value: "points_scored", label: "Pts" },
-  { value: "points_diff", label: "Pts Diff" },
+  { value: "points_scored", label: "Points Scored" },
+  { value: "points_diff", label: "Points Difference" },
 ] as const;
 const RANK_BY_VALUES = RANK_BY_OPTIONS.map((o) => o.value) as [string, ...string[]];
 export type RankByMetric = (typeof RANK_BY_OPTIONS)[number]["value"];
@@ -60,7 +60,7 @@ export const BATTLE_TYPE_OPTIONS: { value: BattleType; label: string; disabled?:
 // that's the only format with real bracket generation behind it; group/single
 // stage formats support Swiss too since group-stage Swiss is fully built).
 // Remove entries from these disabled-sets as each format's engine ships.
-const DISABLED_NON_FINAL_FORMATS: BracketFormat[] = ["double_elimination", "round_robin"];
+const DISABLED_NON_FINAL_FORMATS: BracketFormat[] = ["double_elimination"];
 const DISABLED_FINAL_FORMATS: BracketFormat[] = ["swiss", "double_elimination", "round_robin"];
 
 function withDisabled(

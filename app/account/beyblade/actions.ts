@@ -219,3 +219,73 @@ export async function renameDeck(deckId: string, name: string): Promise<RoleActi
   revalidateBeybladeAccountPaths();
   return { status: "success" };
 }
+
+// Hard cap so a profile can't create decks without bound.
+const MAX_DECKS = 20;
+
+export interface CreateDeckResult extends RoleActionState {
+  id?: string;
+}
+
+// Adds one more deck (3 empty combo slots) to the profile. The first deck a
+// profile ever has is active; later ones start inactive.
+export async function createDeck(name?: string): Promise<CreateDeckResult> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const supabase = await createClient();
+  const { data: existing, error: listError } = await supabase.from("beyblade_decks").select("name").eq("profile_id", user.id);
+  if (listError) return { status: "error", message: listError.message };
+  const names = new Set((existing ?? []).map((d) => (d as { name: string }).name));
+  if (names.size >= MAX_DECKS) return { status: "error", message: `You can have up to ${MAX_DECKS} decks.` };
+
+  let finalName = name?.trim() ?? "";
+  if (finalName.length > 60) return { status: "error", message: "Name is too long." };
+  if (!finalName) {
+    // "Deck A", "Deck B", … first unused letter, then "Deck 27"+.
+    let i = 0;
+    do {
+      finalName = i < 26 ? `Deck ${String.fromCharCode(65 + i)}` : `Deck ${i + 1}`;
+      i++;
+    } while (names.has(finalName));
+  }
+
+  const { data, error } = await supabase
+    .from("beyblade_decks")
+    .insert({ profile_id: user.id, name: finalName, is_active: (existing ?? []).length === 0 })
+    .select("id")
+    .single();
+  if (error) return { status: "error", message: error.message };
+
+  revalidateBeybladeAccountPaths();
+  return { status: "success", id: (data as { id: string }).id };
+}
+
+// Deletes a deck. A profile always keeps at least one; deleting the active
+// deck hands "active" to the oldest remaining one.
+export async function deleteDeck(deckId: string): Promise<RoleActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("beyblade_decks")
+    .select("id, is_active")
+    .eq("profile_id", user.id)
+    .order("created_at", { ascending: true });
+  const decks = (data ?? []) as { id: string; is_active: boolean }[];
+  const target = decks.find((d) => d.id === deckId);
+  if (!target) return { status: "error", message: "Deck not found." };
+  if (decks.length <= 1) return { status: "error", message: "You need to keep at least one deck." };
+
+  const { error } = await supabase.from("beyblade_decks").delete().eq("id", deckId).eq("profile_id", user.id);
+  if (error) return { status: "error", message: error.message };
+
+  if (target.is_active) {
+    const next = decks.find((d) => d.id !== deckId);
+    if (next) await supabase.from("beyblade_decks").update({ is_active: true }).eq("id", next.id).eq("profile_id", user.id);
+  }
+
+  revalidateBeybladeAccountPaths();
+  return { status: "success" };
+}

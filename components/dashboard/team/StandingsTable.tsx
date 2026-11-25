@@ -1,3 +1,4 @@
+import { DragScroll } from "@/components/dashboard/team/DragScroll";
 import { PlayerCell, ResultPill } from "@/components/dashboard/team/team-ui";
 import type { ProfileSummary } from "@/lib/teams/queries";
 import type { StandingsRow } from "@/lib/teams/standings";
@@ -37,10 +38,10 @@ export function StandingsTable({
   if (rows.length === 0) return <p className="text-[13px] text-on-surface/50">No players on the roster yet.</p>;
 
   return (
-    <div className="overflow-x-auto">
+    <DragScroll>
       <table className="w-full text-left text-[13px]">
-        <thead>
-          <tr className="border-b border-outline-variant/20">
+        <thead className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:whitespace-nowrap [&_th]:border-b [&_th]:border-outline-variant/20 [&_th]:bg-surface-container-low [&_th]:py-2 [&_th]:text-xs [&_th]:font-medium [&_th]:text-on-surface/60">
+          <tr>
             <th className="w-10 px-3 text-right">#</th>
             <th className="px-3">Player</th>
             {COLUMNS.map((c) => (
@@ -112,6 +113,6 @@ export function StandingsTable({
           })}
         </tbody>
       </table>
-    </div>
+    </DragScroll>
   );
 }
