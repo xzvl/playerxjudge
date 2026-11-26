@@ -3,9 +3,13 @@
 import { useMemo, useState, useTransition } from "react";
 import { Building2, Trash2 } from "lucide-react";
 
+import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
+import { PageToolbar } from "@/components/ui/page-toolbar";
 import { SearchInput } from "@/components/ui/search-input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/dashboard/erp";
 import { CommunityApprovalStatusBadge, CommunityStatusBadge } from "@/components/dashboard/organizer/badges";
 import { adminDeleteCommunity, approveCommunity, rejectCommunity } from "@/app/backend/communities/actions";
 import { formatDate } from "@/lib/format";
@@ -29,70 +33,6 @@ export interface CommunityItem {
   approvalStatus: CommunityRow["approval_status"];
   memberCount: number;
   ownerName: string;
-}
-
-function RejectDialog({
-  item,
-  onOpenChange,
-  pending,
-  onConfirm,
-}: {
-  item: PendingCommunityItem | null;
-  onOpenChange: (open: boolean) => void;
-  pending: boolean;
-  onConfirm: () => void;
-}) {
-  if (!item) return null;
-  return (
-    <Dialog open={item !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Reject {item.name}?</DialogTitle>
-          <DialogDescription>
-            This permanently deletes the application and its logos. The organizer can submit a new application if they
-            want to try again.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="p-6 pt-0">
-          <Button type="button" variant="destructive" tooltip="Permanently reject this application" disabled={pending} onClick={onConfirm}>
-            {pending ? "Rejecting..." : "Reject Application"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function DeleteDialog({
-  item,
-  onOpenChange,
-  pending,
-  onConfirm,
-}: {
-  item: CommunityItem | null;
-  onOpenChange: (open: boolean) => void;
-  pending: boolean;
-  onConfirm: () => void;
-}) {
-  if (!item) return null;
-  return (
-    <Dialog open={item !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Delete {item.name}?</DialogTitle>
-          <DialogDescription>
-            This permanently deletes the community and its logos. Tournaments it hosted aren&apos;t deleted — they just
-            become independent.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="p-6 pt-0">
-          <Button type="button" variant="destructive" tooltip="Permanently delete this community" disabled={pending} onClick={onConfirm}>
-            {pending ? "Deleting..." : "Delete Community"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 // Pending queue (approve/reject — see the "Submit Application" step of the
@@ -162,44 +102,45 @@ export function CommunitiesPanel({ pending: pendingItems, communities }: { pendi
   }
 
   return (
-    <div className="space-y-10">
-      {error ? (
-        <p role="alert" className="border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+    <div className="space-y-8">
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
-      <section>
-        <h2 className="label-mono mb-4 text-primary">Pending Applications</h2>
+      <section aria-labelledby="pending-communities" className="space-y-3">
+        <h2 id="pending-communities" className="label-mono text-primary">
+          Pending Applications{queue.length > 0 ? ` (${queue.length})` : ""}
+        </h2>
         {queue.length === 0 ? (
-          <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-            No pending applications right now.
-          </p>
+          <EmptyState title="No pending applications" description="New community applications show up here for review." />
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
             {queue.map((item) => (
-              <li key={item.id} className="flex items-start gap-4 border border-outline-variant/25 bg-surface-container-low p-4">
-                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-outline-variant/40 text-primary">
-                  {item.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.logoUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <Building2 className="h-4 w-4" aria-hidden="true" />
-                  )}
+              <li
+                key={item.id}
+                className="flex flex-col gap-3 rounded-[3px] border border-outline-variant/25 bg-surface-container-low p-4 sm:flex-row sm:items-start sm:gap-4"
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[3px] border border-outline-variant/40 text-primary">
+                    {item.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.logoUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <Building2 className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-on-surface">{item.name}</p>
+                    <p className="mt-0.5 text-[13px] text-on-surface/60">{item.locationLine}</p>
+                    <p className="mt-1.5 text-xs text-on-surface/40">
+                      Applied by {item.ownerName} &middot; {formatDate(item.submittedAt)}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-on-surface">{item.name}</p>
-                  <p className="mt-1 text-sm text-on-surface/60">{item.locationLine}</p>
-                  <p className="label-mono mt-2 text-on-surface/30">
-                    Applied by {item.ownerName} &middot; {formatDate(item.submittedAt)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" tooltip="Approve this application" disabled={busy} onClick={() => handleApprove(item.id)}>
-                    Approve
-                  </Button>
+                <div className="flex shrink-0 gap-2 max-sm:[&>button]:flex-1">
                   <Button variant="outline" size="sm" tooltip="Reject this application" disabled={busy} onClick={() => setRejecting(item)}>
                     Reject
+                  </Button>
+                  <Button size="sm" tooltip="Approve this application" disabled={busy} onClick={() => handleApprove(item.id)}>
+                    Approve
                   </Button>
                 </div>
               </li>
@@ -208,60 +149,73 @@ export function CommunitiesPanel({ pending: pendingItems, communities }: { pendi
         )}
       </section>
 
-      <section>
-        <h2 className="label-mono mb-4 text-on-surface/40">All Communities</h2>
-        <SearchInput
-          wrapperClassName="mb-4 w-full max-w-xs"
-          placeholder="Search by name or owner..."
-          aria-label="Search communities"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+      <section aria-labelledby="all-communities" className="space-y-3">
+        <h2 id="all-communities" className="label-mono text-on-surface/50">
+          All Communities
+        </h2>
+        <PageToolbar
+          search={
+            <SearchInput
+              placeholder="Search by name or owner"
+              aria-label="Search communities"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          }
         />
-        {filtered.length > 0 ? (
-          <div className="overflow-x-auto border border-outline-variant/25">
-            <table className="w-full min-w-[680px] text-left text-sm">
-              <thead>
-                <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                  <th className="p-4" scope="col">Community</th>
-                  <th className="p-4" scope="col">Owner</th>
-                  <th className="p-4" scope="col">Members</th>
-                  <th className="p-4" scope="col">Status</th>
-                  <th className="p-4" scope="col">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
-                    <td className="p-4 font-medium text-on-surface">{c.name}</td>
-                    <td className="p-4 text-on-surface/60">{c.ownerName}</td>
-                    <td className="p-4 text-on-surface/60">{c.memberCount}</td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        <CommunityStatusBadge status={c.status} />
-                        <CommunityApprovalStatusBadge status={c.approvalStatus} />
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <Button variant="ghost" size="icon" tooltip="Delete this community" aria-label={`Delete ${c.name}`} disabled={busy} onClick={() => setDeleting(c)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-            No communities match your search.
-          </p>
-        )}
+        <DataTable
+          caption="All communities"
+          rows={filtered}
+          rowKey={(c) => c.id}
+          minWidth={680}
+          empty={{ title: "No communities found", description: "Try a different name or owner." }}
+          columns={[
+            { key: "name", header: "Community", className: "font-medium text-on-surface", cell: (c) => c.name },
+            { key: "owner", header: "Owner", className: "text-on-surface/60", cell: (c) => c.ownerName },
+            { key: "members", header: "Members", className: "text-on-surface/60", cell: (c) => c.memberCount },
+            {
+              key: "status",
+              header: "Status",
+              cell: (c) => (
+                <div className="flex flex-wrap gap-1">
+                  <CommunityStatusBadge status={c.status} />
+                  <CommunityApprovalStatusBadge status={c.approvalStatus} />
+                </div>
+              ),
+            },
+            {
+              key: "actions",
+              actions: true,
+              cell: (c) => (
+                <Button variant="ghost" size="icon" tooltip="Delete this community" aria-label={`Delete ${c.name}`} disabled={busy} onClick={() => setDeleting(c)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              ),
+            },
+          ]}
+        />
       </section>
 
-      <RejectDialog item={rejecting} onOpenChange={(open) => !open && setRejecting(null)} pending={busy} onConfirm={handleReject} />
-      <DeleteDialog item={deleting} onOpenChange={(open) => !open && setDeleting(null)} pending={busy} onConfirm={handleDelete} />
+      <ConfirmDialog
+        open={rejecting !== null}
+        onOpenChange={(open) => !open && setRejecting(null)}
+        title={`Reject ${rejecting?.name ?? "application"}?`}
+        description="This permanently deletes the application and its logos. The organizer can submit a new application if they want to try again."
+        confirmLabel="Reject Application"
+        pendingLabel="Rejecting…"
+        pending={busy}
+        onConfirm={handleReject}
+      />
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title={`Delete ${deleting?.name ?? "community"}?`}
+        description="This permanently deletes the community and its logos. Tournaments it hosted aren't deleted — they just become independent."
+        confirmLabel="Delete Community"
+        pendingLabel="Deleting…"
+        pending={busy}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

@@ -3,11 +3,16 @@
 import { useMemo, useState, useTransition } from "react";
 import { Ban, Check, Pencil, Trash2 } from "lucide-react";
 
+import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { SearchInput } from "@/components/ui/search-input";
 import { Combobox } from "@/components/ui/combobox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PageToolbar } from "@/components/ui/page-toolbar";
+import { SearchInput } from "@/components/ui/search-input";
 import { SponsorApprovalStatusBadge, SponsorStatusBadge } from "@/components/dashboard/sponsor/badges";
 import { adminDeleteSponsor, adminUpdateSponsor, approveSponsorListing, declineSponsorListing, type AdminSponsorEdit } from "@/app/backend/sponsors/actions";
 import { DONATION_TIERS, tierLabel } from "@/lib/sponsors/status";
@@ -64,21 +69,17 @@ function EditDialog({
           <DialogTitle>Edit {item.companyName}</DialogTitle>
           <DialogDescription>Updates this sponsor listing directly.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 px-6 pb-6">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Sponsor Name</label>
+        <div className="space-y-4 px-5 pb-1">
+          <FormField label="Sponsor Name" required>
             <Input value={values.companyName} onChange={(e) => setForm({ ...values, companyName: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Website URL</label>
-            <Input value={values.websiteUrl} onChange={(e) => setForm({ ...values, websiteUrl: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Facebook URL</label>
-            <Input value={values.facebookUrl} onChange={(e) => setForm({ ...values, facebookUrl: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Donation Tier</label>
+          </FormField>
+          <FormField label="Website URL">
+            <Input type="url" value={values.websiteUrl} onChange={(e) => setForm({ ...values, websiteUrl: e.target.value })} />
+          </FormField>
+          <FormField label="Facebook URL">
+            <Input type="url" value={values.facebookUrl} onChange={(e) => setForm({ ...values, facebookUrl: e.target.value })} />
+          </FormField>
+          <FormField label="Donation Tier">
             <Combobox
               label="Tier"
               hideLabel
@@ -87,23 +88,17 @@ function EditDialog({
               onValueChange={(v) => setForm({ ...values, donationTier: v as SponsorDonationTier })}
               options={DONATION_TIERS.map((t) => ({ value: t.value, label: `${t.duration} (${t.price})` }))}
             />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface" htmlFor="sponsor-tier-expires">
-              Tier Expires
-            </label>
-            <input
-              id="sponsor-tier-expires"
-              type="date"
-              value={values.tierExpiresAt}
-              onChange={(e) => setForm({ ...values, tierExpiresAt: e.target.value })}
-              className="h-11 w-full border border-outline-variant/40 bg-surface-container-low px-3 text-sm text-on-surface"
-            />
-          </div>
+          </FormField>
+          <FormField label="Tier Expires" hint="Leave empty for no expiry.">
+            <Input type="date" value={values.tierExpiresAt} onChange={(e) => setForm({ ...values, tierExpiresAt: e.target.value })} />
+          </FormField>
         </div>
-        <DialogFooter className="p-6 pt-0">
-          <Button type="button" tooltip="Save changes" disabled={pending} onClick={() => onSave(values)}>
-            {pending ? "Saving..." : "Save Changes"}
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" disabled={pending} aria-busy={pending} onClick={() => onSave(values)}>
+            {pending ? "Saving…" : "Save Changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -191,95 +186,83 @@ export function SponsorsPanel({ sponsors }: { sponsors: SponsorItem[] }) {
   }
 
   return (
-    <div>
-      <SearchInput
-        wrapperClassName="mb-6 w-full max-w-xs"
-        placeholder="Search by sponsor or account..."
-        aria-label="Search sponsors"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+    <div className="space-y-4">
+      <PageToolbar
+        search={
+          <SearchInput
+            placeholder="Search by sponsor or account"
+            aria-label="Search sponsors"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        }
       />
 
-      {error ? (
-        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
-      {filtered.length > 0 ? (
-        <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead>
-              <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                <th className="p-4" scope="col">Sponsor</th>
-                <th className="p-4" scope="col">Account</th>
-                <th className="p-4" scope="col">Tier</th>
-                <th className="p-4" scope="col">Expires</th>
-                <th className="p-4" scope="col">Status</th>
-                <th className="p-4" scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <tr key={s.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
-                  <td className="p-4 font-medium text-on-surface">{s.companyName}</td>
-                  <td className="p-4 text-on-surface/60">{s.ownerName}</td>
-                  <td className="p-4 text-on-surface/60">{tierLabel(s.donationTier)}</td>
-                  <td className="p-4 text-on-surface/60">{s.tierExpiresAt ? formatDate(s.tierExpiresAt) : "—"}</td>
-                  <td className="p-4">
-                    <div className="flex flex-wrap gap-1">
-                      <SponsorStatusBadge sponsor={{ approval_status: s.approvalStatus, tier_expires_at: s.tierExpiresAt }} />
-                      <SponsorApprovalStatusBadge status={s.approvalStatus} />
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-1">
-                      {s.approvalStatus === "pending" ? (
-                        <>
-                          <Button variant="ghost" size="icon" tooltip="Approve this listing" aria-label={`Approve ${s.companyName}`} disabled={pending} onClick={() => handleApprove(s.id)}>
-                            <Check className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" tooltip="Decline this listing" aria-label={`Decline ${s.companyName}`} disabled={pending} onClick={() => handleDecline(s.id)}>
-                            <Ban className="h-3.5 w-3.5" />
-                          </Button>
-                        </>
-                      ) : null}
-                      <Button variant="ghost" size="icon" tooltip="Edit this listing" aria-label={`Edit ${s.companyName}`} disabled={pending} onClick={() => setEditing(s)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" tooltip="Delete this listing" aria-label={`Delete ${s.companyName}`} disabled={pending} onClick={() => setDeleting(s)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-          {sponsors.length === 0 ? "No sponsor listings yet." : "No sponsors match your search."}
-        </p>
-      )}
+      <DataTable
+        caption="Sponsor listings"
+        rows={filtered}
+        rowKey={(s) => s.id}
+        minWidth={900}
+        empty={{
+          title: sponsors.length === 0 ? "No sponsor listings yet" : "No sponsors found",
+          description: sponsors.length === 0 ? "Listings submitted by sponsors appear here." : "Try a different sponsor or account name.",
+        }}
+        columns={[
+          { key: "name", header: "Sponsor", className: "font-medium text-on-surface", cell: (s) => s.companyName },
+          { key: "owner", header: "Account", className: "text-on-surface/60", cell: (s) => s.ownerName },
+          { key: "tier", header: "Tier", className: "text-on-surface/60", cell: (s) => tierLabel(s.donationTier) },
+          { key: "expires", header: "Expires", className: "text-on-surface/60", cell: (s) => (s.tierExpiresAt ? formatDate(s.tierExpiresAt) : "—") },
+          {
+            key: "status",
+            header: "Status",
+            cell: (s) => (
+              <div className="flex flex-wrap gap-1">
+                <SponsorStatusBadge sponsor={{ approval_status: s.approvalStatus, tier_expires_at: s.tierExpiresAt }} />
+                <SponsorApprovalStatusBadge status={s.approvalStatus} />
+              </div>
+            ),
+          },
+          {
+            key: "actions",
+            actions: true,
+            cell: (s) => (
+              <div className="flex items-center justify-end gap-1">
+                {s.approvalStatus === "pending" ? (
+                  <>
+                    <Button variant="ghost" size="icon" tooltip="Approve this listing" aria-label={`Approve ${s.companyName}`} disabled={pending} onClick={() => handleApprove(s.id)}>
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" tooltip="Decline this listing" aria-label={`Decline ${s.companyName}`} disabled={pending} onClick={() => handleDecline(s.id)}>
+                      <Ban className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                ) : null}
+                <Button variant="ghost" size="icon" tooltip="Edit this listing" aria-label={`Edit ${s.companyName}`} disabled={pending} onClick={() => setEditing(s)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" tooltip="Delete this listing" aria-label={`Delete ${s.companyName}`} disabled={pending} onClick={() => setDeleting(s)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ),
+          },
+        ]}
+      />
 
       <EditDialog item={editing} onOpenChange={(open) => !open && setEditing(null)} pending={pending} onSave={handleSave} />
 
-      <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete {deleting?.companyName}?</DialogTitle>
-            <DialogDescription>This permanently deletes this sponsor listing and its logo.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-6 pt-0">
-            <Button type="button" variant="destructive" tooltip="Permanently delete this listing" disabled={pending} onClick={handleDelete}>
-              {pending ? "Deleting..." : "Delete Listing"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title={`Delete ${deleting?.companyName ?? "listing"}?`}
+        description="This permanently deletes this sponsor listing and its logo."
+        confirmLabel="Delete Listing"
+        pendingLabel="Deleting…"
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useBusyTransition } from "@/components/dashboard/DashboardBusy";
 
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // A button that asks before running a destructive server action, and keeps
 // the dialog open with the error if the action fails.
@@ -50,29 +50,20 @@ export function ConfirmActionButton({
       <Button type="button" variant={variant} size={size} className={className} onClick={() => setOpen(true)} {...buttonProps}>
         {children}
       </Button>
-      <Dialog
+      <ConfirmDialog
         open={open}
         onOpenChange={(next) => {
-          if (!pending) setOpen(next);
+          setOpen(next);
           if (!next) setError(null);
         }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            {description ? <DialogDescription>{description}</DialogDescription> : null}
-          </DialogHeader>
-          {error ? <p className="px-5 text-[13px] text-primary">{error}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>
-              Cancel
-            </Button>
-            <Button type="button" variant={destructive ? "destructive" : "default"} onClick={run} disabled={pending}>
-              {pending ? "Working…" : confirmLabel}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={title}
+        description={description}
+        confirmLabel={confirmLabel}
+        destructive={destructive}
+        pending={pending}
+        error={error}
+        onConfirm={run}
+      />
     </>
   );
 }

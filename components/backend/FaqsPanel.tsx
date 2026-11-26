@@ -3,11 +3,16 @@
 import { useState, useTransition } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
+import { InlineAlert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/dashboard/erp";
 import { Textarea } from "@/components/ui/textarea";
 import { createFaq, deleteFaq, togglePublishFaq, updateFaq, type FaqInput } from "@/app/backend/faqs/actions";
 
@@ -49,37 +54,32 @@ function FaqDialog({
         <DialogHeader>
           <DialogTitle>{initial.question ? "Edit FAQ" : "New FAQ"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 px-6 pb-6">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Question</label>
+        <div className="space-y-4 px-5 pb-1">
+          <FormField label="Question" required>
             <Input value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Answer</label>
+          </FormField>
+          <FormField label="Answer" required>
             <Textarea rows={5} value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-on-surface">Category</label>
+          </FormField>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField label="Category" hint="Groups FAQs on the public page.">
               <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="General" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-on-surface">Sort Order</label>
-              <Input
-                type="number"
-                value={form.sortOrder}
-                onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) || 0 })}
-              />
-            </div>
+            </FormField>
+            <FormField label="Sort Order" hint="Lower numbers appear first.">
+              <Input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) || 0 })} />
+            </FormField>
           </div>
-          <label className="flex cursor-pointer items-center gap-3 text-sm text-on-surface/70">
+          <label className="flex min-h-9 cursor-pointer items-center gap-3 text-sm text-on-surface/70">
             <Checkbox checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} />
             Published
           </label>
         </div>
-        <DialogFooter className="p-6 pt-0">
-          <Button type="button" tooltip="Save this FAQ" disabled={pending} onClick={() => onSave(form)}>
-            {pending ? "Saving..." : "Save FAQ"}
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" disabled={pending} aria-busy={pending} onClick={() => onSave(form)}>
+            {pending ? "Saving…" : "Save FAQ"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -154,33 +154,29 @@ export function FaqsPanel({ faqs }: { faqs: FaqItem[] }) {
   }
 
   return (
-    <div>
-      <div className="mb-6 flex justify-end">
+    <div className="space-y-4">
+      <div className="flex justify-end">
         <Button size="sm" className="gap-1.5" tooltip="Add a new FAQ" onClick={() => setCreating(true)}>
           <Plus className="h-3.5 w-3.5" /> New FAQ
         </Button>
       </div>
 
-      {error ? (
-        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
       {rows.length > 0 ? (
         <div className="space-y-3">
           {rows.map((item) => (
-            <div key={item.id} className="border border-outline-variant/25 bg-surface-container-low p-4">
+            <div key={item.id} className="rounded-[3px] border border-outline-variant/25 bg-surface-container-low p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-bold text-on-surface">{item.question}</p>
-                    <Badge variant={item.isPublished ? "success" : "outline"}>{item.isPublished ? "Published" : "Draft"}</Badge>
+                    <StatusBadge tone={item.isPublished ? "success" : "neutral"}>{item.isPublished ? "Published" : "Draft"}</StatusBadge>
                     {item.category ? <Badge variant="secondary">{item.category}</Badge> : null}
                   </div>
                   <p className="mt-2 text-sm text-on-surface/60">{item.answer}</p>
                 </div>
-                <div className="flex shrink-0 gap-1">
+                <div className="flex shrink-0 flex-wrap items-center gap-1">
                   <Button variant="outline" size="sm" tooltip={item.isPublished ? "Unpublish this FAQ" : "Publish this FAQ"} disabled={pending} onClick={() => handleTogglePublish(item)}>
                     {item.isPublished ? "Unpublish" : "Publish"}
                   </Button>
@@ -196,9 +192,15 @@ export function FaqsPanel({ faqs }: { faqs: FaqItem[] }) {
           ))}
         </div>
       ) : (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-          No FAQs yet.
-        </p>
+        <EmptyState
+          title="No FAQs yet"
+          description="Add the questions players ask most often."
+          action={
+            <Button size="sm" className="gap-1.5" onClick={() => setCreating(true)}>
+              <Plus className="h-3.5 w-3.5" /> New FAQ
+            </Button>
+          }
+        />
       )}
 
       <FaqDialog open={creating} onOpenChange={setCreating} initial={EMPTY_FORM} pending={pending} onSave={handleCreate} />
@@ -212,18 +214,16 @@ export function FaqsPanel({ faqs }: { faqs: FaqItem[] }) {
         />
       ) : null}
 
-      <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete this FAQ?</DialogTitle>
-          </DialogHeader>
-          <DialogFooter className="p-6 pt-0">
-            <Button type="button" variant="destructive" tooltip="Permanently delete this FAQ" disabled={pending} onClick={handleDelete}>
-              {pending ? "Deleting..." : "Delete FAQ"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title="Delete this FAQ?"
+        description={deleting?.question}
+        confirmLabel="Delete FAQ"
+        pendingLabel="Deleting…"
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

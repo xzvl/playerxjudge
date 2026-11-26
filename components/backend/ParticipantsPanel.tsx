@@ -3,11 +3,16 @@
 import { useMemo, useState, useTransition } from "react";
 import { Link2, Pencil, Trash2, Unlink } from "lucide-react";
 
+import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { SearchInput } from "@/components/ui/search-input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PageToolbar } from "@/components/ui/page-toolbar";
 import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
 import { LinkedAccountCell, ParticipantLinkActions, type ParticipantLinkInfo } from "@/components/dashboard/organizer/ParticipantLinkControls";
 import { adminLinkParticipant, adminRemoveParticipant, adminUnlinkParticipant, adminUpdateParticipant } from "@/app/backend/participants/actions";
 
@@ -30,6 +35,8 @@ export interface ParticipantItem {
   link: ParticipantLinkInfo | null;
 }
 
+// Mounted fresh per participant (the parent passes `key`), so the draft
+// values always start from the participant being edited.
 function EditDialog({
   item,
   onOpenChange,
@@ -50,20 +57,22 @@ function EditDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Edit Participant</DialogTitle>
+          <DialogDescription>Fix the name or team shown on the roster.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 px-6 pb-6">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Name</label>
-            <Input defaultValue={item.name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface">Team Name</label>
-            <Input defaultValue={item.teamName ?? ""} onChange={(e) => setTeamName(e.target.value)} />
-          </div>
+        <div className="space-y-4 px-5 pb-1">
+          <FormField label="Name" required>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </FormField>
+          <FormField label="Team Name" hint="Leave empty for no team.">
+            <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} />
+          </FormField>
         </div>
-        <DialogFooter className="p-6 pt-0">
-          <Button type="button" tooltip="Save changes" disabled={pending} onClick={() => onSave(name || item.name, teamName)}>
-            {pending ? "Saving..." : "Save Changes"}
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" disabled={pending || !name.trim()} aria-busy={pending} onClick={() => onSave(name.trim() || item.name, teamName)}>
+            {pending ? "Saving…" : "Save Changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -107,20 +116,17 @@ function LinkDialog({
             account by username. The link is created already-approved.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 px-6 pb-6">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-on-surface" htmlFor="link-username">Username</label>
-            <Input id="link-username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
-          </div>
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
+        <div className="px-5 pb-1">
+          <FormField label="Username" required error={error}>
+            <Input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+          </FormField>
         </div>
-        <DialogFooter className="p-6 pt-0">
-          <Button type="button" tooltip="Link this participant to the account" disabled={pending || !username.trim()} onClick={() => onLink(username.trim())}>
-            {pending ? "Linking..." : "Link Account"}
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" disabled={pending || !username.trim()} aria-busy={pending} onClick={() => onLink(username.trim())}>
+            {pending ? "Linking…" : "Link Account"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -221,151 +227,120 @@ export function ParticipantsPanel({
   }
 
   return (
-    <div className="space-y-10">
-      {error ? (
-        <p role="alert" className="border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+    <div className="space-y-8">
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
-      <section>
-        <h2 className="label-mono mb-4 text-primary">Pending Player Links</h2>
-        {links.length === 0 ? (
-          <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-            No pending link requests right now.
-          </p>
-        ) : (
-          <div className="overflow-x-auto border border-outline-variant/25">
-            <table className="w-full min-w-[680px] text-left text-sm">
-              <thead>
-                <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                  <th className="p-4" scope="col">Participant</th>
-                  <th className="p-4" scope="col">Tournament</th>
-                  <th className="p-4" scope="col">Linked Account</th>
-                  <th className="p-4" scope="col">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {links.map((item) => (
-                  <tr key={item.link.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
-                    <td className="p-4 font-medium text-on-surface">{item.participantLabel}</td>
-                    <td className="p-4 text-on-surface/60">{item.tournamentTitle}</td>
-                    <td className="p-4">
-                      <LinkedAccountCell link={item.link} />
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-1">
-                        <ParticipantLinkActions
-                          participantLabel={item.participantLabel}
-                          link={item.link}
-                          onConfirmed={() => setLinks((prev) => prev.map((l) => (l.link.id === item.link.id ? { ...l, link: { ...l.link, status: "approved" } } : l)))}
-                          onDeclined={() => setLinks((prev) => prev.filter((l) => l.link.id !== item.link.id))}
-                          onError={setError}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <section aria-labelledby="pending-links" className="space-y-3">
+        <h2 id="pending-links" className="label-mono text-primary">
+          Pending Player Links{links.length > 0 ? ` (${links.length})` : ""}
+        </h2>
+        <DataTable
+          caption="Pending player link requests"
+          rows={links}
+          rowKey={(item) => item.link.id}
+          minWidth={680}
+          empty={{ title: "No pending link requests", description: "Requests to link a participant to an account appear here." }}
+          columns={[
+            { key: "participant", header: "Participant", className: "font-medium text-on-surface", cell: (item) => item.participantLabel },
+            { key: "tournament", header: "Tournament", className: "text-on-surface/60", cell: (item) => item.tournamentTitle },
+            { key: "account", header: "Linked Account", cell: (item) => <LinkedAccountCell link={item.link} /> },
+            {
+              key: "actions",
+              actions: true,
+              cell: (item) => (
+                <div className="flex justify-end gap-1">
+                  <ParticipantLinkActions
+                    participantLabel={item.participantLabel}
+                    link={item.link}
+                    onConfirmed={() => setLinks((prev) => prev.map((l) => (l.link.id === item.link.id ? { ...l, link: { ...l.link, status: "approved" } } : l)))}
+                    onDeclined={() => setLinks((prev) => prev.filter((l) => l.link.id !== item.link.id))}
+                    onError={setError}
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
       </section>
 
-      <section>
-        <h2 className="label-mono mb-4 text-on-surface/40">All Participants</h2>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <SearchInput
-            wrapperClassName="w-full max-w-xs"
-            placeholder="Search by name, team, or tournament..."
-            aria-label="Search participants"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-          />
-          <Pagination page={currentPage} lastPage={lastPage} onChange={setPage} />
-        </div>
+      <section aria-labelledby="all-participants" className="space-y-3">
+        <h2 id="all-participants" className="label-mono text-on-surface/50">
+          All Participants
+        </h2>
+        <PageToolbar
+          search={
+            <SearchInput
+              placeholder="Search by name, team, or tournament"
+              aria-label="Search participants"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
+            />
+          }
+        />
 
-        {pageRows.length > 0 ? (
-          <div className="overflow-x-auto border border-outline-variant/25">
-            <table className="w-full min-w-[820px] text-left text-sm">
-              <thead>
-                <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                  <th className="p-4" scope="col">Name</th>
-                  <th className="p-4" scope="col">Team</th>
-                  <th className="p-4" scope="col">Tournament</th>
-                  <th className="p-4" scope="col">Seed</th>
-                  <th className="p-4" scope="col">Linked Account</th>
-                  <th className="p-4" scope="col">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((p) => (
-                  <tr key={p.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
-                    <td className="p-4 font-medium text-on-surface">{p.name}</td>
-                    <td className="p-4 text-on-surface/60">{p.teamName ?? "—"}</td>
-                    <td className="p-4 text-on-surface/60">{p.tournamentTitle}</td>
-                    <td className="p-4 text-on-surface/60">{p.seed}</td>
-                    <td className="p-4">
-                      <LinkedAccountCell link={p.link} />
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-1">
-                        {p.link ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            tooltip="Unlink this account"
-                            aria-label={`Unlink ${p.name}`}
-                            disabled={pending}
-                            onClick={() => handleUnlink(p)}
-                          >
-                            <Unlink className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            tooltip="Link to a registered user"
-                            aria-label={`Link ${p.name} to a registered user`}
-                            disabled={pending}
-                            onClick={() => {
-                              setLinkError(null);
-                              setLinking(p);
-                            }}
-                          >
-                            <Link2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon" tooltip="Edit this participant" aria-label={`Edit ${p.name}`} disabled={pending} onClick={() => setEditing(p)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" tooltip="Remove this participant" aria-label={`Remove ${p.name}`} disabled={pending} onClick={() => setRemoving(p)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-            No participants match your search.
-          </p>
-        )}
+        <DataTable
+          caption="All participants"
+          rows={pageRows}
+          rowKey={(p) => p.id}
+          minWidth={820}
+          empty={{ title: "No participants found", description: "Try a different name, team or tournament." }}
+          columns={[
+            { key: "name", header: "Name", className: "font-medium text-on-surface", cell: (p) => p.name },
+            { key: "team", header: "Team", className: "text-on-surface/60", cell: (p) => p.teamName ?? "—" },
+            { key: "tournament", header: "Tournament", className: "text-on-surface/60", cell: (p) => p.tournamentTitle },
+            { key: "seed", header: "Seed", className: "text-on-surface/60", cell: (p) => p.seed },
+            { key: "account", header: "Linked Account", cell: (p) => <LinkedAccountCell link={p.link} /> },
+            {
+              key: "actions",
+              actions: true,
+              cell: (p) => (
+                <div className="flex justify-end gap-1">
+                  {p.link ? (
+                    <Button variant="ghost" size="icon" tooltip="Unlink this account" aria-label={`Unlink ${p.name}`} disabled={pending} onClick={() => handleUnlink(p)}>
+                      <Unlink className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      tooltip="Link to a registered user"
+                      aria-label={`Link ${p.name} to a registered user`}
+                      disabled={pending}
+                      onClick={() => {
+                        setLinkError(null);
+                        setLinking(p);
+                      }}
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" tooltip="Edit this participant" aria-label={`Edit ${p.name}`} disabled={pending} onClick={() => setEditing(p)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" tooltip="Remove this participant" aria-label={`Remove ${p.name}`} disabled={pending} onClick={() => setRemoving(p)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ),
+            },
+          ]}
+        />
+        <Pagination page={currentPage} lastPage={lastPage} onChange={setPage} />
       </section>
 
-      <EditDialog item={editing} onOpenChange={(open) => !open && setEditing(null)} pending={pending} onSave={handleSave} />
+      <EditDialog
+        key={editing?.id ?? "none"}
+        item={editing}
+        onOpenChange={(open) => !open && setEditing(null)}
+        pending={pending}
+        onSave={handleSave}
+      />
 
       <LinkDialog
+        key={linking?.id ?? "none"}
         item={linking}
         onOpenChange={(open) => !open && setLinking(null)}
         pending={pending}
@@ -373,18 +348,16 @@ export function ParticipantsPanel({
         onLink={handleLink}
       />
 
-      <Dialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remove {removing?.name}?</DialogTitle>
-          </DialogHeader>
-          <DialogFooter className="p-6 pt-0">
-            <Button type="button" variant="destructive" tooltip="Remove this participant" disabled={pending} onClick={handleRemove}>
-              {pending ? "Removing..." : "Remove Participant"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => !open && setRemoving(null)}
+        title={`Remove ${removing?.name ?? "participant"}?`}
+        description="They're removed from this tournament's roster."
+        confirmLabel="Remove Participant"
+        pendingLabel="Removing…"
+        pending={pending}
+        onConfirm={handleRemove}
+      />
     </div>
   );
 }

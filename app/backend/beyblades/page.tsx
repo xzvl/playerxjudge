@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { Disc3, Layers } from "lucide-react";
+import Link from "next/link";
+import { Disc3, Layers, Plus } from "lucide-react";
 
 import { BeybladesPanel, type BeybladeItem } from "@/components/backend/BeybladesPanel";
 import { countBeybladeVariations, listBeyblades } from "@/app/backend/beyblades/data";
+import { Button } from "@/components/ui/button";
 import { KpiCard, PageHeader, Panel } from "@/components/dashboard/erp";
 import { BarList } from "@/components/dashboard/charts";
 
@@ -46,6 +48,13 @@ export default async function BackendBeybladesPage() {
         eyebrow="Backend"
         title="Beyblades"
         description="The full parts catalog — blades, ratchets, bits, and every Custom Line component."
+        actions={
+          <Button asChild className="gap-1.5">
+            <Link href="/backend/beyblades/new">
+              <Plus className="h-4 w-4" aria-hidden="true" /> Add Beyblade
+            </Link>
+          </Button>
+        }
       />
       <div className="grid gap-3 lg:grid-cols-3">
         <KpiCard label="Catalog parts" value={items.length.toLocaleString()} icon={Disc3} emphasis hint={`${categoryCounts.size} categories`} />

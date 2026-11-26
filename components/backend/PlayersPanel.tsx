@@ -3,11 +3,14 @@
 import { useMemo, useState, useTransition } from "react";
 import { Ban, Mail, ShieldCheck } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { SearchInput } from "@/components/ui/search-input";
+import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
+import { PageToolbar } from "@/components/ui/page-toolbar";
 import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { setPlayerBanned } from "@/app/backend/players/actions";
 import { formatDate } from "@/lib/format";
 
@@ -99,96 +102,77 @@ export function PlayersPanel({ players }: { players: PlayerRow[] }) {
   }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <SearchInput
-          wrapperClassName="w-full max-w-xs"
-          placeholder="Search by name or username..."
-          aria-label="Search players"
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-        />
-        <Pagination page={currentPage} lastPage={lastPage} onChange={setPage} />
-      </div>
-
-      {error ? (
-        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+    <div className="space-y-4">
+      <PageToolbar
+        search={
+          <SearchInput
+            placeholder="Search by name or username"
+            aria-label="Search players"
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+          />
+        }
+      >
+        <p className="text-[13px] text-on-surface/50" aria-live="polite">
+          {filtered.length} {filtered.length === 1 ? "player" : "players"}
         </p>
-      ) : null}
+      </PageToolbar>
 
-      {pageRows.length > 0 ? (
-        <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead>
-              <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                <th className="p-4" scope="col">Player</th>
-                <th className="p-4" scope="col">Signed Up With</th>
-                <th className="p-4" scope="col">Province</th>
-                <th className="p-4" scope="col">Joined</th>
-                <th className="p-4" scope="col">Status</th>
-                <th className="p-4" scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
-                  <td className="p-4">
-                    <p className="font-medium text-on-surface">{r.displayName}</p>
-                    <p className="text-xs text-on-surface/40">@{r.username}</p>
-                  </td>
-                  <td className="p-4 text-sm">
-                    <ProviderBadge provider={r.provider} />
-                  </td>
-                  <td className="p-4 text-on-surface/60">{r.province ?? "—"}</td>
-                  <td className="p-4 text-on-surface/60">{formatDate(r.joinedAt)}</td>
-                  <td className="p-4">
-                    <Badge variant={r.isBanned ? "destructive" : "success"}>{r.isBanned ? "Banned" : "Active"}</Badge>
-                  </td>
-                  <td className="p-4">
-                    {r.isBanned ? (
-                      <Button variant="ghost" size="icon" tooltip="Unban this player" aria-label={`Unban ${r.displayName}`} disabled={pending} onClick={() => handleUnban(r)}>
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="icon" tooltip="Ban this player" aria-label={`Ban ${r.displayName}`} disabled={pending} onClick={() => setBanning(r)}>
-                        <Ban className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-          No players match your search.
-        </p>
-      )}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
-      <div className="mt-6">
-        <Pagination page={currentPage} lastPage={lastPage} onChange={setPage} />
-      </div>
+      <DataTable
+        caption="Players"
+        rows={pageRows}
+        rowKey={(r) => r.id}
+        empty={{ title: "No players found", description: "Try a different name or username." }}
+        columns={[
+          {
+            key: "player",
+            header: "Player",
+            cell: (r) => (
+              <>
+                <p className="font-medium text-on-surface">{r.displayName}</p>
+                <p className="text-xs text-on-surface/40">@{r.username}</p>
+              </>
+            ),
+          },
+          { key: "provider", header: "Signed Up With", cell: (r) => <ProviderBadge provider={r.provider} /> },
+          { key: "province", header: "Province", className: "text-on-surface/60", cell: (r) => r.province ?? "—" },
+          { key: "joined", header: "Joined", className: "text-on-surface/60", cell: (r) => formatDate(r.joinedAt) },
+          {
+            key: "status",
+            header: "Status",
+            cell: (r) => <StatusBadge tone={r.isBanned ? "danger" : "success"}>{r.isBanned ? "Banned" : "Active"}</StatusBadge>,
+          },
+          {
+            key: "actions",
+            actions: true,
+            cell: (r) =>
+              r.isBanned ? (
+                <Button variant="ghost" size="icon" tooltip="Unban this player" aria-label={`Unban ${r.displayName}`} disabled={pending} onClick={() => handleUnban(r)}>
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </Button>
+              ) : (
+                <Button variant="ghost" size="icon" tooltip="Ban this player" aria-label={`Ban ${r.displayName}`} disabled={pending} onClick={() => setBanning(r)}>
+                  <Ban className="h-3.5 w-3.5" />
+                </Button>
+              ),
+          },
+        ]}
+      />
 
-      <Dialog open={banning !== null} onOpenChange={(open) => !open && setBanning(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Ban {banning?.displayName}?</DialogTitle>
-            <DialogDescription>
-              They&apos;ll be signed out and unable to sign back in until unbanned. This doesn&apos;t delete their account
-              or data.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-6 pt-0">
-            <Button type="button" variant="destructive" tooltip="Ban this player" disabled={pending} onClick={handleBan}>
-              {pending ? "Banning..." : "Ban Player"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Pagination page={currentPage} lastPage={lastPage} onChange={setPage} />
+
+      <ConfirmDialog
+        open={banning !== null}
+        onOpenChange={(open) => !open && setBanning(null)}
+        title={`Ban ${banning?.displayName ?? "player"}?`}
+        description="They'll be signed out and unable to sign back in until unbanned. This doesn't delete their account or data."
+        confirmLabel="Ban Player"
+        pendingLabel="Banning…"
+        pending={pending}
+        onConfirm={handleBan}
+      />
     </div>
   );
 }

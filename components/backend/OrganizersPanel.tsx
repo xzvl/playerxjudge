@@ -3,10 +3,13 @@
 import { useMemo, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 
+import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { SearchInput } from "@/components/ui/search-input";
 import { Combobox } from "@/components/ui/combobox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
+import { PageToolbar } from "@/components/ui/page-toolbar";
+import { SearchInput } from "@/components/ui/search-input";
 import { removeOrganizerRole, updateOrganizerTier } from "@/app/backend/organizers/actions";
 import { formatDate } from "@/lib/format";
 import type { SubscriptionPlan } from "@/lib/types/database";
@@ -65,92 +68,79 @@ export function OrganizersPanel({ organizers }: { organizers: OrganizerRow[] }) 
   }
 
   return (
-    <div>
-      <SearchInput
-        wrapperClassName="mb-6 w-full max-w-xs"
-        placeholder="Search by name or username..."
-        aria-label="Search organizers"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+    <div className="space-y-4">
+      <PageToolbar
+        search={
+          <SearchInput
+            placeholder="Search by name or username"
+            aria-label="Search organizers"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        }
       />
 
-      {error ? (
-        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
-      {filtered.length > 0 ? (
-        <div className="overflow-x-auto border border-outline-variant/25">
-          <table className="w-full min-w-[680px] text-left text-sm">
-            <thead>
-              <tr className="label-mono border-b border-outline-variant/25 text-on-surface/40">
-                <th className="p-4" scope="col">Organizer</th>
-                <th className="p-4" scope="col">Tier</th>
-                <th className="p-4" scope="col">Approved</th>
-                <th className="p-4" scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => (
-                <tr key={r.roleRowId} className="border-b border-outline-variant/15 last:border-0 hover:bg-surface-container/50">
-                  <td className="p-4">
-                    <p className="font-medium text-on-surface">{r.displayName}</p>
-                    <p className="text-xs text-on-surface/40">@{r.username}</p>
-                  </td>
-                  <td className="p-4">
-                    <div className="max-w-[160px]">
-                      <Combobox
-                        label="Tier"
-                        hideLabel
-                        value={r.tier}
-                        onValueChange={(v) => handleTierChange(r, v)}
-                        options={TIER_OPTIONS}
-                      />
-                    </div>
-                  </td>
-                  <td className="p-4 text-on-surface/60">{r.approvedAt ? formatDate(r.approvedAt) : "—"}</td>
-                  <td className="p-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      tooltip="Revoke this organizer's role"
-                      aria-label={`Remove organizer ${r.displayName}`}
-                      disabled={pending}
-                      onClick={() => setRemoving(r)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-          {organizers.length === 0 ? "No approved organizers yet." : "No organizers match your search."}
-        </p>
-      )}
+      <DataTable
+        caption="Organizers"
+        rows={filtered}
+        rowKey={(r) => r.roleRowId}
+        minWidth={680}
+        empty={{
+          title: organizers.length === 0 ? "No approved organizers yet" : "No organizers found",
+          description: organizers.length === 0 ? "Approved organizer applications appear here." : "Try a different name or username.",
+        }}
+        columns={[
+          {
+            key: "organizer",
+            header: "Organizer",
+            cell: (r) => (
+              <>
+                <p className="font-medium text-on-surface">{r.displayName}</p>
+                <p className="text-xs text-on-surface/40">@{r.username}</p>
+              </>
+            ),
+          },
+          {
+            key: "tier",
+            header: "Tier",
+            cell: (r) => (
+              <div className="w-full max-w-[160px]">
+                <Combobox label="Tier" hideLabel value={r.tier} onValueChange={(v) => handleTierChange(r, v)} options={TIER_OPTIONS} />
+              </div>
+            ),
+          },
+          { key: "approved", header: "Approved", className: "text-on-surface/60", cell: (r) => (r.approvedAt ? formatDate(r.approvedAt) : "—") },
+          {
+            key: "actions",
+            actions: true,
+            cell: (r) => (
+              <Button
+                variant="ghost"
+                size="icon"
+                tooltip="Revoke this organizer's role"
+                aria-label={`Remove organizer ${r.displayName}`}
+                disabled={pending}
+                onClick={() => setRemoving(r)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            ),
+          },
+        ]}
+      />
 
-      <Dialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remove {removing?.displayName}?</DialogTitle>
-            <DialogDescription>
-              This revokes their organizer role. They keep their player account and can re-apply from Become an
-              Organizer. Communities they already own aren&apos;t affected.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-6 pt-0">
-            <Button type="button" variant="destructive" tooltip="Revoke this organizer role" disabled={pending} onClick={handleRemove}>
-              {pending ? "Removing..." : "Remove Organizer"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => !open && setRemoving(null)}
+        title={`Remove ${removing?.displayName ?? "organizer"}?`}
+        description="This revokes their organizer role. They keep their player account and can re-apply from Become an Organizer. Communities they already own aren't affected."
+        confirmLabel="Remove Organizer"
+        pendingLabel="Removing…"
+        pending={pending}
+        onConfirm={handleRemove}
+      />
     </div>
   );
 }

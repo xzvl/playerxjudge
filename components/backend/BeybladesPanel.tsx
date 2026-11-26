@@ -2,11 +2,14 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Pencil, Trash2, Upload } from "lucide-react";
 
+import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageToolbar } from "@/components/ui/page-toolbar";
 import { SearchInput } from "@/components/ui/search-input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/dashboard/erp";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { BeybladeTypeBadge } from "@/components/backend/beyblade-badges";
 import { ExportBeybladesButton } from "@/components/backend/ExportBeybladesButton";
@@ -211,37 +214,30 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
   }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="space-y-4">
+      <PageToolbar
+        search={
           <SearchInput
-            wrapperClassName="w-full sm:w-64"
-            placeholder="Search code, name, short name..."
+            placeholder="Search code, name, short name"
             aria-label="Search beyblades"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <MultiSelectFilter label="Types" options={BEYBLADE_TYPE_OPTIONS} selected={types} onChange={setTypes} />
-          <MultiSelectFilter label="Categories" options={BEYBLADE_CATEGORY_OPTIONS} selected={categories} onChange={setCategories} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <ExportBeybladesButton beyblades={rows} />
-          <Button variant="outline" className="gap-1.5" tooltip="Add beyblades from a CSV or XLSX file" onClick={() => setImportOpen(true)}>
-            <Upload className="h-3.5 w-3.5" /> Import
-          </Button>
-          <Button asChild className="gap-1.5" tooltip="Add a new beyblade">
-            <Link href="/backend/beyblades/new">
-              <Plus className="h-3.5 w-3.5" /> Add Beyblade
-            </Link>
-          </Button>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <ExportBeybladesButton beyblades={rows} />
+            <Button variant="outline" className="gap-1.5" tooltip="Add beyblades from a CSV or XLSX file" onClick={() => setImportOpen(true)}>
+              <Upload className="h-3.5 w-3.5" /> Import
+            </Button>
+          </>
+        }
+      >
+        <MultiSelectFilter label="Types" options={BEYBLADE_TYPE_OPTIONS} selected={types} onChange={setTypes} />
+        <MultiSelectFilter label="Categories" options={BEYBLADE_CATEGORY_OPTIONS} selected={categories} onChange={setCategories} />
+      </PageToolbar>
 
-      {error ? (
-        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
       {sorted.length > 0 ? (
         <>
@@ -322,26 +318,24 @@ export function BeybladesPanel({ beyblades }: { beyblades: BeybladeItem[] }) {
           </div>
         </>
       ) : (
-        <p className="border border-outline-variant/25 bg-surface-container-low p-8 text-center text-sm text-on-surface/50">
-          {beyblades.length === 0 ? "No beyblades in the catalog yet." : "No beyblades match your filters."}
-        </p>
+        <EmptyState
+          title={beyblades.length === 0 ? "No beyblades in the catalog yet" : "No beyblades found"}
+          description={beyblades.length === 0 ? "Add a part or import a spreadsheet to get started." : "Try different filters or a different search."}
+        />
       )}
 
       <ImportBeybladesDialog open={importOpen} onOpenChange={setImportOpen} onImported={handleImported} />
 
-      <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remove {deleting?.name}?</DialogTitle>
-            <DialogDescription>This permanently deletes this beyblade from the catalog.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-6 pt-0">
-            <Button type="button" variant="destructive" tooltip="Permanently remove this beyblade" disabled={pending} onClick={handleDelete}>
-              {pending ? "Removing..." : "Remove Beyblade"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title={`Remove ${deleting?.name ?? "beyblade"}?`}
+        description="This permanently deletes this beyblade from the catalog."
+        confirmLabel="Remove Beyblade"
+        pendingLabel="Removing…"
+        pending={pending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
