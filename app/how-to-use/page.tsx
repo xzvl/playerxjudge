@@ -3,7 +3,7 @@ import { BookOpenCheck } from "lucide-react";
 
 import { LegalDocumentLayout } from "@/components/legal/LegalDocumentLayout";
 import { getStaticPage } from "@/lib/static-pages";
-import { parseLegalBody } from "@/lib/legal-content";
+import { legalSections } from "@/lib/legal-content";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function HowToUsePage() {
   const page = await getStaticPage("how-to-use");
-  const { intro, sections } = parseLegalBody(page.body);
+  const { introHtml, sections } = legalSections(page.body);
 
   return (
     <LegalDocumentLayout
@@ -21,7 +21,7 @@ export default async function HowToUsePage() {
       eyebrow="Guide"
       title={page.title}
       subtitle={`Last updated ${formatDate(page.updated_at)}`}
-      intro={intro}
+      introHtml={introHtml}
       sections={sections}
     />
   );

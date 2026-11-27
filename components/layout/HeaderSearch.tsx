@@ -67,11 +67,11 @@ export function HeaderSearch({ variant = "pill", className }: { variant?: "pill"
           onClick={() => setOpen(true)}
           aria-label="Search"
           className={cn(
-            "tap flex h-10 w-10 items-center justify-center rounded-[3px] text-on-surface/70 transition-colors hover:bg-surface-container hover:text-on-surface",
+            "tap flex h-10 w-10 items-center justify-center rounded-[3px] text-on-surface/70 transition-colors hover:bg-surface-container-high hover:text-on-surface",
             className
           )}
         >
-          <Search className="h-5 w-5" aria-hidden="true" />
+          <Search className="h-[18px] w-[18px]" aria-hidden="true" />
         </button>
       )}
 
@@ -88,7 +88,7 @@ export function HeaderSearch({ variant = "pill", className }: { variant?: "pill"
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search players, events, clubs…"
               aria-label="Search tournaments, communities, players, and judges"
-              className="h-9 w-full bg-transparent font-display text-xl font-medium tracking-wide text-on-surface placeholder:text-on-surface/35 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+              className="h-10 w-full bg-transparent font-sans text-lg font-medium text-on-surface placeholder:text-on-surface/35 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
             />
           </form>
           <div className="px-4 pb-4">

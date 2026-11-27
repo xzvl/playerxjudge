@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
+import { Barlow, Chakra_Petch, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
@@ -17,16 +17,19 @@ import type { NavUser } from "@/components/layout/ProfileMenu";
 
 // The site's one type family: Geist for text, Geist Mono for codes and
 // figures (`font-mono`).
-const geist = Geist({
+// Barlow for text and labels, kept on the --font-geist variable so every
+// existing `font-sans` reference follows.
+const barlow = Barlow({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-geist",
   display: "swap",
 });
 
-// Display face: condensed, hard-edged, built for scoreboards and headlines.
-const display = Barlow_Condensed({
+// Chakra Petch: headings, menus and buttons.
+const display = Chakra_Petch({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
   display: "swap",
 });
@@ -127,7 +130,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     // Same caveat every "apply a saved theme via a pre-hydration script"
     // approach has (next-themes included).
     <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
-      <body className={`${geist.variable} ${geistMono.variable} ${display.variable} erp font-sans`}>
+      <body className={`${barlow.variable} ${geistMono.variable} ${display.variable} erp font-sans`}>
         {/* Applies a saved light-theme preference before first paint — see
             ThemeToggle. Runs as the first thing in <body> (before anything
             else is parsed) so there's no flash of the wrong theme; the

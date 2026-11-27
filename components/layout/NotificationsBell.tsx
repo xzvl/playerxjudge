@@ -145,28 +145,41 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
           ) : null}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0">
-        <DropdownMenuLabel className="px-3 py-2.5 normal-case tracking-normal text-on-surface">Notifications</DropdownMenuLabel>
-        <DropdownMenuSeparator className="my-0" />
+      <DropdownMenuContent align="end" sideOffset={10} className="w-[22rem] max-w-[calc(100vw-1.5rem)] border-primary/30 p-0">
+        <div className="flex items-center justify-between border-b border-outline-variant/25 bg-gradient-to-r from-primary/15 to-transparent px-4 py-3">
+          <DropdownMenuLabel className="p-0 font-display text-base font-bold uppercase tracking-[0.08em] text-on-surface">
+            Notifications
+          </DropdownMenuLabel>
+          {count > 0 ? (
+            <span className="rounded-[2px] bg-primary px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-on-primary">
+              {count} new
+            </span>
+          ) : null}
+        </div>
 
         {loading ? (
-          <p className="px-3 py-8 text-center text-sm text-on-surface/40">Loading…</p>
+          <p className="px-4 py-10 text-center text-sm text-on-surface/45">Loading…</p>
         ) : notifications && notifications.length > 0 ? (
           <div className="max-h-80 overflow-y-auto">
             {notifications.map((n) => {
               const judgeRowId = respondJudgeRowId(n);
               const awaitingResponse = judgeRowId !== null && !respondedIds.has(n.id);
               return (
-                <div key={n.id} className="border-b border-outline-variant/15 px-3 py-2.5 last:border-0 hover:bg-surface-container/50">
+                <div
+                  key={n.id}
+                  className={cn(
+                    "border-b border-l-2 border-b-outline-variant/15 px-4 py-3 transition-colors last:border-b-0 hover:bg-surface-container/60",
+                    n.is_read ? "border-l-transparent" : "border-l-primary bg-primary/5"
+                  )}
+                >
                   <button type="button" onClick={() => handleTitleClick(n)} className="block w-full text-left">
                     <span className="flex items-center gap-2">
-                      {!n.is_read ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /> : null}
-                      <span className={cn("font-inter font-bold text-[13px] truncate block hover:text-primary hover:underline underline-offset-2 transition-colors", n.is_read ? "text-on-surface/70" : "text-on-surface")}>
+                                            <span className={cn("block truncate font-display text-sm font-semibold tracking-[0.03em] transition-colors hover:text-primary", n.is_read ? "text-on-surface/70" : "text-on-surface")}>
                         {n.title}
                       </span>
                     </span>
-                    {n.body ? <span className="mt-0.5 block line-clamp-2 text-xs text-on-surface/50">{n.body}</span> : null}
-                    <span className="label-mono mt-1 block text-[9px] text-on-surface/30">
+                    {n.body ? <span className="mt-1 block line-clamp-2 text-[13px] leading-snug text-on-surface/60">{n.body}</span> : null}
+                    <span className="mt-1.5 block text-xs text-on-surface/40">
                       {formatDate(n.created_at)} &middot; {formatTime(n.created_at)}
                     </span>
                   </button>
@@ -176,14 +189,14 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
                       <button
                         type="button"
                         onClick={() => respond(n, judgeRowId, "approved")}
-                        className="label-mono flex items-center gap-1 rounded bg-primary px-2 py-1 text-[10px] text-on-primary transition-colors hover:brightness-110"
+                        className="flex items-center gap-1 rounded-[3px] bg-primary px-2.5 py-1 font-display text-xs font-semibold uppercase tracking-[0.06em] text-on-primary transition-colors hover:brightness-110"
                       >
                         <Check className="h-3 w-3" /> Accept
                       </button>
                       <button
                         type="button"
                         onClick={() => respond(n, judgeRowId, "removed")}
-                        className="label-mono flex items-center gap-1 rounded border border-outline-variant/40 px-2 py-1 text-[10px] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
+                        className="flex items-center gap-1 rounded-[3px] border border-outline-variant/40 px-2.5 py-1 font-display text-xs font-semibold uppercase tracking-[0.06em] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
                       >
                         <X className="h-3 w-3" /> Decline
                       </button>
@@ -192,7 +205,7 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
                     <Link
                       href={n.link}
                       onClick={() => setOpen(false)}
-                      className="label-mono mt-1.5 inline-flex items-center gap-1 rounded border border-outline-variant/40 px-2 py-1 text-[10px] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
+                      className="mt-2 inline-flex items-center gap-1 rounded-[3px] border border-outline-variant/40 px-2.5 py-1 font-display text-xs font-semibold uppercase tracking-[0.06em] text-on-surface/70 transition-colors hover:border-primary hover:text-primary"
                     >
                       Open
                     </Link>
@@ -200,7 +213,7 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
                     <button
                       type="button"
                       onClick={() => markRead(n)}
-                      className="label-mono mt-1.5 flex items-center gap-1 text-[10px] text-on-surface/40 transition-colors hover:text-on-surface"
+                      className="mt-2 flex items-center gap-1 text-xs font-medium text-on-surface/45 transition-colors hover:text-on-surface"
                     >
                       <Check className="h-3 w-3" /> Mark as read
                     </button>
@@ -210,12 +223,12 @@ export function NotificationsBell({ count: initialCount = 0, enabled = false }: 
             })}
           </div>
         ) : (
-          <p className="px-3 py-8 text-center text-sm text-on-surface/40">You&apos;re all caught up.</p>
+          <p className="px-4 py-10 text-center text-sm text-on-surface/45">You&apos;re all caught up.</p>
         )}
 
         <DropdownMenuSeparator className="my-0" />
-        <DropdownMenuItem asChild className="justify-center">
-          <Link href="/account/player/notifications" onClick={() => setOpen(false)} className="text-primary">
+        <DropdownMenuItem asChild className="cursor-pointer justify-center rounded-none py-3">
+          <Link href="/account/player/notifications" onClick={() => setOpen(false)} className="font-display text-sm font-semibold uppercase tracking-[0.08em] text-primary">
             View all notifications
           </Link>
         </DropdownMenuItem>

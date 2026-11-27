@@ -246,9 +246,23 @@ export default async function TournamentPlayerPage({
     pickerOptions: Awaited<ReturnType<typeof getComboPickerOptions>>;
     comboStats: Awaited<ReturnType<typeof getComboMatchStatsForProfile>>;
   } | null = null;
+  let hasTournamentDeck = false;
   if (authUser && myLink?.status === "approved" && selectedId !== null && selectedId === myLinkedParticipantId) {
-    const decks = await listOrCreateUserDecks(authUser.id);
-    const activeDeck = decks.find((d) => d.is_active) ?? decks[0] ?? null;
+    const [decks, selectionRow] = await Promise.all([
+      listOrCreateUserDecks(authUser.id),
+      supabase
+        .from("tournament_deck_selections")
+        .select("deck_id")
+        .eq("tournament_id", tournament.id)
+        .eq("profile_id", authUser.id)
+        .maybeSingle()
+        .then((r) => r.data),
+    ]);
+    // This tournament's own deck if the player set one; otherwise their default
+    // (globally active) deck applies automatically.
+    const tournamentDeck = selectionRow ? decks.find((d) => d.id === selectionRow.deck_id) ?? null : null;
+    const activeDeck = tournamentDeck ?? decks.find((d) => d.is_active) ?? decks[0] ?? null;
+    hasTournamentDeck = tournamentDeck !== null;
     if (activeDeck) {
       // Everything the Change / Customize popups need, loaded together.
       const [deckSummaries, availableCombos, pickerOptions, comboStats] = await Promise.all([
@@ -292,6 +306,9 @@ export default async function TournamentPlayerPage({
               availableCombos={currentDeck.availableCombos}
               pickerOptions={currentDeck.pickerOptions}
               comboStats={currentDeck.comboStats}
+              tournamentId={tournament.id}
+              slug={slug}
+              hasTournamentDeck={hasTournamentDeck}
             /> : null}
 
           <PlayerStagesSection

@@ -53,45 +53,54 @@ export function ProfileMenu({ user }: { user: NavUser | null }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="tap group flex items-center gap-2 rounded-[3px] p-0.5 pr-1 transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+          className="tap group flex h-10 items-center gap-2 rounded-[3px] p-0.5 pr-1.5 transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           aria-label="Open account menu"
         >
-          <Avatar className="chamfer-sm h-9 w-9 rounded-none border-0 ring-1 ring-primary/50">
+          <Avatar className="chamfer-sm h-8 w-8 rounded-none border-0 ring-1 ring-primary/50">
             {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
             <AvatarFallback className="rounded-none">{initials || <UserRound className="h-4 w-4" />}</AvatarFallback>
           </Avatar>
           <ChevronDown className="h-3.5 w-3.5 text-on-surface/40 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8} className="w-64 p-1.5">
-        <div className="mb-1 flex items-center gap-3 border-b border-outline-variant/25 px-2 pb-3 pt-2">
-          <Avatar className="chamfer-sm h-10 w-10 rounded-none border-0 ring-1 ring-primary/50">
-            {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-            <AvatarFallback className="rounded-none">{initials || <UserRound className="h-4 w-4" />}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="truncate font-display text-lg font-semibold uppercase leading-none tracking-[0.04em] text-on-surface">
-              {user.displayName}
-            </p>
-            <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.1em] text-on-surface/45">
-              {user.communityName ?? "Individual"}
-            </p>
+      <DropdownMenuContent align="end" sideOffset={10} className="w-72 border-primary/30 p-0">
+        <div className="relative overflow-hidden border-b border-outline-variant/25 bg-gradient-to-br from-primary/20 to-transparent px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Avatar className="chamfer-sm h-12 w-12 rounded-none border-0 ring-1 ring-primary/60">
+              {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
+              <AvatarFallback className="rounded-none">{initials || <UserRound className="h-4 w-4" />}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate font-display text-lg font-bold uppercase leading-none tracking-[0.05em] text-on-surface">
+                {user.displayName}
+              </p>
+              <p className="mt-1.5 truncate text-xs font-medium uppercase tracking-[0.1em] text-on-surface/55">
+                {user.communityName ?? "Individual"}
+                {user.isOrganizer ? " · Organizer" : ""}
+              </p>
+              {user.email ? <p className="mt-0.5 truncate text-xs text-on-surface/40">{user.email}</p> : null}
+            </div>
           </div>
         </div>
-        <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/account" className="flex items-center gap-2.5 py-2.5">
-            <LayoutDashboard className="h-4 w-4 text-primary" /> Dashboard
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/account/settings" className="flex items-center gap-2.5 py-2.5">
-            <Settings className="h-4 w-4 text-primary" /> Account settings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer gap-2.5 py-2.5" onSelect={() => void signOut()}>
-          <LogOut className="h-4 w-4 text-on-surface/60" /> Sign out
-        </DropdownMenuItem>
+        <div className="p-1.5">
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/account" className="flex items-center gap-2.5 font-display font-semibold uppercase tracking-[0.06em]">
+              <LayoutDashboard className="h-4 w-4 text-primary" /> Dashboard
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/account/settings" className="flex items-center gap-2.5 font-display font-semibold uppercase tracking-[0.06em]">
+              <Settings className="h-4 w-4 text-primary" /> Settings
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer gap-2.5 font-display font-semibold uppercase tracking-[0.06em] text-destructive focus:text-destructive"
+            onSelect={() => void signOut()}
+          >
+            <LogOut className="h-4 w-4" /> Sign out
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

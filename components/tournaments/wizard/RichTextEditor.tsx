@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import { Bold, Italic, Link as LinkIcon, List, ListOrdered } from "lucide-react";
+import { Bold, Heading2, Heading3, Italic, Link as LinkIcon, List, ListOrdered } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -55,10 +55,15 @@ export function RichTextEditor({
   value,
   onChange,
   editable = true,
+  headings = false,
+  minHeight = 160,
 }: {
   value: string;
   onChange: (html: string) => void;
   editable?: boolean;
+  // Adds section / sub heading buttons (the legal pages).
+  headings?: boolean;
+  minHeight?: number;
 }) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -68,7 +73,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "prose-editor min-h-[160px] px-3 py-2 text-sm text-on-surface focus:outline-none " +
+          "prose-editor px-3 py-2 text-sm text-on-surface focus:outline-none [&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_h2]:uppercase [&_h2]:text-primary [&_h3]:mb-1 [&_h3]:mt-4 [&_h3]:font-display [&_h3]:text-base [&_h3]:font-bold [&_h3]:uppercase " +
           "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-primary [&_a]:underline " +
           "[&_p]:my-2 first:[&_p]:mt-0 last:[&_p]:mb-0",
       },
@@ -92,7 +97,17 @@ export function RichTextEditor({
   return (
     <div className="border border-outline-variant/40 bg-surface-container-lowest">
       {editable ? (
-        <div className="flex items-center gap-1 border-b border-outline-variant/25 p-1.5">
+        <div className="flex flex-wrap items-center gap-1 border-b border-outline-variant/25 p-1.5">
+          {headings ? (
+            <>
+              <ToolbarButton label="Section heading" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+                <Heading2 className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton label="Sub heading" active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+                <Heading3 className="h-4 w-4" />
+              </ToolbarButton>
+            </>
+          ) : null}
           <ToolbarButton
             label="Bold"
             active={editor.isActive("bold")}
@@ -126,7 +141,9 @@ export function RichTextEditor({
           </ToolbarButton>
         </div>
       ) : null}
-      <EditorContent editor={editor} />
+      <div style={{ minHeight }}>
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

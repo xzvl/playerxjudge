@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Search } from "lucide-react";
 
+import { FIELD_BASE } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 // The one search field style used across the site (header search, list
@@ -14,13 +15,14 @@ const SearchInput = React.forwardRef<
   <div className={cn("relative", wrapperClassName)}>
     <Search
       aria-hidden="true"
-      className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-on-surface/40"
+      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface/45"
     />
     <input
       ref={ref}
       type={type}
       className={cn(
-        "h-8 w-full rounded-md border border-outline-variant/30 bg-surface-container-low pl-8 pr-3 text-[13px] text-on-surface placeholder:text-on-surface/40 transition-colors focus-visible:border-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-search-cancel-button]:cursor-pointer",
+        FIELD_BASE,
+        "pl-9 pr-3 [&::-webkit-search-cancel-button]:cursor-pointer",
         className
       )}
       {...props}

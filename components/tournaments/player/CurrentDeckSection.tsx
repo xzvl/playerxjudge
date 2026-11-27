@@ -9,7 +9,8 @@ import { ComboPartsLine, ComboThumbnails, EMPTY_COMBO_MATCH_STATS } from "@/comp
 import { DeckSlots } from "@/components/dashboard/beyblade/DeckSlots";
 import type { DeckSummary } from "@/components/dashboard/beyblade/DeckRows";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { setActiveDeck, setDeckSlot } from "@/app/account/beyblade/actions";
+import { setDeckSlot } from "@/app/account/beyblade/actions";
+import { setTournamentDeck } from "@/app/tournaments/[slug]/player/actions";
 import { cn } from "@/lib/utils";
 import type { ComboMatchStats, ComboPickerOptions, ComboWithParts } from "@/app/account/beyblade/data";
 import { BlurLoadingOverlay } from "@/components/tournaments/player/BlurLoadingOverlay";
@@ -32,7 +33,15 @@ export function CurrentDeckSection({
   availableCombos,
   pickerOptions,
   comboStats,
+  tournamentId,
+  slug,
+  hasTournamentDeck,
 }: {
+  tournamentId: string;
+  slug: string;
+  // True when the player picked a deck for this tournament; false means their
+  // default active deck is being used.
+  hasTournamentDeck: boolean;
   deckId: string;
   deckName: string;
   // Always length 3, in slot order — null for an empty slot.
@@ -93,7 +102,9 @@ export function CurrentDeckSection({
       <div className="mt-4 overflow-hidden border border-outline-variant/25 bg-surface-container-low">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/20 p-4">
           <div className="min-w-0">
-            <p className="label-mono text-[10px] text-on-surface/45">Active deck</p>
+            <p className="label-mono text-[10px] text-on-surface/45">
+              Active deck for this tournament{hasTournamentDeck ? "" : " · default"}
+            </p>
             <p className="heading truncate text-xl">{deckName}</p>
             <p className="mt-0.5 text-xs text-on-surface/55">
               {filled}/3 combos
@@ -220,6 +231,9 @@ export function CurrentDeckSection({
         onOpenChange={setChangeOpen}
         decks={decks}
         activeId={deckId}
+        tournamentId={tournamentId}
+        slug={slug}
+        hasTournamentDeck={hasTournamentDeck}
         onChanged={() => router.refresh()}
       />
 
@@ -250,8 +264,14 @@ function ChangeDeckDialog({
   onOpenChange,
   decks,
   activeId,
+  tournamentId,
+  slug,
+  hasTournamentDeck,
   onChanged,
 }: {
+  tournamentId: string;
+  slug: string;
+  hasTournamentDeck: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   decks: DeckSummary[];
@@ -261,10 +281,10 @@ function ChangeDeckDialog({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function select(id: string) {
+  function select(id: string | null) {
     setError(null);
     startTransition(async () => {
-      const result = await setActiveDeck(id);
+      const result = await setTournamentDeck(tournamentId, id, slug);
       if (result.status === "error") {
         setError(result.message ?? "Something went wrong.");
         return;
@@ -280,14 +300,19 @@ function ChangeDeckDialog({
       <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Change deck</DialogTitle>
-            <DialogDescription>Pick the deck you want to use. Create or rename decks from your Beyblade dashboard.</DialogDescription>
+            <DialogTitle>Change deck for this tournament</DialogTitle>
+            <DialogDescription>Pick the deck for this tournament only. Tournaments without a pick use your default deck. Create or rename decks from your Beyblade dashboard.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 px-5 pb-5">
             {error ? (
               <p role="alert" className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </p>
+            ) : null}
+            {hasTournamentDeck ? (
+              <Button variant="outline" size="sm" className="w-full" disabled={pending} onClick={() => select(null)}>
+                Use my default deck
+              </Button>
             ) : null}
             {decks.map(({ deck, combos }) => {
               const isActive = deck.id === activeId;

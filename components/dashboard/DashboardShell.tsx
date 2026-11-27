@@ -11,12 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { NotificationsBell } from "@/components/layout/NotificationsBell";
-import { SearchBar } from "@/components/layout/SearchBar";
+import { BrandMark } from "@/components/layout/BrandMark";
+import { HeaderSearch } from "@/components/layout/HeaderSearch";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import type { NavUser } from "@/components/layout/ProfileMenu";
 // Reused as-is rather than duplicated: it's already a generic
 // theme/notifications/profile cluster with nothing player-view-specific.
-import { PlayerViewHeaderActions } from "@/components/tournaments/player/PlayerViewHeaderActions";
 import { TableCardLabels } from "@/components/dashboard/TableCardLabels";
 import { BusyBoundary, DashboardBusyProvider } from "@/components/dashboard/DashboardBusy";
 import { BreadcrumbLabelProvider, useBreadcrumbLabels } from "@/components/dashboard/BreadcrumbLabel";
@@ -25,6 +26,10 @@ import { cn } from "@/lib/utils";
 export interface DashboardNavItem {
   label: string;
   href?: string;
+  // Instead of a page: dispatches this event on `window` when clicked
+  // (the judge console listens for its Switch / Clear actions).
+  event?: string;
+  brand?: boolean;
   icon: ReactNode;
   children?: DashboardNavItem[];
 }
@@ -86,7 +91,7 @@ function Breadcrumbs() {
 }
 
 const navRowBase =
-  "relative flex h-9 w-full items-center gap-2.5 rounded-[3px] px-2.5 text-left font-display text-[15px] font-medium uppercase tracking-[0.05em] transition-colors [&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0";
+  "relative flex h-9 w-full items-center gap-2.5 rounded-[3px] px-2.5 text-left font-display text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors [&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0";
 
 function NavList({
   items,
@@ -102,7 +107,7 @@ function NavList({
 
   return (
     <ul className="flex flex-col gap-px">
-      {items.map(({ label, href, icon, children }) => {
+      {items.map(({ label, href, event, icon, children }) => {
         const key = href ?? label;
         const hasChildren = !!children && children.length > 0;
         const isOpen = openMap[key] ?? hasActiveDescendant(children, pathname);
@@ -113,6 +118,24 @@ function NavList({
               <NavList items={children} onNavigate={onNavigate} nested />
             </div>
           ) : null;
+
+        if (event) {
+          return (
+            <li key={event}>
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent(event));
+                  onNavigate?.();
+                }}
+                className={cn(navRowBase, "text-on-surface/60 hover:bg-surface-container hover:text-on-surface [&>svg]:text-on-surface/45")}
+              >
+                {icon}
+                <span className="truncate">{label}</span>
+              </button>
+            </li>
+          );
+        }
 
         // Group header (no page of its own): toggles its children, or is a
         // disabled "Soon" placeholder when it has none.
@@ -126,7 +149,7 @@ function NavList({
                 disabled={!hasChildren}
                 className={cn(
                   navRowBase,
-                  nested && "h-8 text-[14px]",
+                  nested && "h-8 text-[11px]",
                   hasChildren
                     ? "font-semibold text-on-surface/85 hover:bg-surface-container hover:text-on-surface [&>svg]:text-on-surface/50"
                     : "cursor-default text-on-surface/35 [&>svg]:text-on-surface/25"
@@ -159,7 +182,7 @@ function NavList({
                 className={cn(
                   navRowBase,
                   "flex-1",
-                  nested && "h-8 text-[14px]",
+                  nested && "h-8 text-[11px]",
                   active
                     ? "bg-gradient-to-r from-primary/20 to-transparent font-semibold text-on-surface [&>svg]:text-primary"
                     : "text-on-surface/60 hover:bg-surface-container hover:text-on-surface [&>svg]:text-on-surface/45"
@@ -237,7 +260,7 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
 // Leaf links of one nav branch, in order; "Soon" placeholders are skipped.
 function leafLinks(items: DashboardNavItem[]): DashboardNavItem[] {
   return items.flatMap((item) => [
-    ...(item.href ? [item] : []),
+    ...(item.href || item.event ? [item] : []),
     ...(item.children ? leafLinks(item.children) : []),
   ]);
 }
@@ -246,23 +269,39 @@ function leafLinks(items: DashboardNavItem[]): DashboardNavItem[] {
 // destinations of the dashboard you're currently in (so a player sees
 // Overview / Upcoming / Registered / Match history, an organizer sees
 // theirs) plus a Menu tab that opens everything.
-function BottomTabBar({ navItems, onMenu }: { navItems: DashboardNavItem[]; onMenu: () => void }) {
+function BottomTabBar({ navItems, onMenu, fixedTabs }: { navItems: DashboardNavItem[]; onMenu: () => void; fixedTabs?: DashboardNavItem[] }) {
   const pathname = usePathname() ?? "";
   const group =
     navItems.find((item) => leafLinks([item]).some((l) => l.href && isActiveHref(l.href, pathname))) ?? navItems[0];
-  const tabs = group ? leafLinks(group.children ?? [group]).slice(0, 4) : [];
+  const tabs = fixedTabs ?? (group ? leafLinks(group.children ?? [group]).slice(0, 4) : []);
 
   return (
     <nav
       aria-label="Dashboard"
       className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/25 bg-background/85 backdrop-blur-xl lg:hidden"
     >
-      <ul className="mx-auto grid h-14 max-w-xl" style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0, 1fr))` }}>
-        {tabs.map(({ label, href, icon }) => {
+      <ul className="mx-auto grid h-14 max-w-xl" style={{ gridTemplateColumns: `repeat(${tabs.length + (fixedTabs ? 0 : 1)}, minmax(0, 1fr))` }}>
+        {tabs.map(({ label, href, event, brand, icon }) => {
           const active = !!href && isActiveHref(href, pathname);
+          const tabClass = "tap relative flex h-full w-full flex-col items-center justify-center gap-0.5";
+          const Tab = event
+            ? (props: { children: ReactNode }) => (
+                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent(event))} className={tabClass}>
+                  {props.children}
+                </button>
+              )
+            : (props: { children: ReactNode }) => (
+                <Link href={href!} aria-current={active ? "page" : undefined} className={tabClass}>
+                  {props.children}
+                </Link>
+              );
           return (
-            <li key={href}>
-              <Link href={href!} aria-current={active ? "page" : undefined} className="tap relative flex h-full flex-col items-center justify-center gap-0.5">
+            <li key={href ?? event}>
+              <Tab>
+                {brand ? (
+                  <BrandMark size={34} className="[&_path:first-child]:fill-on-surface" />
+                ) : (
+                  <>
                 {active ? (
                   <span
                     aria-hidden="true"
@@ -285,18 +324,42 @@ function BottomTabBar({ navItems, onMenu }: { navItems: DashboardNavItem[]; onMe
                 >
                   {label.replace(/ Tournaments?$/i, "")}
                 </span>
-              </Link>
+                  </>
+                )}
+              </Tab>
             </li>
           );
         })}
-        <li>
+        {fixedTabs ? null : <li>
           <button type="button" onClick={onMenu} className="tap flex h-full w-full flex-col items-center justify-center gap-0.5 text-on-surface/50">
             <LayoutGrid className="h-[22px] w-[22px]" aria-hidden="true" />
             <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-on-surface/45">Menu</span>
           </button>
-        </li>
+        </li>}
       </ul>
     </nav>
+  );
+}
+
+// Header cluster: light/dark, search, notifications, profile menu.
+function HeaderIcons({ user, notificationCount = 0 }: { user: NavUser | null; notificationCount?: number }) {
+  return (
+    <div className="flex items-center gap-1">
+      <ThemeToggle />
+      <HeaderSearch variant="icon" />
+      <NotificationsBell count={user ? notificationCount : 0} enabled={!!user} />
+      {user ? (
+        <ProfileMenu user={user} />
+      ) : (
+        <Link
+          href="/login"
+          aria-label="Sign in"
+          className="tap flex h-10 w-10 items-center justify-center rounded-[3px] text-on-surface/70 hover:bg-surface-container-high hover:text-on-surface"
+        >
+          <UserRound className="h-5 w-5" />
+        </Link>
+      )}
+    </div>
   );
 }
 
@@ -306,6 +369,8 @@ export function DashboardShell({
   settingsItem,
   user,
   notificationCount,
+  flush = false,
+  mobileTabs,
   children,
 }: {
   roleLabel: string;
@@ -320,6 +385,11 @@ export function DashboardShell({
   // Header above it.
   user?: NavUser | null;
   notificationCount?: number;
+  // Drop the content area's padding and max width (the judge console).
+  flush?: boolean;
+  // Console pages (judge / player): below lg there is no top header, and
+  // the bottom bar shows exactly these tabs (`brand` = the PXJ mark, home).
+  mobileTabs?: DashboardNavItem[];
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -432,34 +502,17 @@ export function DashboardShell({
             <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-outline-variant/25 bg-background/85 px-6 backdrop-blur-xl lg:flex">
               <Breadcrumbs />
               <div className="flex items-center gap-2">
-                <SearchBar className="w-64" />
-                <span className="mx-1 h-5 w-px bg-outline-variant/25" aria-hidden="true" />
-                <PlayerViewHeaderActions user={user ?? null} notificationCount={notificationCount} />
+                <HeaderIcons user={user ?? null} notificationCount={notificationCount} />
               </div>
             </header>
 
             {/* Below lg: logo left; theme/notifications/account menu right. */}
-            <header className="pt-safe sticky top-0 z-40 border-b border-outline-variant/25 bg-background/85 backdrop-blur-xl lg:hidden">
+            <header className={cn("pt-safe sticky top-0 z-40 border-b border-outline-variant/25 bg-background/85 backdrop-blur-xl lg:hidden", mobileTabs && "hidden")}>
               <div className="flex h-14 items-center justify-between px-4">
                 <Link href="/" aria-label="PlayerXJudge home">
                   <BrandLogo width={128} height={14} />
                 </Link>
-                <div className="flex items-center gap-0.5">
-                  <ThemeToggle />
-                  <NotificationsBell count={user ? (notificationCount ?? 0) : 0} enabled={!!user} />
-                  <Link
-                    href="/account/settings"
-                    aria-label="Account settings"
-                    className="tap ml-1 flex h-9 w-9 items-center justify-center"
-                  >
-                    <Avatar className="chamfer-sm h-8 w-8 rounded-none ring-1 ring-primary/50">
-                      {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-                      <AvatarFallback className="rounded-none">
-                        <UserRound className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
-                </div>
+                <HeaderIcons user={user ?? null} notificationCount={notificationCount} />
               </div>
             </header>
           </>
@@ -471,12 +524,12 @@ export function DashboardShell({
         )}
         <div
           id="dashboard-content"
-          className={cn("mx-auto max-w-[1400px] px-4 py-5 lg:px-6 lg:py-6", standalone && "pb-tabbar lg:pb-6")}
+          className={cn(flush ? "" : "mx-auto max-w-[1400px] px-4 py-5 lg:px-6 lg:py-6", standalone && (flush ? "pb-tabbar lg:pb-0" : "pb-tabbar lg:pb-6"))}
         >
           <BusyBoundary>{children}</BusyBoundary>
         </div>
         <TableCardLabels rootId="dashboard-content" />
-        {standalone ? <BottomTabBar navItems={navItems} onMenu={() => setMobileOpen(true)} /> : null}
+        {standalone ? <BottomTabBar navItems={navItems} fixedTabs={mobileTabs} onMenu={() => setMobileOpen(true)} /> : null}
         {standalone ? accountMobileNav : null}
       </div>
     </div>

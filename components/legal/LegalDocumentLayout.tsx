@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { Separator } from "@/components/ui/separator";
-import type { LegalBlock, LegalSection } from "@/lib/legal-content";
+import type { LegalHtmlSection } from "@/lib/legal-content";
 
-import { LegalBlocks } from "./LegalBlocks";
+import { LegalHtml } from "./LegalHtml";
 
 // Shared page shell for /privacy and /terms, matching the /rules layout:
 // hero icon + eyebrow + heading, a quick-link row that jumps to each
@@ -15,7 +15,7 @@ export function LegalDocumentLayout({
   title,
   subtitle,
   notice,
-  intro,
+  introHtml,
   sections,
 }: {
   icon: ReactNode;
@@ -23,8 +23,8 @@ export function LegalDocumentLayout({
   title: string;
   subtitle?: string;
   notice?: { title: string; body: string };
-  intro: LegalBlock[];
-  sections: LegalSection[];
+  introHtml: string;
+  sections: LegalHtmlSection[];
 }) {
   return (
     <div className="px-4 py-12 md:px-6">
@@ -60,9 +60,9 @@ export function LegalDocumentLayout({
           </div>
         ) : null}
 
-        {intro.length ? (
+        {introHtml.trim() ? (
           <div className="mt-10">
-            <LegalBlocks blocks={intro} />
+            <LegalHtml html={introHtml} />
           </div>
         ) : null}
 
@@ -72,7 +72,7 @@ export function LegalDocumentLayout({
               <div key={section.id}>
                 <section id={section.id} className="scroll-mt-24">
                   <h2 className="mb-4 heading text-xl leading-none text-primary">{section.title}</h2>
-                  <LegalBlocks blocks={section.blocks} />
+                  <LegalHtml html={section.html} />
                 </section>
                 {i < sections.length - 1 ? <Separator className="mt-10" /> : null}
               </div>

@@ -25,10 +25,10 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline normal-case tracking-normal",
       },
       size: {
-        default: "h-11 px-4 lg:px-6 py-2 erp:h-10 erp:px-4 erp:py-0 erp:lg:h-9 erp:lg:px-4",
-        sm: "h-9 px-4 erp:h-8 erp:px-3 erp:text-[13px]",
+        default: "h-11 px-4 lg:px-6 py-2 erp:h-10 erp:px-4 erp:py-0 erp:px-4",
+        sm: "h-9 px-4 erp:h-9 erp:px-3 erp:text-[13px]",
         lg: "h-14 px-8 text-xs erp:h-12 erp:px-6 erp:text-base erp:lg:h-11",
-        icon: "h-10 w-10 erp:h-10 erp:w-10 erp:lg:h-9 erp:lg:w-9",
+        icon: "h-10 w-10 erp:h-10 erp:w-10",
       },
     },
     defaultVariants: {

@@ -1,5 +1,7 @@
 import { Hero } from "@/components/home/Hero";
 import { QuickAccess } from "@/components/home/QuickAccess";
+import { DeckBuilderSection } from "@/components/home/DeckBuilderSection";
+import { ShopBanner } from "@/components/layout/ShopCta";
 import { TournamentListings } from "@/components/tournaments/TournamentListings";
 import { PaymentMethodsMarquee } from "@/components/marquee/PaymentMethodsMarquee";
 import { FindTournamentSection } from "@/components/tournaments/FindTournamentSection";
@@ -30,6 +32,8 @@ export default function HomePage() {
       <Hero />
       <QuickAccess />
       <TournamentListings />
+      <DeckBuilderSection />
+      <ShopBanner />
       <PaymentMethodsMarquee />
       <FindTournamentSection />
     </>

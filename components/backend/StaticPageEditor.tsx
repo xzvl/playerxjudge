@@ -4,9 +4,10 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/tournaments/wizard/RichTextEditor";
 import { updateStaticPage } from "@/app/backend/static-pages/actions";
 import { formatDate } from "@/lib/format";
+import { legalBodyToEditorHtml } from "@/lib/legal-content";
 import type { StaticPageSlug } from "@/lib/types/database";
 
 export function StaticPageEditor({
@@ -21,7 +22,7 @@ export function StaticPageEditor({
   updatedAt: string;
 }) {
   const [title, setTitle] = useState(initialTitle);
-  const [body, setBody] = useState(initialBody);
+  const [body, setBody] = useState(() => legalBodyToEditorHtml(initialBody));
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
@@ -38,7 +39,7 @@ export function StaticPageEditor({
   }
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="max-w-4xl space-y-5">
       <p className="text-xs text-on-surface/40">Last updated {formatDate(updatedAt)}</p>
 
       <div className="space-y-1.5">
@@ -48,11 +49,9 @@ export function StaticPageEditor({
 
       <div className="space-y-1.5">
         <label className="text-sm font-bold text-on-surface">Body</label>
-        <Textarea rows={20} value={body} onChange={(e) => setBody(e.target.value)} className="font-mono text-sm" />
+        <RichTextEditor value={body} onChange={setBody} headings minHeight={420} />
         <p className="text-xs text-on-surface/40">
-          Start a line with <code className="text-on-surface/60">## </code> to begin a new section (it becomes a
-          heading with a quick-link at the top of the page, styled like /rules). Start a line with{" "}
-          <code className="text-on-surface/60">- </code> for a bullet list. Blank lines become paragraph breaks.
+          Use the section heading button for each titled section. Each one becomes a quick-link at the top of the page.
         </p>
       </div>
 

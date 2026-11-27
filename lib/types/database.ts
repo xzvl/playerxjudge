@@ -735,6 +735,17 @@ export type BeybladeCombo = {
   updated_at: string;
 };
 
+// 20250101000063_tournament_deck_selections.sql — a player's deck for one
+// tournament; no row means their default active deck applies.
+export type TournamentDeckSelection = {
+  id: string;
+  profile_id: string;
+  tournament_id: string;
+  deck_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type BeybladeDeck = {
   id: string;
   profile_id: string;
@@ -887,6 +898,7 @@ export interface Database {
       beyblades: TableDef<Beyblade>;
       beyblade_combos: TableDef<BeybladeCombo>;
       beyblade_decks: TableDef<BeybladeDeck>;
+      tournament_deck_selections: TableDef<TournamentDeckSelection>;
       teams: TableDef<Team>;
       team_members: TableDef<TeamMember>;
       team_invites: TableDef<TeamInvite>;

@@ -11,7 +11,6 @@ import {
   LogIn,
   LogOut,
   Menu,
-  Plus,
   Settings,
   Swords,
   Trophy,
@@ -61,7 +60,7 @@ function isActive(href: string, pathname: string) {
 }
 
 const menuLinkClass =
-  "tap flex h-12 items-center gap-3 rounded-[3px] px-3 font-display text-lg font-medium uppercase tracking-[0.05em] text-on-surface/75 transition-colors hover:bg-surface-container hover:text-on-surface";
+  "tap flex h-12 items-center gap-3 rounded-[3px] px-3 font-display text-lg font-medium uppercase tracking-[0.08em] text-on-surface/75 transition-colors hover:bg-surface-container hover:text-on-surface";
 
 export function Header({
   user,
@@ -95,10 +94,10 @@ export function Header({
   return (
     <header
       className={cn(
-        "pt-safe sticky top-0 z-40 border-b transition-colors duration-200",
+        "pt-safe sticky top-0 z-40 border-b-2 transition-colors duration-200",
         scrolled
-          ? "border-outline-variant/30 bg-background/90 shadow-[0_8px_24px_-16px_rgb(0_0_0/0.6)] backdrop-blur-xl"
-          : "border-outline-variant/15 bg-background/60 backdrop-blur-md"
+          ? "border-primary/60 bg-background/95 shadow-[0_8px_24px_-16px_rgb(0_0_0/0.6)] backdrop-blur-xl"
+          : "border-primary/30 bg-background/80 backdrop-blur-md"
       )}
     >
       <span
@@ -108,14 +107,14 @@ export function Header({
           scrolled ? "opacity-100" : "opacity-0"
         )}
       />
-      <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-2 px-3 md:px-6 lg:h-[68px] lg:gap-6">
+      <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-2 px-3 md:px-6 lg:h-[72px] lg:gap-5">
         {/* Brand */}
         <Link href="/" aria-label="PlayerXJudge home" className="tap shrink-0 pr-1">
           <BrandLogo width={136} height={15} />
         </Link>
 
         {/* Primary navigation (desktop) */}
-        <nav aria-label="Main" className="hidden items-center lg:flex">
+        <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
           {links.map(({ id, label, href, target }) => {
             const active = !isExternal(href) && isActive(href, pathname);
             return (
@@ -126,15 +125,17 @@ export function Header({
                 rel={target === "_blank" ? "noopener noreferrer" : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative px-3.5 py-2 font-display text-[17px] font-medium uppercase tracking-[0.07em] transition-colors",
-                  active ? "text-on-surface" : "text-on-surface/55 hover:text-on-surface"
+                  "group relative -skew-x-12 px-3.5 py-2 font-display text-[13px] font-semibold uppercase tracking-[0.12em] transition-colors xl:px-4",
+                  active
+                    ? "bg-primary/15 text-on-surface"
+                    : "text-on-surface/60 hover:bg-surface-container hover:text-on-surface"
                 )}
               >
-                {label}
+                <span className="block skew-x-12">{label}</span>
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "absolute inset-x-3.5 -bottom-[13px] h-[2px] origin-left bg-primary shadow-[0_0_10px_2px_rgb(var(--m3-primary)/0.8)] transition-transform duration-200",
+                    "absolute inset-x-0 -bottom-[10px] h-[3px] origin-left bg-primary shadow-[0_0_10px_2px_rgb(var(--m3-primary)/0.8)] transition-transform duration-200",
                     active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-50"
                   )}
                 />
@@ -143,24 +144,11 @@ export function Header({
           })}
         </nav>
 
-        {/* Search: fills the middle on desktop, icon on phones */}
-        <div className="ml-auto hidden w-full max-w-xs lg:block xl:max-w-sm">
-          <HeaderSearch variant="pill" />
-        </div>
-
         {/* Actions */}
-        <div className="ml-auto flex items-center gap-1 lg:ml-0">
-          <HeaderSearch variant="icon" className="lg:hidden" />
-
-          {user?.isOrganizer ? (
-            <Button asChild size="sm" className="mr-1 hidden lg:inline-flex" tooltip="Set up a new tournament">
-              <Link href="/account/organizer/tournament/new">
-                <Plus /> Add tournament
-              </Link>
-            </Button>
-          ) : null}
+        <div className="ml-auto flex items-center gap-1">
 
           <ThemeToggle className="hidden sm:inline-flex" />
+          <HeaderSearch variant="icon" />
           <NotificationsBell count={user ? notificationCount : 0} enabled={!!user} />
 
           {/* Desktop account area */}
@@ -169,14 +157,15 @@ export function Header({
               <ProfileMenu user={user} />
             ) : (
               <>
-                <Button asChild variant="ghost" size="sm">
+                <Button asChild variant="ghost" size="sm" className="uppercase tracking-[0.08em]">
                   <Link href="/login">Sign in</Link>
                 </Button>
-                <Button asChild size="sm">
+                <Button asChild variant="outline" size="sm" className="uppercase tracking-[0.08em]">
                   <Link href="/register">Join free</Link>
                 </Button>
               </>
             )}
+
           </div>
 
           {/* Phones/tablets: avatar-or-menu button opens the full menu */}
@@ -207,7 +196,7 @@ export function Header({
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <p className="truncate font-display text-xl font-semibold uppercase leading-none tracking-[0.04em] text-on-surface">
+                    <p className="truncate font-display text-lg font-bold uppercase leading-none tracking-[0.05em] text-on-surface">
                       {user.displayName}
                     </p>
                     <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.1em] text-on-surface/45">
@@ -247,18 +236,10 @@ export function Header({
                 })}
               </nav>
 
-              {user?.isOrganizer ? (
-                <Button asChild size="lg" className="w-full">
-                  <Link href="/account/organizer/tournament/new" onClick={close}>
-                    <Plus /> Add tournament
-                  </Link>
-                </Button>
-              ) : null}
-
               {!user ? (
                 <div className="chamfer-sm border border-primary/30 bg-gradient-to-br from-primary/15 to-transparent p-4">
-                  <p className="font-display text-lg font-semibold uppercase tracking-[0.05em]">Create a free account</p>
-                  <p className="mt-1 text-xs text-on-surface/55">
+                  <p className="font-display text-base font-bold uppercase tracking-[0.06em]">Create a free account</p>
+                  <p className="mt-1 text-sm text-on-surface/60">
                     Track your player stats, build your Beyblade decks, and stay updated on tournaments near you.
                   </p>
                   <div className="mt-3 flex gap-2">

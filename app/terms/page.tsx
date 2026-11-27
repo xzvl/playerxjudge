@@ -3,7 +3,7 @@ import { FileText } from "lucide-react";
 
 import { LegalDocumentLayout } from "@/components/legal/LegalDocumentLayout";
 import { getStaticPage } from "@/lib/static-pages";
-import { parseLegalBody } from "@/lib/legal-content";
+import { legalSections } from "@/lib/legal-content";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function TermsPage() {
   const page = await getStaticPage("terms-of-service");
-  const { intro, sections } = parseLegalBody(page.body);
+  const { introHtml, sections } = legalSections(page.body);
 
   return (
     <LegalDocumentLayout
@@ -25,7 +25,7 @@ export default async function TermsPage() {
         title: "Important Notice",
         body: "By creating an account, pre-registering for a tournament, or applying for a role on PlayerXJudge, you agree to these Terms and to the Beyblade X Regulations enforced at every event.",
       }}
-      intro={intro}
+      introHtml={introHtml}
       sections={sections}
     />
   );

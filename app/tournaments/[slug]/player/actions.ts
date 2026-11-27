@@ -50,3 +50,28 @@ export async function cancelParticipantLink(linkId: string, slug: string): Promi
   revalidatePath(`/tournaments/${slug}/player`);
   return { status: "success" };
 }
+
+// Sets the deck used for ONE tournament (see
+// 20250101000063_tournament_deck_selections.sql). Passing null removes the
+// override so the player's default active deck applies again. The player's
+// global active deck is never touched.
+export async function setTournamentDeck(tournamentId: string, deckId: string | null, slug: string): Promise<RoleActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "You need to be signed in." };
+
+  const supabase = await createClient();
+  if (deckId === null) {
+    const { error } = await supabase.from("tournament_deck_selections").delete().eq("tournament_id", tournamentId).eq("profile_id", user.id);
+    if (error) return { status: "error", message: error.message };
+  } else {
+    const { data: deck } = await supabase.from("beyblade_decks").select("id").eq("id", deckId).eq("profile_id", user.id).maybeSingle();
+    if (!deck) return { status: "error", message: "That deck wasn't found." };
+    const { error } = await supabase
+      .from("tournament_deck_selections")
+      .upsert({ profile_id: user.id, tournament_id: tournamentId, deck_id: deckId }, { onConflict: "profile_id,tournament_id" });
+    if (error) return { status: "error", message: error.message };
+  }
+
+  revalidatePath(`/tournaments/${slug}/player`);
+  return { status: "success" };
+}

@@ -40,7 +40,7 @@ export function MultiSelectFilter({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className={className ?? "h-11 w-full justify-between gap-2 font-normal sm:w-auto"}>
+        <Button variant="outline" className={className ?? "!h-10 w-full justify-between gap-2 font-normal sm:w-auto"}>
           {triggerLabel}
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>

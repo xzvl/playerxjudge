@@ -26,7 +26,7 @@ export function QuickAccess() {
               <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-display text-lg font-semibold uppercase leading-tight tracking-[0.04em]">{label}</span>
+              <span className="block truncate font-display text-sm font-semibold uppercase leading-tight tracking-[0.04em]">{label}</span>
               <span className="block truncate text-xs text-on-surface/50">{description}</span>
             </span>
             <ChevronRight className="hidden h-4 w-4 shrink-0 text-on-surface/30 transition-all group-hover:translate-x-0.5 group-hover:text-primary sm:block" aria-hidden="true" />
